@@ -2,7 +2,7 @@
 
 This is an open solution to the [Data Science Bowl 2018](https://datasciencebowl.com).
 
-## The goal
+## Goal
 Our goal is two fold:
 1) Create an open and easily extendable solution to the Data Science Bowl that anyone can use.
 2) Thanks to the community contributions, establish very solid competition benchmark.

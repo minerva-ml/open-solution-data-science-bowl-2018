@@ -12,9 +12,9 @@ Our goal is two fold:
 
 ## User support
 There are several ways to seek help:
-1. Read project's [Wiki](https://github.com/neptune-ml/kaggle-toxic-starter/wiki), where we publish descriptions about the code, pipelines and neptune.
-2. Kaggle [discussion](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion) is our primary way of communication.
-3. You can submit an [issue](https://github.com/neptune-ml/kaggle-toxic-starter/issues) directly in this repo.
+1. Read project's [Wiki](https://github.com/neptune-ml/data-science-bowl-2018/wiki), where we publish descriptions about the code, pipelines and neptune.
+2. Kaggle [discussion](https://www.kaggle.com) is our primary way of communication.
+3. You can submit an [issue](https://github.com/neptune-ml/data-science-bowl-2018/issues) directly in this repo.
 
 ## Contributing
 Check [CONTRIBUTING](CONTRIBUTING.md) for more information.

@@ -16,5 +16,5 @@ There are several ways to seek help:
 2. Kaggle [discussion](https://www.kaggle.com/c/jigsaw-toxic-comment-classification-challenge/discussion) is our primary way of communication.
 3. You can submit an [issue](https://github.com/neptune-ml/kaggle-toxic-starter/issues) directly in this repo.
 
-## Contributing to this open solution
+## Contributing
 Check [CONTRIBUTING](CONTRIBUTING.md) for more information.

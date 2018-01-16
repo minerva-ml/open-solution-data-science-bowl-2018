@@ -1,11 +1,11 @@
 # Data Science Bowl 2018: open solution
 
-This is an open solution to the [Data Science Bowl 2018](https://datasciencebowl.com).
+This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018).
 
 ## Goal
 Our goal is two fold:
-1) Create an open and easily extendable solution to the Data Science Bowl that anyone can use.
-2) Thanks to the community contributions, establish very solid competition benchmark.
+1) Deliver open, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
+2) Encourage more Kagglers to start working on the Data Science Bowl, test their ideas and learn advanced data science.
 
 ## Installation
 ...

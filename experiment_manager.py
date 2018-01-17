@@ -100,7 +100,7 @@ def _predict_pipeline(pipeline_name):
     output = pipeline.transform(data)
     y_pred = output['y_pred']
 
-    create_submission(params.experiment_dir, test, y_pred, Y_COLUMNS, logger)
+    create_submission(params.experiment_dir, test, y_pred, logger)
 
 
 @action.command()

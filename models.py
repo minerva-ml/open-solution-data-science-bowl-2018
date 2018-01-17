@@ -14,7 +14,7 @@ class MockModel(BaseTransformer):
     def transform(self, datagen, **kwargs):
         X, steps = datagen
         masks = np.zeros((X.shape[0], 256, 256))
-        masks[:, 1:255, 1:255] = 1
+        masks[:, 50:200, 50:200] = 1
         return {'predicted_masks': masks}
 
     def load(self, filepath):

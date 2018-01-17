@@ -50,7 +50,7 @@ def read_masks(mask_filepaths):
     masks = []
     for mask_filepath in mask_filepaths:
         mask = plt.imread(mask_filepath[0])[:, :, 0]
-        mask_binarized = (mask > 0).astype(np.uint8)
+        mask_binarized = (mask > 0.5).astype(np.uint8)
         masks.append(mask_binarized)
     return masks
 

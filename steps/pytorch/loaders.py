@@ -11,7 +11,6 @@ import torchvision.transforms as transforms
 from steps.base import BaseTransformer
 
 
-
 class MetadataImageDataset(Dataset):
     def __init__(self, X, y, image_transform, target_transform, image_augment):
         super().__init__()
@@ -102,3 +101,6 @@ class MetadataImageLoader(BaseTransformer):
         params = {'loader_params': self.loader_params}
         joblib.dump(params, filepath)
 
+
+def target_transform(y):
+    return torch.from_numpy(y).type(torch.LongTensor)

@@ -36,14 +36,14 @@ def get_logger():
 
 
 def create_submission(experiments_dir, meta, predictions, logger):
-    submission = meta[['ImageId']]
     encoded_predictions = [' '.join(str(p) for p in run_length_encoding(pred)) for pred in predictions]
-    submission['EncodedPixels'] = encoded_predictions
-    logger.info('submission head', submission.head())
-
+    submission = pd.DataFrame({'ImageId': meta['ImageId'].values,
+                               'EncodedPixels': encoded_predictions})
     submission_filepath = os.path.join(experiments_dir, 'submission.csv')
     submission.to_csv(submission_filepath, index=None)
     logger.info('submission saved to {}'.format(submission_filepath))
+    logger.info('submission head \n\n{}'.format(submission.head()))
+
 
 
 def read_masks(mask_filepaths):

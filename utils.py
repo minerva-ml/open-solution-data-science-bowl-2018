@@ -3,7 +3,9 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import yaml
+from PIL import Image
 from attrdict import AttrDict
 
 
@@ -73,3 +75,50 @@ def read_params(ctx):
         neptune_config = read_yaml('neptune_config.yaml')
         params = neptune_config.parameters
     return params
+
+
+def generate_metadata(data_dir):
+    def stage1_generate_metadata(train):
+        df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks',
+                                            'is_train', 'width', 'height', 'n_nuclei'])
+        if train:
+            tr_te = 'stage1_train'
+        else:
+            tr_te = 'stage1_test'
+
+        for image_id in sorted(os.listdir(os.path.join(data_dir, tr_te))):
+            p = os.path.join(data_dir, tr_te, image_id, 'images')
+            if image_id != os.listdir(p)[0][:-4]:
+                ValueError('ImageId mismatch ' + str(image_id))
+            if len(os.listdir(p)) != 1:
+                ValueError('more than one image in dir')
+
+            file_path_image = os.path.join(p, os.listdir(p)[0])
+            if train:
+                is_train = 1
+                file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
+                n_nuclei = len(os.listdir(file_path_masks))
+            else:
+                is_train = 0
+                file_path_masks = None
+                n_nuclei = None
+
+            img = Image.open(file_path_image)
+            width = img.size[0]
+            height = img.size[1]
+            s = df_metadata['ImageId']
+            if image_id is s:
+                ValueError('ImageId conflict ' + str(image_id))
+            df_metadata = df_metadata.append({'ImageId': image_id,
+                                              'file_path_image': file_path_image,
+                                              'file_path_masks': file_path_masks,
+                                              'is_train': is_train,
+                                              'width': width,
+                                              'height': height,
+                                              'n_nuclei': n_nuclei}, ignore_index=True)
+        return df_metadata
+
+    train_metadata = stage1_generate_metadata(train=True)
+    test_metadata = stage1_generate_metadata(train=False)
+    metadata = train_metadata.append(test_metadata, ignore_index=True)
+    return metadata

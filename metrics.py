@@ -29,7 +29,7 @@ def _iou(gt, pred):
     return intersection / union
 
 
-def _intersaction_over_union(y_true, y_pred):
+def _intersection_over_union(y_true, y_pred):
     gt_ = _decompose(y_true)
     predictions_ = _decompose(y_pred)
     gt_ = np.asarray([el.flatten() for el in gt_])
@@ -47,20 +47,20 @@ def _compute_precision_at(ious, threshold):
     return float(tp) / (tp + fp + fn)
 
 
-def _intersaction_over_union_thresholds(y_true, y_pred):
+def _intersection_over_union_thresholds(y_true, y_pred):
     thresholds = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
-    ious = _intersaction_over_union(y_true, y_pred)
+    ious = _intersection_over_union(y_true, y_pred)
     precisions = [_compute_precision_at(ious, th) for th in thresholds]
     return sum(precisions) / len(precisions)
 
-def intersaction_over_union(y_true, y_pred):
+def intersection_over_union(y_true, y_pred):
     ious = []
     for y_t, y_p in tqdm(list(zip(y_true, y_pred))):
-        ious.append(_intersaction_over_union(y_t, y_p))
+        ious.append(_intersection_over_union(y_t, y_p))
     return np.mean(ious)
 
-def intersaction_over_union_thresholds(y_true, y_pred):
+def intersection_over_union_thresholds(y_true, y_pred):
     iouts = []
     for y_t, y_p in tqdm(list(zip(y_true, y_pred))):
-        iouts.append(_intersaction_over_union_thresholds(y_t, y_p))
+        iouts.append(_intersection_over_union_thresholds(y_t, y_p))
     return np.mean(iouts)

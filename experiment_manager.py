@@ -9,7 +9,7 @@ from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import train_valid_split, overlay_masks
 from metrics import intersaction_over_union_thresholds
-from utils import init_logger, get_logger, read_masks, read_params, create_submission
+from utils import init_logger, get_logger, read_masks, read_params, create_submission, generate_metadata
 
 logger = get_logger()
 ctx = neptune.Context()
@@ -22,9 +22,16 @@ def action():
 
 
 @action.command()
+def prepare_metadata():
+    logger.info('creating metadata')
+    meta = generate_metadata(data_dir=params.data_dir, masks_overlayed_dir=params.masks_overlayed_dir)
+    meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
+
+
+@action.command()
 def prepare_masks():
     logger.info('overlaying masks')
-    overlay_masks(images_dir=params.images_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
+    overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
 
 
 @action.command()
@@ -38,7 +45,7 @@ def _train_pipeline(pipeline_name, validation_size):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train_split, meta_valid_split = train_valid_split(meta, validation_size)
 
     data = {'input': {'meta': meta_train_split,
@@ -59,7 +66,7 @@ def evaluate_pipeline(pipeline_name, validation_size):
 
 
 def _evaluate_pipeline(pipeline_name, validation_size):
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train_split, meta_valid_split = train_valid_split(meta, validation_size)
 
     data = {'input': {'meta': meta_valid_split,
@@ -86,7 +93,7 @@ def predict_pipeline(pipeline_name):
 
 
 def _predict_pipeline(pipeline_name):
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_test = meta[meta['is_train'] == 0]
 
     data = {'input': {'meta': meta_test,

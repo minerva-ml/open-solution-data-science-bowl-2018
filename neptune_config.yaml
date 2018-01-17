@@ -26,9 +26,9 @@ parameters:
 #  experiment_dir: /output/experiments/glove_lstm
 #  embedding_filepath: /public/models/glove/glove.840B.300d.txt
   # Local Environment
-  meta_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data/metadata
-  images_dir: /mnt/ml-team/dsb_2018/data
-  masks_overlayed_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data/masks_overlayed
+  meta_dir: /mnt/ml-team/dsb_2018/files
+  data_dir: /mnt/ml-team/dsb_2018/data
+  masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   experiment_dir: /mnt/ml-team/dsb_2018/trained_pipelines/dummy_pipeline
   overwrite: 1
   num_workers: -2

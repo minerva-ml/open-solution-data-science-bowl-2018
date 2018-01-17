@@ -9,8 +9,8 @@ ctx = neptune.Context()
 params = read_params(ctx)
 
 SIZE_COLUMNS = ['width', 'height']
-X_COLUMNS = ['image_filepath']
-Y_COLUMNS = ['mask_filepath']
+X_COLUMNS = ['file_path_image']
+Y_COLUMNS = ['file_path_mask']
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},

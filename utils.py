@@ -16,7 +16,7 @@ def read_yaml(filepath):
 
 
 def init_logger():
-    logger = logging.getLogger('toxic')
+    logger = logging.getLogger('dsb-2018')
     logger.setLevel(logging.INFO)
     message_format = logging.Formatter(fmt='%(asctime)s %(name)s >>> %(message)s',
                                        datefmt='%Y-%m-%d %H-%M-%S')
@@ -32,7 +32,7 @@ def init_logger():
 
 
 def get_logger():
-    return logging.getLogger('toxic')
+    return logging.getLogger('dsb-2018')
 
 
 def create_submission(experiments_dir, meta, predictions, logger):
@@ -77,9 +77,9 @@ def read_params(ctx):
     return params
 
 
-def generate_metadata(data_dir):
+def generate_metadata(data_dir, masks_overlayed_dir):
     def stage1_generate_metadata(train):
-        df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks',
+        df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
                                             'is_train', 'width', 'height', 'n_nuclei'])
         if train:
             tr_te = 'stage1_train'
@@ -97,10 +97,12 @@ def generate_metadata(data_dir):
             if train:
                 is_train = 1
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
+                file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
                 is_train = 0
                 file_path_masks = None
+                file_path_mask = None
                 n_nuclei = None
 
             img = Image.open(file_path_image)
@@ -112,6 +114,7 @@ def generate_metadata(data_dir):
             df_metadata = df_metadata.append({'ImageId': image_id,
                                               'file_path_image': file_path_image,
                                               'file_path_masks': file_path_masks,
+                                              'file_path_mask' : file_path_mask,
                                               'is_train': is_train,
                                               'width': width,
                                               'height': height,

@@ -3,7 +3,6 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import yaml
 from attrdict import AttrDict
 
@@ -32,12 +31,6 @@ def init_logger():
 
 def get_logger():
     return logging.getLogger('toxic')
-
-
-def read_meta_data(data_dir, filename):
-    meta_filepath = os.path.join(data_dir, filename)
-    meta_data = pd.read_csv(meta_filepath)
-    return meta_data
 
 
 def create_submission(experiments_dir, meta, predictions, logger):

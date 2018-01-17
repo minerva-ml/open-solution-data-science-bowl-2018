@@ -37,7 +37,7 @@ def get_logger():
 
 def create_submission(experiments_dir, meta, predictions, logger):
     submission = meta[['ImageId']]
-    encoded_predictions = [run_length_encoding(pred) for pred in predictions]
+    encoded_predictions = [' '.join(str(p) for p in run_length_encoding(pred)) for pred in predictions]
     submission['EncodedPixels'] = encoded_predictions
     logger.info('submission head', submission.head())
 
@@ -49,8 +49,9 @@ def create_submission(experiments_dir, meta, predictions, logger):
 def read_masks(mask_filepaths):
     masks = []
     for mask_filepath in mask_filepaths:
-        mask = plt.imread(mask_filepath)
-        masks.append(mask)
+        mask = plt.imread(mask_filepath[0])[:, :, 0]
+        mask_binarized = (mask > 0).astype(np.uint8)
+        masks.append(mask_binarized)
     return masks
 
 
@@ -71,9 +72,9 @@ def run_length_encoding(x):
 
 def read_params(ctx):
     params = ctx.params
-    if params.__class__.__name__ == 'OfflineContextParams':
-        neptune_config = read_yaml('neptune_config.yaml')
-        params = neptune_config.parameters
+    # if params.__class__.__name__ == 'OfflineContextParams':
+    neptune_config = read_yaml('neptune_config.yaml')
+    params = neptune_config.parameters
     return params
 
 
@@ -114,7 +115,7 @@ def generate_metadata(data_dir, masks_overlayed_dir):
             df_metadata = df_metadata.append({'ImageId': image_id,
                                               'file_path_image': file_path_image,
                                               'file_path_masks': file_path_masks,
-                                              'file_path_mask' : file_path_mask,
+                                              'file_path_mask': file_path_mask,
                                               'is_train': is_train,
                                               'width': width,
                                               'height': height,

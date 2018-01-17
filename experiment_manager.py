@@ -76,11 +76,12 @@ def _evaluate_pipeline(pipeline_name, validation_size):
                       },
             }
 
+    y_true = read_masks(meta_valid_split[Y_COLUMNS].values)
+
     pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
     output = pipeline.transform(data)
     y_pred = output['y_pred']
 
-    y_true = read_masks(meta_valid_split[Y_COLUMNS].values)
     score = intersaction_over_union_thresholds(y_true, y_pred)
     logger.info('Score on validation is {}'.format(score))
     ctx.channel_send('Final Validation Score', 0, score)
@@ -99,6 +100,7 @@ def _predict_pipeline(pipeline_name):
     data = {'input': {'meta': meta_test,
                       'meta_valid': None,
                       'train_mode': False,
+                      'target_sizes': meta_test[SIZE_COLUMNS].values
                       },
             }
 

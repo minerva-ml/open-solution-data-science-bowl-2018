@@ -7,8 +7,9 @@ from utils import read_params
 
 ctx = neptune.Context()
 params = read_params(ctx)
+print(params)
 
-SIZE_COLUMNS = ['width', 'height']
+SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
 
@@ -47,5 +48,5 @@ SOLUTION_CONFIG = AttrDict({
             'neptune_monitor': {},
         },
     },
-
+    'thresholder': {'threshold': 0.8},
 })

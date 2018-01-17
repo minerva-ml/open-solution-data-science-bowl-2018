@@ -4,7 +4,7 @@ Implement trainable ensemble: XGBoost, random forest, Linear Regression
 
 from steps.base import Step, Dummy, stack_inputs, hstack_inputs, sparse_hstack_inputs, to_tuple_inputs
 from steps.preprocessing import XYSplit
-from postprocessing import Resizer
+from postprocessing import Resizer, Thresholder
 from loaders import MockLoader
 from models import MockModel
 
@@ -85,10 +85,17 @@ def dummy_inference(config):
                                 },
                        cache_dirpath=config.env.cache_dirpath)
 
+    thresholding = Step(name='thresholding',
+                       transformer=Thresholder(**config.thresholder),
+                       input_steps=[mask_resize],
+                       adapter={'images': ([('mask_resize', 'resized_images')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath)
+
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[mask_resize],
-                  adapter={'y_pred': ([('mask_resize', 'resized_images')]),
+                  input_steps=[thresholding],
+                  adapter={'y_pred': ([('thresholding', 'binarized_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output

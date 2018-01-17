@@ -5,7 +5,6 @@ import numpy as np
 import pandas as pd
 import yaml
 from attrdict import AttrDict
-from sklearn.metrics import log_loss
 
 
 def read_yaml(filepath):
@@ -55,3 +54,25 @@ def create_submission(experiments_dir, meta, predictions, columns, logger):
 def read_masks(mask_filepaths):
     return NotImplementedError
 
+
+
+def run_length_encoding(x):
+    '''
+    x: numpy array of shape (height, width), 1 - mask, 0 - background
+    Returns run length as list
+    '''
+    dots = np.where(x.T.flatten()==1)[0] # .T sets Fortran order down-then-right
+    run_lengths = []
+    prev = -2
+    for b in dots:
+        if (b>prev+1): run_lengths.extend((b+1, 0))
+        run_lengths[-1] += 1
+        prev = b
+    return run_lengths
+
+def read_params(ctx):
+    params = ctx.params
+    if params.__class__.__name__ == 'OfflineContextParams':
+        neptune_config = read_yaml('neptune_config.yaml')
+        params = neptune_config.parameters
+    return params

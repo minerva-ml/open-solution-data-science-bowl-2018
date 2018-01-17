@@ -8,11 +8,11 @@ from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import split_train_data, overlay_masks
 from metrics import intersaction_over_union_thresholds
-from utils import init_logger, get_logger, read_meta_data, read_masks, create_submission
+from utils import init_logger, get_logger, read_meta_data, read_masks, read_params, create_submission
 
 logger = get_logger()
 ctx = neptune.Context()
-
+params = read_params(ctx)
 
 @click.group()
 def action():
@@ -22,16 +22,14 @@ def action():
 @action.command()
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
 def train_valid_split(validation_size):
-    params = ctx.params
     logger.info('splitting into train and valid')
     split_train_data(data_dir=params.meta_dir, validation_size=validation_size)
 
 
 @action.command()
 def prepare_masks():
-    params = ctx.params
     logger.info('overlaying masks')
-    overlay_masks(images_dir=params.images_dir)
+    overlay_masks(images_dir=params.images_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
 
 
 @action.command()
@@ -41,8 +39,6 @@ def train_pipeline(pipeline_name):
 
 
 def _train_pipeline(pipeline_name):
-    params = ctx.params
-
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
@@ -66,8 +62,6 @@ def evaluate_pipeline(pipeline_name):
 
 
 def _evaluate_pipeline(pipeline_name):
-    params = ctx.params
-
     valid = read_meta_data(data_dir=params.meta_dir, filename='valid_split.csv')
 
     data = {'input': {'meta': valid,
@@ -94,8 +88,6 @@ def predict_pipeline(pipeline_name):
 
 
 def _predict_pipeline(pipeline_name):
-    params = ctx.params
-
     test = read_meta_data(data_dir=params.meta_dir, filename='test.csv')
 
     data = {'input': {'meta': test,

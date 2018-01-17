@@ -3,14 +3,10 @@ import os
 from attrdict import AttrDict
 from deepsense import neptune
 
-from utils import read_yaml
+from utils import read_params
 
 ctx = neptune.Context()
-params = ctx.params
-
-if params.__class__.__name__ == 'OfflineContextParams':
-    neptune_config = read_yaml('neptune_config.yaml')
-    params = neptune_config.parameters
+params = read_params(ctx)
 
 SIZE_COLUMNS = ['width', 'height']
 X_COLUMNS = ['image_filepath']
@@ -21,7 +17,7 @@ SOLUTION_CONFIG = AttrDict({
     'xy_splitter': {'x_columns': X_COLUMNS,
                     'y_columns': Y_COLUMNS
                     },
-    'loader': {'params':{}},
+    'loader': {'params': {}},
     'unet_network': {
         'architecture_config': {'model_params': {'filter_nr': params.filter_nr,
                                                  'kernel_size': params.kernel_size,

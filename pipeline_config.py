@@ -21,7 +21,7 @@ SOLUTION_CONFIG = AttrDict({
     'xy_splitter': {'x_columns': X_COLUMNS,
                     'y_columns': Y_COLUMNS
                     },
-    'loader': {},
+    'loader': {'params':{}},
     'unet_network': {
         'architecture_config': {'model_params': {'filter_nr': params.filter_nr,
                                                  'kernel_size': params.kernel_size,

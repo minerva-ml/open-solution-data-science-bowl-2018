@@ -7,8 +7,9 @@ from steps.base import BaseTransformer
 class Resizer(BaseTransformer):
     def transform(self, images, target_sizes):
         resized_images = []
-        for image, target_shape in zip(images, target_sizes):
-            resized_image = resize(image, target_sizes)
+        for image, target_size in zip(images, target_sizes):
+            print(image.shape, target_size)
+            resized_image = resize(image, target_size)
             resized_images.append(resized_image)
 
         return {'resized_images': resized_images}

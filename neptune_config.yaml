@@ -26,11 +26,11 @@ parameters:
 #  experiment_dir: /output/experiments/glove_lstm
 #  embedding_filepath: /public/models/glove/glove.840B.300d.txt
   # Local Environment
-  meta_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data
+  meta_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data/metadata
   images_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data
   experiment_dir: /mnt/ml-team/dsb_2018/trained_pipelines/dummy_pipeline
   embedding_filepath: my/path/to/glove.840B.300d.txt
-  overwrite: 0
+  overwrite: 1
   num_workers: -2
 
   # Preprocessing

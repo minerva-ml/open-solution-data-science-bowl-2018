@@ -5,11 +5,11 @@ from steps.base import BaseTransformer
 
 
 class MockLoader(BaseTransformer):
-    def __init__(self, loader_params):
+    def __init__(self, params):
         super().__init__()
-        self.loader_params = loader_params
+        self.params = params
 
-    def transform(self, X, y, X_valid, y_valid, train_mode):
+    def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode:
             flow, steps = X, 10
         else:

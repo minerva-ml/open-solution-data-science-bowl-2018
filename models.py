@@ -5,10 +5,10 @@ from steps.base import BaseTransformer
 
 
 class MockModel(BaseTransformer):
-    def __init__(self, loader_params):
+    def __init__(self, **kwargs):
         super().__init__()
 
-    def fit(self, datagen, validation_datagen):
+    def fit(self, datagen, validation_datagen, **kwargs):
         return self
 
     def transform(self, datagen, **kwargs):

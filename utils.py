@@ -55,5 +55,3 @@ def create_submission(experiments_dir, meta, predictions, columns, logger):
 def read_masks(mask_filepaths):
     return NotImplementedError
 
-def intersection_over_union_score(y_true, y_pred):
-    return NotImplementedError

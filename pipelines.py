@@ -43,7 +43,13 @@ def dummy_train(config):
                         input_steps=[loader_train],
                         cache_dirpath=config.env.cache_dirpath)
 
-    return unet_network
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[unet_network],
+                  adapter={'y_pred': ([('unet_network', 'predicted_masks')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
 
 
 def dummy_inference(config):
@@ -75,7 +81,7 @@ def dummy_inference(config):
                        input_data=['input'],
                        input_steps=[unet_network],
                        adapter={'images': ([('unet_network', 'predicted_masks')]),
-                                'target_shapes': ([('input', 'target_sizes')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)
 

@@ -34,7 +34,8 @@ def get_logger():
     return logging.getLogger('toxic')
 
 
-def read_data(data_dir, filename):
+
+def read_meta_data(data_dir, filename):
     meta_filepath = os.path.join(data_dir, filename)
     meta_data = pd.read_csv(meta_filepath)
     return meta_data
@@ -51,10 +52,8 @@ def create_submission(experiments_dir, meta, predictions, columns, logger):
     logger.info('submission saved to {}'.format(submission_filepath))
 
 
-def multi_log_loss(y_true, y_pred):
-    assert y_true.shape == y_pred.shape
-    columns = y_true.shape[1]
-    column_losses = []
-    for i in range(0, columns):
-        column_losses.append(log_loss(y_true[:, i], y_pred[:, i]))
-    return np.array(column_losses).mean()
+def read_masks(mask_filepaths):
+    return NotImplementedError
+
+def intersection_over_union_score(y_true, y_pred):
+    return NotImplementedError

@@ -1,7 +1,7 @@
-project-key: TOX
+project-key: DAT
 
-name: toxic
-tags: [prepro, glove, lstm, adam]
+name: dsb_journal
+tags: [starter, dummy]
 
 
 metric:
@@ -9,7 +9,7 @@ metric:
   goal: minimize
 
 #Comment out if not in Cloud Environment
-pip-requirements-file: requirements.txt
+#pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -22,107 +22,29 @@ exclude:
 
 parameters:
   # Cloud Environment
-  data_dir: /public/toxic_comments
-  experiment_dir: /output/experiments/glove_lstm
-  embedding_filepath: /public/models/glove/glove.840B.300d.txt
+#  data_dir: /public/toxic_comments
+#  experiment_dir: /output/experiments/glove_lstm
+#  embedding_filepath: /public/models/glove/glove.840B.300d.txt
   # Local Environment
-#  data_dir: my/path/to/toxic/data
-#  experiment_dir: my/path/to/experiments/glove_lstm
-#  embedding_filepath: my/path/to/glove.840B.300d.txt
+  meta_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data
+  images_dir: /mnt/ml-team/dsb_2018/kuba/mocked_data
+  experiment_dir: /mnt/ml-team/dsb_2018/trained_pipelines/dummy_pipeline
+  embedding_filepath: my/path/to/glove.840B.300d.txt
   overwrite: 0
   num_workers: -2
 
   # Preprocessing
-  max_features_char: 100 #100 for vdcnn, for tfidf something like 20000 should be used
-  max_features_word: 100000
-  maxlen_char: 512
-  maxlen_words: 100
-  char_ngram_max: 4
-  drop_punctuation: 1
-  drop_newline: 1
-  drop_multispaces: 1
-  all_lower_case: 1
-  fill_na_with: ' '
 
-
-  # Glove Deep Pyramid Architecture
-#  filter_nr: 64
-#  kernel_size: 3
-#  repeat_block: 2
-#  dense_size: 256
-#  repeat_dense: 1
-#  trainable_embedding: 1
-#  word_embedding_size: 300
-#  char_embedding_size: None
-#  global_pooling: 1
-
-  # Glove Shallow CNN Architecture
-#  filter_nr: 256
-#  kernel_size: 6
-#  repeat_block: None
-#  dense_size: 256
-#  repeat_dense: 1
-#  trainable_embedding: 1
-#  word_embedding_size: 300
-#  char_embedding_size: None
-#  global_pooling: 1
-
-  # Char VDCNN Architecture
-  filter_nr: 64
-#     value: [64, 128]
+  # Unet Architecture
+  filter_nr: 16
   kernel_size: 3
-  repeat_block: 3
-#     value: [2, 3, 4, 5]
-  global_pooling: 1
-  trainable_embedding: 1
-  dense_size: 256
-#     value: [256, 512, 1024]
-  repeat_dense: 1
-#     value: [1, 2]
-  char_embedding_size: 16
-  word_embedding_size: None
-
-
-  # Glove LSTM Architecture
-#  filter_nr: 64
-#  kernel_size: None
-#  repeat_block: 2
-#  dense_size: 256
-#  repeat_dense: 2
-#  global_pooling: 1
-#  trainable_embedding: 0
-#  word_embedding_size: 300
-#  char_embedding_size: None
-
-  # Word LSTM Architecture
-#  filter_nr:
-#    value: [16, 64, 128]
-#  kernel_size: None
-#  repeat_block:
-#    value: [1, 2, 3]
-#  dense_size: 256
-#  repeat_dense: 2
-#  global_pooling: 1
-#  trainable_embedding: 1
-#  word_embedding_size:
-#    value: [64, 128, 300]
-#  char_embedding_size: None
-
-  # General Architecture
-  use_prelu: 0
-
-  # Log Reg Params
-  log_reg_c: 4.0
-  max_iter: 1000
-
-  # Ensemble Log Reg
-  ensemble_log_reg_c: 1.0
-  weights: None
+  repeat_block: 6
+  use_prelu: 1
 
   # Training schedule
   epochs_nr: 1000
-  batch_size_train: 64
-  batch_size_inference: 128
+  batch_size_train: 32
+  batch_size_inference: 32
   lr: 0.01
   momentum: 0.9
   gamma: 0.97
@@ -130,9 +52,7 @@ parameters:
 
   # Regularization
   use_batch_norm: 1
-    #value: [0,1]
   l2_reg_convo: 0.001
   l2_reg_dense: 0.0
-  dropout_lstm: 0.2
   dropout_convo: 0.1
   dropout_dense: 0.0

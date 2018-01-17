@@ -8,6 +8,10 @@ from utils import get_logger
 logger = get_logger()
 
 
+def overlay_masks(images_dir):
+    return NotImplementedError
+
+
 def split_train_data(data_dir, validation_size):
     meta_train_filepath = os.path.join(data_dir, 'train.csv')
     meta_train_split_filepath = meta_train_filepath.replace('train', 'train_split')

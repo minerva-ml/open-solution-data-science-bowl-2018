@@ -100,7 +100,7 @@ def generate_metadata(data_dir):
                                               'width': width,
                                               'height': height,
                                               'n_nuclei': n_nuclei}, ignore_index=True)
-        return metadata
+        return df_metadata
 
     train_metadata = stage1_generate_metadata(train=True)
     test_metadata = stage1_generate_metadata(train=False)

@@ -29,11 +29,13 @@ parameters:
   meta_dir: /mnt/ml-team/dsb_2018/files
   data_dir: /mnt/ml-team/dsb_2018/data
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dummy_pipeline
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/loader_test_pipeline
   overwrite: 1
   num_workers: -2
 
-  # Preprocessing
+  # General Params
+  image_h: 256
+  image_w: 256
 
   # Unet Architecture
   filter_nr: 16

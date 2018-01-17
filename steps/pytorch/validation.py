@@ -11,6 +11,12 @@ def cross_entropy(output, target, squeeze=False):
     return F.nll_loss(output, target)
 
 
+def mse(output, target, squeeze=False):
+    if squeeze:
+        target = target.squeeze(1)
+    return F.mse_loss(output, target)
+
+
 def multi_output_cross_entropy(outputs, targets):
     loss_seq = []
     for output, target in zip(outputs, targets):

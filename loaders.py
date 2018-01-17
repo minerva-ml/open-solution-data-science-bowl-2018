@@ -1,14 +1,11 @@
-from sklearn.externals import joblib
-
-from steps.base import BaseTransformer
-
 import matplotlib.pyplot as plt
 from math import ceil
 import numpy as np
 from sklearn.externals import joblib
-import torch
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
+
+from steps.base import BaseTransformer
 
 
 class MetadataImageSegmentationDataset(Dataset):
@@ -66,14 +63,13 @@ class MetadataImageSegmentationLoader(BaseTransformer):
         self.image_transform = transforms.ToTensor()
         self.image_augment = None
 
-    def transform(self, X, y, validation_data, train_mode):
+    def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode:
             flow, steps = self.get_datagen(X, y, train_mode, self.loader_params['training'])
         else:
             flow, steps = self.get_datagen(X, y, train_mode, self.loader_params['inference'])
 
-        if validation_data is not None:
-            X_valid, y_valid = validation_data
+        if X_valid is not None and y_valid is not None:
             valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, False, self.loader_params['inference'])
         else:
             valid_flow = None

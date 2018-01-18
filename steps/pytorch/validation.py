@@ -24,6 +24,23 @@ def multi_output_cross_entropy(outputs, targets):
         loss_seq.append(loss)
     return sum(loss_seq) / len(loss_seq)
 
+def get_prediction_masks(model, datagen):
+    batch_gen, steps = datagen
+    for batch_id, data in enumerate(batch_gen):
+        X, targets = data
+
+        if torch.cuda.is_available():
+            X, targets_var = Variable(X).cuda(), Variable(targets).cuda()
+        else:
+            X, targets_var = Variable(X), Variable(targets)
+        outputs = model(X)
+        prediction_masks = outputs.data.cpu().numpy()
+        ground_truth_masks = targets.cpu().numpy()
+        break
+
+    return np.squeeze(np.stack([prediction_masks, ground_truth_masks], axis=1), axis=2)
+
+
 def score_model(model, loss_function, datagen):
     """
     Todo:

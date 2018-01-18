@@ -9,7 +9,7 @@ from torch.autograd import Variable
 
 from steps.base import BaseTransformer
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
-    NeptuneMonitor, ExperimentTiming, ExponentialLRScheduler
+    NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler
 from steps.pytorch.models import Model, PyTorchBasic
 from steps.pytorch.validation import mse
 
@@ -65,7 +65,7 @@ def build_callbacks_classifier(callbacks_config):
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
-    neptune_monitor = NeptuneMonitor()
+    neptune_monitor = NeptuneMonitorSegmentation()
 
     return CallbackList(
         callbacks=[experiment_timing, model_checkpoints, lr_scheduler, training_monitor, validation_monitor,

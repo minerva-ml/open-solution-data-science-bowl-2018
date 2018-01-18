@@ -1,8 +1,8 @@
 from PIL import Image
-import matplotlib.pyplot as plt
 from math import ceil
 import numpy as np
 from sklearn.externals import joblib
+import torch
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 
@@ -65,7 +65,7 @@ class MetadataImageSegmentationLoader(BaseTransformer):
                                                    ])
         self.mask_transform = transforms.Compose([transforms.Scale((256, 256)),
                                                   transforms.Lambda(binarize),
-                                                  transforms.ToTensor(),
+                                                  transforms.Lambda(to_tensor),
                                                   ])
         self.image_augment = None
 
@@ -142,5 +142,10 @@ class MockLoader(BaseTransformer):
 def binarize(x):
     x_ = x.convert('L')  # convert image to monochrome
     x_ = np.array(x_)
-    x_ = (x_ > 125).astype(np.uint8)
-    return np.expand_dims(x_, axis=3)
+    x_ = (x_ > 125).astype(np.float32)
+    return x_
+
+def to_tensor(x):
+    x_ = np.expand_dims(x, axis=0)
+    x_ = torch.from_numpy(x_)
+    return x_

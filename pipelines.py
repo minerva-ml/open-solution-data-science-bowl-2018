@@ -136,10 +136,26 @@ def loader_test_train(config):
                         input_steps=[loader_train],
                         cache_dirpath=config.env.cache_dirpath)
 
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[unet_network],
+                       adapter={'images': ([('unet_network', 'predicted_masks')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath)
+
+    thresholding = Step(name='thresholding',
+                        transformer=Thresholder(**config.thresholder),
+                        input_steps=[mask_resize],
+                        adapter={'images': ([('mask_resize', 'resized_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[unet_network],
-                  adapter={'y_pred': ([('unet_network', 'predicted_masks')]),
+                  input_steps=[thresholding],
+                  adapter={'y_pred': ([('thresholding', 'binarized_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output

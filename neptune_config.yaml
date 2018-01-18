@@ -31,7 +31,7 @@ parameters:
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/loader_test_pipeline
   overwrite: 1
-  num_workers: 4
+  num_workers: 1
 
   # General Params
   image_h: 256

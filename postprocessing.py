@@ -5,11 +5,10 @@ from skimage.transform import resize
 
 from steps.base import BaseTransformer
 
-
 class Resizer(BaseTransformer):
     def transform(self, images, target_sizes):
         resized_images = []
-        for image, target_size in tqdm(zip(images, target_sizes)):
+        for i, (image, target_size) in enumerate(tqdm(zip(images, target_sizes))):
             resized_image = resize(image, target_size)
             resized_images.append(resized_image)
         return {'resized_images': resized_images}
@@ -27,7 +26,7 @@ class Thresholder(BaseTransformer):
 
     def transform(self, images):
         binarized_images = []
-        for image in images:
+        for i, image in enumerate(images):
             binarized_image = (image > self.threshold).astype(np.uint8)
             binarized_images.append(binarized_image)
 

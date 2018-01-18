@@ -51,6 +51,7 @@ def _train_pipeline(pipeline_name, validation_size):
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
                       'train_mode': True,
+                      'target_sizes': meta_train_split[SIZE_COLUMNS].values
                       },
             }
 

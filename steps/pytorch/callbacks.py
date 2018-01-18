@@ -1,11 +1,13 @@
 import os
 from datetime import datetime, timedelta
 
+from PIL import Image
+import numpy as np
 import names
 from deepsense import neptune
 from torch.optim.lr_scheduler import ExponentialLR
 
-from .validation import score_model
+from .validation import score_model, get_prediction_masks
 from .utils import get_logger, Averager, save_model
 
 logger = get_logger()
@@ -275,6 +277,37 @@ class NeptuneMonitor(Callback):
         self.ctx.channel_send('epoch_loss {}'.format(self.random_name), x=logs['epoch_id'], y=logs['epoch_loss'])
         self.ctx.channel_send('epoch_val_loss {}'.format(self.random_name), x=logs['epoch_id'],
                               y=logs['epoch_val_loss'])
+
+
+class NeptuneMonitorSegmentation(NeptuneMonitor):
+    def on_epoch_end(self, *args, **kwargs):
+        epoch_avg_loss = self.epoch_loss_averager.value
+        self.epoch_loss_averager.reset()
+
+        self.model.eval()
+        val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+        pred_masks = get_prediction_masks(self.model, self.validation_datagen)
+        self.model.train()
+
+        logs = {'epoch_id': self.epoch_id, 'batch_id': self.batch_id, 'epoch_loss': epoch_avg_loss,
+                'epoch_val_loss': val_loss}
+        self._send_numeric_channels(logs)
+        self._send_image_channels(pred_masks)
+        self.epoch_id += 1
+
+    def _send_image_channels(self, pred_masks):
+        for i, image_pair in enumerate(pred_masks):
+            h, w = image_pair.shape[1:]
+            image_glued = np.zeros((h, 2 * w + 5))
+
+            image_glued[:, :h] = image_pair[0, :, :]
+            image_glued[:, h + 5:] = image_pair[1, :, :]
+
+            pill_image = Image.fromarray((image_glued * 255.).astype(np.uint8))
+            self.ctx.channel_send("masks", neptune.Image(
+                name='epoch{}_batch{}_idx{}'.format(self.epoch_id, self.batch_id, i),
+                description="true and prediction masks",
+                data=pill_image))
 
 
 class ExperimentTiming(Callback):

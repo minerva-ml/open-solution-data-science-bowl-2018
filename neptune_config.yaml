@@ -35,11 +35,18 @@ parameters:
 
   # Preprocessing
 
-  # Unet Architecture
-  filter_nr: 16
-  kernel_size: 3
-  repeat_block: 6
-  use_prelu: 1
+  # U-Net parameters
+  # see also: https://arxiv.org/pdf/1505.04597.pdf
+  image_width: 256
+  image_height: 256
+  kernel: 3
+  stride: 1
+  padding: 0
+  nonlinearity: 'relu'
+  repeat_blocks: 5
+  n_filters: 64
+  batch_norm: 0  # 0 or 1
+  dropout: 0.3   # interval (0.0; 1.0)
 
   # Training schedule
   epochs_nr: 1000

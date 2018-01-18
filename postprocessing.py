@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import numpy as np
 from sklearn.externals import joblib
 from skimage.transform import resize
@@ -8,11 +9,11 @@ from steps.base import BaseTransformer
 class Resizer(BaseTransformer):
     def transform(self, images, target_sizes):
         resized_images = []
-        print(len(images))
-        for image, target_size in zip(images, target_sizes):
+        for image, target_size in tqdm(zip(images, target_sizes)):
+            print(image.shape)
             resized_image = resize(image, target_size)
+            print(resized_image.shape)
             resized_images.append(resized_image)
-
         return {'resized_images': resized_images}
 
     def load(self, filepath):

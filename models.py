@@ -26,7 +26,8 @@ class LoaderTestModel(Model):
 
     def transform(self, datagen, validation_datagen=None):
         prediction_proba = self._transform(datagen, validation_datagen)
-        return {'predicted_masks': np.array(prediction_proba)}
+        prediction_proba_ = [np.squeeze(mask) for mask in prediction_proba]
+        return {'predicted_masks': np.array(prediction_proba_)}
 
 
 class PyTorchLoaderTest(PyTorchBasic):

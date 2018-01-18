@@ -36,7 +36,7 @@ def prepare_masks():
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def train_pipeline(pipeline_name, validation_size):
     _train_pipeline(pipeline_name, validation_size)
 
@@ -60,7 +60,7 @@ def _train_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def evaluate_pipeline(pipeline_name, validation_size):
     _evaluate_pipeline(pipeline_name, validation_size)
 
@@ -118,7 +118,7 @@ def _predict_pipeline(pipeline_name):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def train_evaluate_predict_pipeline(pipeline_name, validation_size):
     logger.info('training')
     _train_pipeline(pipeline_name, validation_size)
@@ -130,7 +130,7 @@ def train_evaluate_predict_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def train_evaluate_pipeline(pipeline_name, validation_size):
     logger.info('training')
     _train_pipeline(pipeline_name, validation_size)
@@ -140,7 +140,7 @@ def train_evaluate_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def evaluate_predict_pipeline(pipeline_name, validation_size):
     logger.info('evaluating')
     _evaluate_pipeline(pipeline_name, validation_size)

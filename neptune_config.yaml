@@ -44,7 +44,7 @@ parameters:
   use_prelu: 1
 
   # Training schedule
-  epochs_nr: 1
+  epochs_nr: 100
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.01

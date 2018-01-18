@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_journal
-tags: [starter, dummy]
+tags: [starter, basic]
 
 
 metric:

@@ -1,4 +1,4 @@
-project-key: DAT
+project-key: DSB
 
 name: dsb_journal
 tags: [starter, dummy]
@@ -31,7 +31,7 @@ parameters:
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/loader_test_pipeline
   overwrite: 1
-  num_workers: -2
+  num_workers: 4
 
   # General Params
   image_h: 256
@@ -44,7 +44,7 @@ parameters:
   use_prelu: 1
 
   # Training schedule
-  epochs_nr: 1000
+  epochs_nr: 1
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.01

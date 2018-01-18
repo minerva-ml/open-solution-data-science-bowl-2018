@@ -82,6 +82,7 @@ def _evaluate_pipeline(pipeline_name, validation_size):
     output = pipeline.transform(data)
     y_pred = output['y_pred']
 
+    logger.info('Calculating IOU and IOUT Scores')
     iou_score = intersection_over_union(y_true, y_pred)
     logger.info('IOU score on validation is {}'.format(iou_score))
     ctx.channel_send('IOU Score', 0, iou_score)

@@ -2,11 +2,12 @@
 Implement trainable ensemble: XGBoost, random forest, Linear Regression
 """
 
-from steps.base import Step, Dummy, stack_inputs, hstack_inputs, sparse_hstack_inputs, to_tuple_inputs
+from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit
 from postprocessing import Resizer, Thresholder
 from loaders import MockLoader, MetadataImageSegmentationLoader
 from models import MockModel, LoaderTestModel
+from utils import squeeze_inputs
 
 
 def dummy_train(config):
@@ -122,11 +123,11 @@ def loader_test_train(config):
                         transformer=MetadataImageSegmentationLoader(**config.loader),
                         input_data=['input'],
                         input_steps=[xy_train, xy_inference],
-                        adapter={'X': ([('xy_train', 'X')]),
-                                 'y': ([('xy_train', 'y')]),
+                        adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
+                                 'y': ([('xy_train', 'y')], squeeze_inputs),
                                  'train_mode': ([('input', 'train_mode')]),
-                                 'X_valid': ([('xy_inference', 'X')]),
-                                 'y_valid': ([('xy_inference', 'y')]),
+                                 'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
+                                 'y_valid': ([('xy_inference', 'y')], squeeze_inputs),
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
@@ -157,8 +158,8 @@ def loader_test_inference(config):
                             transformer=MetadataImageSegmentationLoader(**config.loader),
                             input_data=['input'],
                             input_steps=[xy_inference, xy_inference],
-                            adapter={'X': ([('xy_inference', 'X')]),
-                                     'y': ([('xy_inference', 'y')]),
+                            adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
+                                     'y': ([('xy_inference', 'y')], squeeze_inputs),
                                      'train_mode': ([('input', 'train_mode')]),
                                      },
                             cache_dirpath=config.env.cache_dirpath)

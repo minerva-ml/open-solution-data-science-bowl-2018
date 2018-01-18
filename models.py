@@ -33,15 +33,19 @@ class PyTorchLoaderTest(PyTorchBasic):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(
-            nn.Conv2d(in_channels=1, out_channels=32, kernel_size=3, padding=1),
+            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
         )
         self.classifier = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=1, kernel_size=1, padding=1),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(in_channels=32, out_channels=1, kernel_size=1, padding=0),
             nn.Sigmoid()
         )
+
+    def forward(self, x):
+        features = self.features(x)
+        out = self.classifier(features)
+        return out
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):

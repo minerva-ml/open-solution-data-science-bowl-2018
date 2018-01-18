@@ -24,8 +24,32 @@ def multi_output_cross_entropy(outputs, targets):
         loss_seq.append(loss)
     return sum(loss_seq) / len(loss_seq)
 
-
 def score_model(model, loss_function, datagen):
+    """
+    Todo:
+    Refactor this ugglyness
+    """
+    batch_gen, steps = datagen
+    total_loss, total_acc = [], []
+    for batch_id, data in enumerate(batch_gen):
+        X, targets = data
+
+        if torch.cuda.is_available():
+            X, targets_var = Variable(X).cuda(), Variable(targets).cuda()
+        else:
+            X, targets_var = Variable(X), Variable(targets)
+        outputs = model(X)
+        batch_loss = loss_function(outputs, targets_var).data.cpu().numpy()[0]
+
+        total_loss.append(batch_loss)
+
+        if batch_id == steps:
+            break
+
+    avg_loss = sum(total_loss) / steps
+    return avg_loss
+
+def score_model_deprecated(model, loss_function, datagen):
     """
     Todo:
     Refactor this ugglyness

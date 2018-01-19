@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_journal
-tags: [starter, basic, deep]
+tags: [starter, basic, deep, bce]
 
 
 metric:
@@ -47,14 +47,14 @@ parameters:
   epochs_nr: 100
   batch_size_train: 32
   batch_size_inference: 32
-  lr: 0.01
+  lr: 0.0001
   momentum: 0.9
   gamma: 0.97
   patience: 5
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_convo: 0.001
-  l2_reg_dense: 0.0
+  l2_reg_convo: 0.0001
+  l2_reg_dense: 0.0001
   dropout_convo: 0.1
   dropout_dense: 0.0

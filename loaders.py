@@ -108,7 +108,7 @@ class MetadataImageSegmentationLoader(BaseTransformer):
 
     def load(self, filepath):
         params = joblib.load(filepath)
-        self.loader_params = params.loader_params
+        self.loader_params = params['loader_params']
         return self
 
     def save(self, filepath):

@@ -42,12 +42,12 @@ SOLUTION_CONFIG = AttrDict({
     'unet_network': {
         'architecture_config': {'model_params': {},
                                 'optimizer_params': {'lr': params.lr,
-                                                     'momentum': params.momentum,
-                                                     'nesterov': True
+                                                     # 'momentum': params.momentum,
+                                                     # 'nesterov': True
                                                      },
                                 'regularizer_params': {'regularize': True,
-                                                       'weight_decay_conv2d': 0.0001,
-                                                       'weight_decay_linear': 0.001
+                                                       'weight_decay_conv2d': params.l2_reg_convo,
+                                                       'weight_decay_linear': params.l2_reg_dense
                                                        },
                                 'weights_init': {'function': 'normal',
                                                  'params': {'mean': 0,

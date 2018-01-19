@@ -11,7 +11,6 @@ from steps.base import BaseTransformer
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler
 from steps.pytorch.models import Model, PyTorchBasic
-from steps.pytorch.validation import mse
 
 
 class LoaderTestModel(Model):
@@ -19,9 +18,9 @@ class LoaderTestModel(Model):
         super().__init__(architecture_config, training_config, callbacks_config)
         self.model = PyTorchLoaderTest(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization
-        self.optimizer = optim.SGD(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
+        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                    **architecture_config['optimizer_params'])
-        self.loss_function = partial(mse, squeeze=True)
+        self.loss_function = nn.BCELoss()
         self.callbacks = build_callbacks_classifier(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):

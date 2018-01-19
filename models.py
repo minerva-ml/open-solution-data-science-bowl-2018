@@ -36,15 +36,9 @@ class PyTorchLoaderTest(PyTorchBasic):
             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
         )
         self.classifier = nn.Sequential(
-            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, padding=0),
+            nn.Conv2d(in_channels=32, out_channels=1, kernel_size=1, padding=0),
             nn.Sigmoid()
         )
 

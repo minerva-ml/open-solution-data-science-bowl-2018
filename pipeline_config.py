@@ -71,5 +71,5 @@ SOLUTION_CONFIG = AttrDict({
             'neptune_monitor': {},
         },
     },
-    'thresholder': {'threshold': 0.2},
+    'thresholder': {'threshold': 0.5},
 })

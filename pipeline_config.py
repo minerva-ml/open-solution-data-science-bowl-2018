@@ -25,7 +25,11 @@ SOLUTION_CONFIG = AttrDict({
     'xy_splitter': {'x_columns': X_COLUMNS,
                     'y_columns': Y_COLUMNS
                     },
-    'loader': {'loader_params': {'training': {'batch_size': params.batch_size_train,
+    'loader': {'dataset_params': {'h': params.image_h,
+                                   'w': params.image_w,
+
+                                   },
+               'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
                                               'num_workers': params.num_workers
                                               },

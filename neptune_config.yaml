@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_journal
-tags: [starter, basic]
+tags: [starter, basic, deep]
 
 
 metric:
@@ -34,8 +34,8 @@ parameters:
   num_workers: 1
 
   # General Params
-  image_h: 256
-  image_w: 256
+  image_h: 128
+  image_w: 128
 
   # Unet Architecture
   filter_nr: 16

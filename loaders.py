@@ -1,3 +1,4 @@
+from attrdict import AttrDict
 from PIL import Image
 from math import ceil
 import numpy as np
@@ -53,17 +54,20 @@ class MetadataImageSegmentationDataset(Dataset):
 
 
 class MetadataImageSegmentationLoader(BaseTransformer):
-    def __init__(self, loader_params):
+    def __init__(self, loader_params, dataset_params):
         super().__init__()
-        self.loader_params = loader_params
+        self.loader_params = AttrDict(loader_params)
+        self.dataset_params = AttrDict(dataset_params)
 
         self.dataset = MetadataImageSegmentationDataset
-        self.image_transform = transforms.Compose([transforms.Scale((256, 256)),
+        self.image_transform = transforms.Compose([transforms.Scale((self.dataset_params.h,
+                                                                     self.dataset_params.w)),
                                                    transforms.ToTensor(),
                                                    transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                                                         std=[0.2, 0.2, 0.2]),
                                                    ])
-        self.mask_transform = transforms.Compose([transforms.Scale((256, 256)),
+        self.mask_transform = transforms.Compose([transforms.Scale((self.dataset_params.h,
+                                                                    self.dataset_params.w)),
                                                   transforms.Lambda(binarize),
                                                   transforms.Lambda(to_tensor),
                                                   ])
@@ -71,12 +75,12 @@ class MetadataImageSegmentationLoader(BaseTransformer):
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode and y is not None:
-            flow, steps = self.get_datagen(X, y, True, self.loader_params['training'])
+            flow, steps = self.get_datagen(X, y, True, self.loader_params.training)
         else:
-            flow, steps = self.get_datagen(X, None, False, self.loader_params['inference'])
+            flow, steps = self.get_datagen(X, None, False, self.loader_params.inference)
 
         if X_valid is not None and y_valid is not None:
-            valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, True, self.loader_params['inference'])
+            valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, True, self.loader_params.inference)
         else:
             valid_flow = None
             valid_steps = None
@@ -99,12 +103,12 @@ class MetadataImageSegmentationLoader(BaseTransformer):
 
         datagen = DataLoader(dataset, **loader_params)
 
-        steps = ceil(X.shape[0] / loader_params['batch_size'])
+        steps = ceil(X.shape[0] / loader_params.batch_size)
         return datagen, steps
 
     def load(self, filepath):
         params = joblib.load(filepath)
-        self.loader_params = params['loader_params']
+        self.loader_params = params.loader_params
         return self
 
     def save(self, filepath):
@@ -144,6 +148,7 @@ def binarize(x):
     x_ = np.array(x_)
     x_ = (x_ > 125).astype(np.float32)
     return x_
+
 
 def to_tensor(x):
     x_ = np.expand_dims(x, axis=0)

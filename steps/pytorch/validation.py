@@ -24,6 +24,7 @@ def multi_output_cross_entropy(outputs, targets):
         loss_seq.append(loss)
     return sum(loss_seq) / len(loss_seq)
 
+
 def get_prediction_masks(model, datagen):
     batch_gen, steps = datagen
     for batch_id, data in enumerate(batch_gen):
@@ -34,11 +35,12 @@ def get_prediction_masks(model, datagen):
         else:
             X, targets_var = Variable(X), Variable(targets)
         outputs = model(X)
-        prediction_masks = outputs.data.cpu().numpy()
-        ground_truth_masks = targets.cpu().numpy()
-        break
 
-    return np.squeeze(np.stack([prediction_masks, ground_truth_masks], axis=1), axis=2)
+        raw_images = np.mean(X.data.cpu().numpy(), axis=1)
+        prediction_masks = np.squeeze(outputs.data.cpu().numpy(), axis=1)
+        ground_truth_masks = np.squeeze(targets.cpu().numpy(), axis=1)
+        break
+    return np.stack([raw_images, prediction_masks, ground_truth_masks], axis=1)
 
 
 def score_model(model, loss_function, datagen):
@@ -65,6 +67,7 @@ def score_model(model, loss_function, datagen):
 
     avg_loss = sum(total_loss) / steps
     return avg_loss
+
 
 def score_model_deprecated(model, loss_function, datagen):
     """

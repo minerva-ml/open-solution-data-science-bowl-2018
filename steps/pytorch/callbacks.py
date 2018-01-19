@@ -296,12 +296,13 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
         self.epoch_id += 1
 
     def _send_image_channels(self, pred_masks):
-        for i, image_pair in enumerate(pred_masks):
-            h, w = image_pair.shape[1:]
-            image_glued = np.zeros((h, 2 * w + 5))
+        for i, image_triplet in enumerate(pred_masks):
+            h, w = image_triplet.shape[1:]
+            image_glued = np.zeros((h, 3 * w + 20))
 
-            image_glued[:, :h] = image_pair[0, :, :]
-            image_glued[:, h + 5:] = image_pair[1, :, :]
+            image_glued[:, :h] = image_triplet[0, :, :]
+            image_glued[:, h + 10:2 * h + 10] = image_triplet[1, :, :]
+            image_glued[:, 2 * h + 20:] = image_triplet[2, :, :]
 
             pill_image = Image.fromarray((image_glued * 255.).astype(np.uint8))
             self.ctx.channel_send("masks", neptune.Image(

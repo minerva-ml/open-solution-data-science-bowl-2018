@@ -11,7 +11,7 @@ from steps.base import BaseTransformer
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler
 from steps.pytorch.models import Model, PyTorchBasic
-from steps.pytorch.architectures import UNet
+from steps.pytorch.architectures.unet import UNet
 
 
 class UnetModel(Model):

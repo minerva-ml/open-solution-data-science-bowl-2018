@@ -64,11 +64,8 @@ SOLUTION_CONFIG = AttrDict({
                                                        'weight_decay_conv2d': params.l2_reg_convo,
                                                        'weight_decay_linear': params.l2_reg_dense
                                                        },
-                                'weights_init': {'function': 'normal',
-                                                 'params': {'mean': 0,
-                                                            'std_conv2d': 0.01,
-                                                            'std_linear': 0.001
-                                                            },
+                                'weights_init': {'function': 'xavier',
+                                                 'params': {},
                                                  },
                                 },
         'training_config': {'epochs': params.epochs_nr,

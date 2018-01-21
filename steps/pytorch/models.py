@@ -4,6 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.nn import init
 from tqdm import tqdm
 
 from steps.base import BaseTransformer
@@ -203,4 +204,6 @@ def init_weights_normal(model, mean, std_conv2d, std_linear):
 
 
 def init_weights_xavier(model):
-    torch.nn.init.xavier_uniform(model.weight)
+    if isinstance(model, nn.Conv2d):
+        init.xavier_normal(model.weight)
+        init.constant(model.bias, 0)

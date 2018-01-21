@@ -33,44 +33,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.autograd import Variable
 from collections import OrderedDict
-from torch.nn import init
 import numpy as np
 
-
-def conv3x3(in_channels, out_channels, stride=1,
-            padding=1, bias=True, groups=1):
-    return nn.Conv2d(
-        in_channels,
-        out_channels,
-        kernel_size=3,
-        stride=stride,
-        padding=padding,
-        bias=bias,
-        groups=groups)
-
-
-def upconv2x2(in_channels, out_channels, mode='transpose'):
-    if mode == 'transpose':
-        return nn.ConvTranspose2d(
-            in_channels,
-            out_channels,
-            kernel_size=2,
-            stride=2)
-    else:
-        # out_channels is always going to be the same
-        # as in_channels
-        return nn.Sequential(
-            nn.Upsample(mode='bilinear', scale_factor=2),
-            conv1x1(in_channels, out_channels))
-
-
-def conv1x1(in_channels, out_channels, groups=1):
-    return nn.Conv2d(
-        in_channels,
-        out_channels,
-        kernel_size=1,
-        groups=groups,
-        stride=1)
+from .utils import conv1x1, conv3x3, upconv2x2
 
 
 class DownConv(nn.Module):
@@ -232,22 +197,14 @@ class UNet(nn.Module):
             self.up_convs.append(up_conv)
 
         self.conv_final = conv1x1(outs, self.num_classes)
+        self.classifier = conv1x1(outs, self.num_classes) # ADDED THIS
 
         # add the list of modules to current module
+        self.features = nn.ModuleList(self.down_convs + self.up_convs)# ADDED THIS
+
         self.down_convs = nn.ModuleList(self.down_convs)
         self.up_convs = nn.ModuleList(self.up_convs)
 
-        self.reset_params()
-
-    @staticmethod
-    def weight_init(m):
-        if isinstance(m, nn.Conv2d):
-            init.xavier_normal(m.weight)
-            init.constant(m.bias, 0)
-
-    def reset_params(self):
-        for i, m in enumerate(self.modules()):
-            self.weight_init(m)
 
     def forward(self, x):
         encoder_outs = []

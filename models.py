@@ -11,6 +11,41 @@ from steps.base import BaseTransformer
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler
 from steps.pytorch.models import Model, PyTorchBasic
+from steps.pytorch.architectures import UNet
+
+
+class UnetModel(Model):
+    def __init__(self, architecture_config, training_config, callbacks_config):
+        super().__init__(architecture_config, training_config, callbacks_config)
+        self.model = UNet(**architecture_config['model_params'])
+        self.weight_regularization = weight_regularization
+        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
+                                   **architecture_config['optimizer_params'])
+        self.loss_function = nn.BCELoss()
+        self.callbacks = build_callbacks_classifier(self.callbacks_config)
+
+    def transform(self, datagen, validation_datagen=None):
+        prediction_proba = self._transform(datagen, validation_datagen)
+        prediction_proba_ = [np.squeeze(mask) for mask in prediction_proba]
+        return {'predicted_masks': np.array(prediction_proba_)}
+
+class MockModel(BaseTransformer):
+    def __init__(self, **kwargs):
+        super().__init__()
+
+    def fit(self, datagen, validation_datagen, **kwargs):
+        return self
+
+    def transform(self, datagen, **kwargs):
+        X, steps = datagen
+        masks = np.ones((X.shape[0], 256, 256))
+        return {'predicted_masks': masks}
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
 
 
 class LoaderTestModel(Model):
@@ -27,6 +62,36 @@ class LoaderTestModel(Model):
         prediction_proba = self._transform(datagen, validation_datagen)
         prediction_proba_ = [np.squeeze(mask) for mask in prediction_proba]
         return {'predicted_masks': np.array(prediction_proba_)}
+
+# class Unet(PyTorchBasic):
+#     def __init__(self,
+#                  image_width, image_height,
+#                  kernel, stride, padding,
+#                  nonlinearity,
+#                  repeat_blocks,
+#                  n_filters,
+#                  batch_norm,
+#                  dropout):
+#         super(Unet, self).__init__()
+#         self.image_width = image_width
+#         self.image_height = image_height
+#         self.kernel = kernel
+#         self.stride = stride
+#         self.padding = padding
+#         self.nonlinearity = nonlinearity
+#         self.repeat_blocks = repeat_blocks
+#         self.n_filters = n_filters
+#         self.batch_norm = batch_norm
+#         self.dropout = dropout
+#
+#         # main part of the U-Net
+#         self.features = build_unet_features()
+#         self.classifier = build_unet_classifier()
+#
+#     def forward(self, x):
+#         features = self.features(x)
+#         out = self.classifier(features)
+#         return out
 
 
 class PyTorchLoaderTest(PyTorchBasic):
@@ -46,6 +111,7 @@ class PyTorchLoaderTest(PyTorchBasic):
         features = self.features(x)
         out = self.classifier(features)
         return out
+
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):
@@ -69,22 +135,3 @@ def build_callbacks_classifier(callbacks_config):
     return CallbackList(
         callbacks=[experiment_timing, model_checkpoints, lr_scheduler, training_monitor, validation_monitor,
                    neptune_monitor])
-
-
-class MockModel(BaseTransformer):
-    def __init__(self, **kwargs):
-        super().__init__()
-
-    def fit(self, datagen, validation_datagen, **kwargs):
-        return self
-
-    def transform(self, datagen, **kwargs):
-        X, steps = datagen
-        masks = np.ones((X.shape[0], 256, 256))
-        return {'predicted_masks': masks}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)

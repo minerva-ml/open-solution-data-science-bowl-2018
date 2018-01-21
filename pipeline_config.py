@@ -26,9 +26,9 @@ SOLUTION_CONFIG = AttrDict({
                     'y_columns': Y_COLUMNS
                     },
     'loader': {'dataset_params': {'h': params.image_h,
-                                   'w': params.image_w,
+                                  'w': params.image_w,
 
-                                   },
+                                  },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
                                               'num_workers': params.num_workers
@@ -40,7 +40,22 @@ SOLUTION_CONFIG = AttrDict({
                                  },
                },
     'unet_network': {
-        'architecture_config': {'model_params': {},
+        'architecture_config': {'model_params': {'num_classes': params.image_width,
+                                                 'in_channels': params.image_height,
+                                                 'depth': params.kernel,
+                                                 'start_filts': params.stride,
+                                                 },
+                                # 'model_params': {'image_width': params.image_width,
+                                #                                      'image_height': params.image_height,
+                                #                                      'kernel': params.kernel,
+                                #                                      'stride': params.stride,
+                                #                                      'padding': params.padding,
+                                #                                      'nonlinearity': params.nonlinearity,
+                                #                                      'repeat_blocks': params.repeat_blocks,
+                                #                                      'n_filters': params.n_filters,
+                                #                                      'batch_norm': params.batch_norm,
+                                #                                      'dropout': params.dropout,
+                                #                                      },
                                 'optimizer_params': {'lr': params.lr,
                                                      # 'momentum': params.momentum,
                                                      # 'nesterov': True
@@ -70,6 +85,7 @@ SOLUTION_CONFIG = AttrDict({
             'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {},
         },
+
     },
     'thresholder': {'threshold': 0.5},
 })

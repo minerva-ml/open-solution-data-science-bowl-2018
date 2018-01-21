@@ -6,7 +6,7 @@ from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit
 from postprocessing import Resizer, Thresholder
 from loaders import MockLoader, MetadataImageSegmentationLoader
-from models import MockModel, LoaderTestModel
+from models import MockModel, UnetModel
 from utils import squeeze_inputs
 
 
@@ -102,7 +102,7 @@ def dummy_inference(config):
     return output
 
 
-def loader_test_train(config):
+def unet_train(config):
     xy_train = Step(name='xy_train',
                     transformer=XYSplit(**config.xy_splitter),
                     input_data=['input'],
@@ -132,7 +132,7 @@ def loader_test_train(config):
                         cache_dirpath=config.env.cache_dirpath)
 
     unet_network = Step(name='unet_network',
-                        transformer=LoaderTestModel(**config.unet_network),
+                        transformer=UnetModel(**config.unet_network),
                         input_steps=[loader_train],
                         cache_dirpath=config.env.cache_dirpath)
 
@@ -161,7 +161,7 @@ def loader_test_train(config):
     return output
 
 
-def loader_test_inference(config):
+def unet_inference(config):
     xy_inference = Step(name='xy_inference',
                         transformer=XYSplit(**config.xy_splitter),
                         input_data=['input'],
@@ -181,7 +181,7 @@ def loader_test_inference(config):
                             cache_dirpath=config.env.cache_dirpath)
 
     unet_network = Step(name='unet_network',
-                        transformer=LoaderTestModel(**config.unet_network),
+                        transformer=UnetModel(**config.unet_network),
                         input_steps=[loader_inference],
                         cache_dirpath=config.env.cache_dirpath)
 
@@ -212,6 +212,6 @@ def loader_test_inference(config):
 
 PIPELINES = {'dummy': {'train': dummy_train,
                        'inference': dummy_inference},
-             'loader_test': {'train': loader_test_train,
-                             'inference': loader_test_inference},
+             'unet': {'train': unet_train,
+                      'inference': unet_inference},
              }

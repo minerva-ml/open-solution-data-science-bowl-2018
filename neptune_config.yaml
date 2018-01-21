@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_journal
-tags: [starter, basic, deep, bce]
+tags: [starter, unet, bce]
 
 
 metric:
@@ -30,7 +30,7 @@ parameters:
   meta_dir: /mnt/ml-team/dsb_2018/files
   data_dir: /mnt/ml-team/dsb_2018/data
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/loader_test_pipeline
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_pipeline
   overwrite: 1
   num_workers: 1
 
@@ -38,11 +38,23 @@ parameters:
   image_h: 128
   image_w: 128
 
-  # Unet Architecture
-  filter_nr: 16
-  kernel_size: 3
-  repeat_block: 6
-  use_prelu: 1
+  # U-Net parameters
+  # see also: https://arxiv.org/pdf/1505.04597.pdf
+  image_width: 256
+  image_height: 256
+  kernel: 3
+  stride: 1
+  padding: 0
+  nonlinearity: 'relu'
+  repeat_blocks: 5
+  n_filters: 64
+  batch_norm: 0  # 0 or 1
+  dropout: 0.3   # interval (0.0; 1.0)
+
+  # Copied implementation
+  num_classes: 2
+  in_channels: 3
+  depth: 5
 
   # Training schedule
   epochs_nr: 100
@@ -55,7 +67,7 @@ parameters:
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_convo: 0.00001
+  l2_reg_convo: 0.0001
   l2_reg_dense: 0.0001
   dropout_convo: 0.1
   dropout_dense: 0.0

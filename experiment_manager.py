@@ -36,7 +36,7 @@ def prepare_masks():
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def train_pipeline(pipeline_name, validation_size):
     _train_pipeline(pipeline_name, validation_size)
 
@@ -51,6 +51,7 @@ def _train_pipeline(pipeline_name, validation_size):
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
                       'train_mode': True,
+                      'target_sizes': meta_train_split[SIZE_COLUMNS].values
                       },
             }
 
@@ -60,7 +61,7 @@ def _train_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def evaluate_pipeline(pipeline_name, validation_size):
     _evaluate_pipeline(pipeline_name, validation_size)
 
@@ -82,6 +83,7 @@ def _evaluate_pipeline(pipeline_name, validation_size):
     output = pipeline.transform(data)
     y_pred = output['y_pred']
 
+    logger.info('Calculating IOU and IOUT Scores')
     iou_score = intersection_over_union(y_true, y_pred)
     logger.info('IOU score on validation is {}'.format(iou_score))
     ctx.channel_send('IOU Score', 0, iou_score)
@@ -117,7 +119,7 @@ def _predict_pipeline(pipeline_name):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def train_evaluate_predict_pipeline(pipeline_name, validation_size):
     logger.info('training')
     _train_pipeline(pipeline_name, validation_size)
@@ -129,7 +131,7 @@ def train_evaluate_predict_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def train_evaluate_pipeline(pipeline_name, validation_size):
     logger.info('training')
     _train_pipeline(pipeline_name, validation_size)
@@ -139,7 +141,7 @@ def train_evaluate_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def evaluate_predict_pipeline(pipeline_name, validation_size):
     logger.info('evaluating')
     _evaluate_pipeline(pipeline_name, validation_size)

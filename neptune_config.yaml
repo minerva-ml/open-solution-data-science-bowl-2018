@@ -1,7 +1,7 @@
-project-key: DAT
+project-key: DSB
 
 name: dsb_journal
-tags: [starter, dummy]
+tags: [starter, basic, deep, bce]
 
 
 metric:
@@ -29,11 +29,13 @@ parameters:
   meta_dir: /mnt/ml-team/dsb_2018/files
   data_dir: /mnt/ml-team/dsb_2018/data
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dummy_pipeline
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/loader_test_pipeline
   overwrite: 1
-  num_workers: -2
+  num_workers: 1
 
-  # Preprocessing
+  # General Params
+  image_h: 128
+  image_w: 128
 
   # Unet Architecture
   filter_nr: 16
@@ -42,17 +44,17 @@ parameters:
   use_prelu: 1
 
   # Training schedule
-  epochs_nr: 1000
+  epochs_nr: 100
   batch_size_train: 32
   batch_size_inference: 32
-  lr: 0.01
+  lr: 0.0001
   momentum: 0.9
   gamma: 0.97
   patience: 5
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_convo: 0.001
-  l2_reg_dense: 0.0
+  l2_reg_convo: 0.0001
+  l2_reg_dense: 0.0001
   dropout_convo: 0.1
   dropout_dense: 0.0

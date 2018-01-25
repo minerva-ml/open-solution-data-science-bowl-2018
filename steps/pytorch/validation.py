@@ -11,6 +11,12 @@ def cross_entropy(output, target, squeeze=False):
     return F.nll_loss(output, target)
 
 
+def mse(output, target, squeeze=False):
+    if squeeze:
+        target = target.squeeze(1)
+    return F.mse_loss(output, target)
+
+
 def multi_output_cross_entropy(outputs, targets):
     loss_seq = []
     for output, target in zip(outputs, targets):
@@ -19,7 +25,51 @@ def multi_output_cross_entropy(outputs, targets):
     return sum(loss_seq) / len(loss_seq)
 
 
+def get_prediction_masks(model, datagen):
+    batch_gen, steps = datagen
+    for batch_id, data in enumerate(batch_gen):
+        X, targets = data
+
+        if torch.cuda.is_available():
+            X, targets_var = Variable(X).cuda(), Variable(targets).cuda()
+        else:
+            X, targets_var = Variable(X), Variable(targets)
+        outputs = model(X)
+
+        raw_images = np.mean(X.data.cpu().numpy(), axis=1)
+        prediction_masks = np.squeeze(outputs.data.cpu().numpy(), axis=1)
+        ground_truth_masks = np.squeeze(targets.cpu().numpy(), axis=1)
+        break
+    return np.stack([raw_images, prediction_masks, ground_truth_masks], axis=1)
+
+
 def score_model(model, loss_function, datagen):
+    """
+    Todo:
+    Refactor this ugglyness
+    """
+    batch_gen, steps = datagen
+    total_loss, total_acc = [], []
+    for batch_id, data in enumerate(batch_gen):
+        X, targets = data
+
+        if torch.cuda.is_available():
+            X, targets_var = Variable(X).cuda(), Variable(targets).cuda()
+        else:
+            X, targets_var = Variable(X), Variable(targets)
+        outputs = model(X)
+        batch_loss = loss_function(outputs, targets_var).data.cpu().numpy()[0]
+
+        total_loss.append(batch_loss)
+
+        if batch_id == steps:
+            break
+
+    avg_loss = sum(total_loss) / steps
+    return avg_loss
+
+
+def score_model_deprecated(model, loss_function, datagen):
     """
     Todo:
     Refactor this ugglyness

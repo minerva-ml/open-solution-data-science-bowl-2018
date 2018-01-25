@@ -1,17 +1,18 @@
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 import numpy as np
 from sklearn.externals import joblib
 from skimage.transform import resize
 
 from steps.base import BaseTransformer
 
-
 class Resizer(BaseTransformer):
     def transform(self, images, target_sizes):
         resized_images = []
-        for image, target_size in zip(images, target_sizes):
+        for i, (image, target_size) in enumerate(tqdm(zip(images, target_sizes))):
             resized_image = resize(image, target_size)
+            # plt.imsave('/mnt/ml-team/dsb_2018/kuba/debug/proba_map{}.png'.format(i),resized_image)
             resized_images.append(resized_image)
-
         return {'resized_images': resized_images}
 
     def load(self, filepath):
@@ -27,8 +28,9 @@ class Thresholder(BaseTransformer):
 
     def transform(self, images):
         binarized_images = []
-        for image in images:
+        for i, image in enumerate(images):
             binarized_image = (image > self.threshold).astype(np.uint8)
+            # plt.imsave('/mnt/ml-team/dsb_2018/kuba/debug/binary_map{}.png'.format(i),binarized_image)
             binarized_images.append(binarized_image)
 
         return {'binarized_images': binarized_images}

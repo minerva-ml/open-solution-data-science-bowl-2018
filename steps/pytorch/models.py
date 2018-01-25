@@ -69,25 +69,23 @@ class Model(BaseTransformer):
             X, target_var = Variable(X).cuda(), Variable(target_tensor).cuda()
         else:
             X, target_var = Variable(X), Variable(target_tensor)
-        self.optimizer.zero_grad()
         output = self.model(X)
 
+        self.optimizer.zero_grad()
         batch_loss = self.loss_function(output, target_var)
         batch_loss.backward()
         self.optimizer.step()
 
         batch_loss_ = batch_loss.data.cpu().numpy()[0]
-        batch_acc = torch_acc_score(output, target_tensor)
-        return {'batch_loss': batch_loss_,
-                'batch_acc': batch_acc}
+        return {'batch_loss': batch_loss_}
 
     def _transform(self, datagen, validation_datagen=None):
         self.model.eval()
         batch_gen, steps = datagen
         outputs = []
-        for batch_id, data in enumerate(tqdm(batch_gen, total=steps)):
+        for batch_id, data in enumerate(batch_gen):
             if len(data) == 2:
-                X = data[0]
+                X, targets = data
             else:
                 X = data
 

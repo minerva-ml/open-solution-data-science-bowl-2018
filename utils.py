@@ -126,3 +126,6 @@ def generate_metadata(data_dir, masks_overlayed_dir):
     test_metadata = stage1_generate_metadata(train=False)
     metadata = train_metadata.append(test_metadata, ignore_index=True)
     return metadata
+
+def squeeze_inputs(inputs):
+    return np.squeeze(inputs[0], axis=1)

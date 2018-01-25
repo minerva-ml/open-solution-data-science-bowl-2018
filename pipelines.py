@@ -6,7 +6,7 @@ from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit
 from postprocessing import Resizer, Thresholder
 from loaders import MockLoader, MetadataImageSegmentationLoader
-from models import MockModel, LoaderTestModel
+from models import MockModel, SequentialConvNet
 from utils import squeeze_inputs
 
 
@@ -39,16 +39,15 @@ def dummy_train(config):
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
-    unet_network = Step(name='unet_network',
-                        transformer=MockModel(**config.unet_network),
-                        input_steps=[loader_train],
-                        cache_dirpath=config.env.cache_dirpath)
+    sequential_convnet = Step(name='sequential_convnet',
+                              transformer=MockModel(**config.sequential_convnet),
+                              input_steps=[loader_train],
+                              cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[unet_network],
-                  adapter={'y_pred': ([('unet_network', 'predicted_masks')]),
-                           },
+                  input_steps=[sequential_convnet],
+                  adapter={'y_pred': ([('sequential_convnet', 'predicted_masks')])},
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
@@ -72,16 +71,16 @@ def dummy_inference(config):
                                      },
                             cache_dirpath=config.env.cache_dirpath)
 
-    unet_network = Step(name='unet_network',
-                        transformer=MockModel(**config.unet_network),
-                        input_steps=[loader_inference],
-                        cache_dirpath=config.env.cache_dirpath)
+    sequential_convnet = Step(name='sequential_convnet',
+                              transformer=MockModel(**config.sequential_convnet),
+                              input_steps=[loader_inference],
+                              cache_dirpath=config.env.cache_dirpath)
 
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
                        input_data=['input'],
-                       input_steps=[unet_network],
-                       adapter={'images': ([('unet_network', 'predicted_masks')]),
+                       input_steps=[sequential_convnet],
+                       adapter={'images': ([('sequential_convnet', 'predicted_masks')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)
@@ -89,8 +88,7 @@ def dummy_inference(config):
     thresholding = Step(name='thresholding',
                         transformer=Thresholder(**config.thresholder),
                         input_steps=[mask_resize],
-                        adapter={'images': ([('mask_resize', 'resized_images')]),
-                                 },
+                        adapter={'images': ([('mask_resize', 'resized_images')])},
                         cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
@@ -102,7 +100,7 @@ def dummy_inference(config):
     return output
 
 
-def loader_test_train(config):
+def seq_conv_train(config):
     xy_train = Step(name='xy_train',
                     transformer=XYSplit(**config.xy_splitter),
                     input_data=['input'],
@@ -131,16 +129,16 @@ def loader_test_train(config):
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
-    unet_network = Step(name='unet_network',
-                        transformer=LoaderTestModel(**config.unet_network),
-                        input_steps=[loader_train],
-                        cache_dirpath=config.env.cache_dirpath)
+    sequential_convnet = Step(name='sequential_convnet',
+                              transformer=SequentialConvNet(**config.sequential_convnet),
+                              input_steps=[loader_train],
+                              cache_dirpath=config.env.cache_dirpath)
 
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
                        input_data=['input'],
-                       input_steps=[unet_network],
-                       adapter={'images': ([('unet_network', 'predicted_masks')]),
+                       input_steps=[sequential_convnet],
+                       adapter={'images': ([('sequential_convnet', 'predicted_masks')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)
@@ -161,7 +159,7 @@ def loader_test_train(config):
     return output
 
 
-def loader_test_inference(config):
+def seq_conv_inference(config):
     xy_inference = Step(name='xy_inference',
                         transformer=XYSplit(**config.xy_splitter),
                         input_data=['input'],
@@ -180,16 +178,16 @@ def loader_test_inference(config):
                                      },
                             cache_dirpath=config.env.cache_dirpath)
 
-    unet_network = Step(name='unet_network',
-                        transformer=LoaderTestModel(**config.unet_network),
-                        input_steps=[loader_inference],
-                        cache_dirpath=config.env.cache_dirpath)
+    sequential_convnet = Step(name='sequential_convnet',
+                              transformer=SequentialConvNet(**config.sequential_convnet),
+                              input_steps=[loader_inference],
+                              cache_dirpath=config.env.cache_dirpath)
 
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
                        input_data=['input'],
-                       input_steps=[unet_network],
-                       adapter={'images': ([('unet_network', 'predicted_masks')]),
+                       input_steps=[sequential_convnet],
+                       adapter={'images': ([('sequential_convnet', 'predicted_masks')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)
@@ -212,6 +210,6 @@ def loader_test_inference(config):
 
 PIPELINES = {'dummy': {'train': dummy_train,
                        'inference': dummy_inference},
-             'loader_test': {'train': loader_test_train,
-                             'inference': loader_test_inference},
+             'hello_dsb': {'train': seq_conv_train,
+                           'inference': seq_conv_inference},
              }

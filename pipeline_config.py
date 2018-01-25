@@ -1,12 +1,10 @@
 import os
 
 from attrdict import AttrDict
-from deepsense import neptune
 
 from utils import read_params
 
-ctx = neptune.Context()
-params = read_params(ctx)
+params = read_params()
 
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
@@ -26,9 +24,8 @@ SOLUTION_CONFIG = AttrDict({
                     'y_columns': Y_COLUMNS
                     },
     'loader': {'dataset_params': {'h': params.image_h,
-                                   'w': params.image_w,
-
-                                   },
+                                  'w': params.image_w,
+                                  },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
                                               'num_workers': params.num_workers
@@ -39,14 +36,14 @@ SOLUTION_CONFIG = AttrDict({
                                                },
                                  },
                },
-    'unet_network': {
+    'sequential_convnet': {
         'architecture_config': {'model_params': {},
                                 'optimizer_params': {'lr': params.lr,
                                                      # 'momentum': params.momentum,
                                                      # 'nesterov': True
                                                      },
                                 'regularizer_params': {'regularize': True,
-                                                       'weight_decay_conv2d': params.l2_reg_convo,
+                                                       'weight_decay_conv2d': params.l2_reg_conv,
                                                        'weight_decay_linear': params.l2_reg_dense
                                                        },
                                 'weights_init': {'function': 'normal',
@@ -60,9 +57,10 @@ SOLUTION_CONFIG = AttrDict({
                             'shuffle': True,
                             'batch_size': params.batch_size_train,
                             },
-        'callbacks_config': {'model_checkpoint': {
-            'checkpoint_dir': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network'),
-            'epoch_every': 1},
+        'callbacks_config': {
+            'model_checkpoint': {
+                'checkpoint_dir': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network'),
+                'epoch_every': 1},
             'lr_scheduler': {'gamma': 0.9955,
                              'epoch_every': 1},
             'training_monitor': {'batch_every': 1,

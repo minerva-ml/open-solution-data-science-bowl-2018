@@ -13,10 +13,10 @@ from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMon
 from steps.pytorch.models import Model, PyTorchBasic
 
 
-class LoaderTestModel(Model):
+class SequentialConvNet(Model):
     def __init__(self, architecture_config, training_config, callbacks_config):
         super().__init__(architecture_config, training_config, callbacks_config)
-        self.model = PyTorchLoaderTest(**architecture_config['model_params'])
+        self.model = PyTorchSequentialConvNet(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                    **architecture_config['optimizer_params'])
@@ -29,16 +29,37 @@ class LoaderTestModel(Model):
         return {'predicted_masks': np.array(prediction_proba_)}
 
 
-class PyTorchLoaderTest(PyTorchBasic):
+class PyTorchSequentialConvNet(PyTorchBasic):
     def __init__(self):
         super().__init__()
         self.features = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
+
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+
+            nn.Conv2d(in_channels=128, out_channels=64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
         )
+
         self.classifier = nn.Sequential(
-            nn.Conv2d(in_channels=32, out_channels=1, kernel_size=1, padding=0),
+            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, padding=0),
             nn.Sigmoid()
         )
 

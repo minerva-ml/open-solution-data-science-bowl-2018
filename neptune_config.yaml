@@ -9,7 +9,7 @@ metric:
   goal: minimize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -22,14 +22,17 @@ exclude:
 
 parameters:
   # Cloud Environment
-#  data_dir: /public/toxic_comments
-#  experiment_dir: /output/experiments/glove_lstm
-#  embedding_filepath: /public/models/glove/glove.840B.300d.txt
+  #data_dir:            /public/dsb_2018_data/
+  #meta_dir:            /output/dsb/
+  #masks_overlayed_dir: /output/dsb/masks_overlayed/
+  #experiment_dir:      /output/dsb/experiments/
+
   # Local Environment
-  meta_dir: /mnt/ml-team/dsb_2018/files
   data_dir: /mnt/ml-team/dsb_2018/data
+  meta_dir: /mnt/ml-team/dsb_2018/files
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/loader_test_pipeline
+  experiment_dir: /mnt/ml-team/dsb_2018/kamil/dsb
+
   overwrite: 1
   num_workers: 1
 
@@ -37,24 +40,18 @@ parameters:
   image_h: 128
   image_w: 128
 
-  # Unet Architecture
-  filter_nr: 16
-  kernel_size: 3
-  repeat_block: 6
-  use_prelu: 1
-
   # Training schedule
-  epochs_nr: 100
-  batch_size_train: 32
+  epochs_nr: 500
+  batch_size_train: 16
   batch_size_inference: 32
-  lr: 0.0001
+  lr: 0.0005
   momentum: 0.9
   gamma: 0.97
   patience: 5
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_convo: 0.0001
+  l2_reg_conv: 0.0001
   l2_reg_dense: 0.0001
   dropout_convo: 0.1
   dropout_dense: 0.0

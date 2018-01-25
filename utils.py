@@ -70,11 +70,9 @@ def run_length_encoding(x):
     return run_lengths
 
 
-def read_params(ctx):
-    params = ctx.params
-    if params.__class__.__name__ == 'OfflineContextParams':
-        neptune_config = read_yaml('neptune_config.yaml')
-        params = neptune_config.parameters
+def read_params():
+    neptune_config = read_yaml('neptune_config.yaml')
+    params = neptune_config.parameters
     return params
 
 

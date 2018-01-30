@@ -70,6 +70,7 @@ class Model(BaseTransformer):
             X, target_var = Variable(X).cuda(), Variable(target_tensor).cuda()
         else:
             X, target_var = Variable(X), Variable(target_tensor)
+
         output = self.model(X)
 
         self.optimizer.zero_grad()

@@ -42,8 +42,8 @@ parameters:
   # see also: https://arxiv.org/pdf/1505.04597.pdf
   n_filters: 32
   conv_kernel: 3
-  pool_kernel: 2
-  pool_stride: 1
+  pool_kernel: 3
+  pool_stride: 2
   repeat_blocks: 3
   batch_norm: 0  # 0 or 1
   dropout: 0.1   # interval (0.0; 1.0)
@@ -52,8 +52,8 @@ parameters:
 
   # Training schedule
   epochs_nr: 100
-  batch_size_train: 4
-  batch_size_inference: 4
+  batch_size_train: 7
+  batch_size_inference: 5
   lr: 0.0001
   momentum: 0.9
   gamma: 0.97

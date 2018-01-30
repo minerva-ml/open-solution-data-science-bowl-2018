@@ -241,7 +241,7 @@ class NeptuneMonitor(Callback):
     def __init__(self):
         super().__init__()
         self.ctx = neptune.Context()
-        self.random_name = names.get_first_name()
+        self.random_name = ''
         self.epoch_loss_averager = Averager()
 
     def on_train_begin(self, *args, **kwargs):

@@ -45,10 +45,10 @@ parameters:
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
-  repeat_blocks: 4
+  repeat_blocks: 5
 
   # Training schedule
-  epochs_nr: 10
+  epochs_nr: 200
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.001

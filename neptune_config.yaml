@@ -48,7 +48,7 @@ parameters:
   repeat_blocks: 4
 
   # Training schedule
-  epochs_nr: 100
+  epochs_nr: 10
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.001

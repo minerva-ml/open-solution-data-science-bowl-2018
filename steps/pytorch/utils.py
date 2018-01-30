@@ -1,5 +1,4 @@
 import logging
-import yaml
 
 import cv2
 import numpy as np
@@ -113,3 +112,7 @@ class Averager:
     def reset(self):
         self.current_total = 0.0
         self.iterations = 0.0
+
+
+def sigmoid(x):
+    return 1. / (1 + np.exp(-x))

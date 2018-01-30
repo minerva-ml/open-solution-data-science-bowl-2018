@@ -45,7 +45,6 @@ def create_submission(experiments_dir, meta, predictions, logger):
     logger.info('submission head \n\n{}'.format(submission.head()))
 
 
-
 def read_masks(mask_filepaths):
     masks = []
     for mask_filepath in mask_filepaths:
@@ -125,5 +124,10 @@ def generate_metadata(data_dir, masks_overlayed_dir):
     metadata = train_metadata.append(test_metadata, ignore_index=True)
     return metadata
 
+
 def squeeze_inputs(inputs):
     return np.squeeze(inputs[0], axis=1)
+
+
+def sigmoid(x):
+    return 1. / (1 + np.exp(-x))

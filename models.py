@@ -9,6 +9,9 @@ from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMon
     NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler
 from steps.pytorch.models import Model, PyTorchBasic
 from steps.pytorch.architectures.unet import UNet
+from steps.pytorch.validation import segmentation_loss
+
+from utils import sigmoid
 
 
 class PyTorchUNet(Model):
@@ -18,12 +21,12 @@ class PyTorchUNet(Model):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = nn.BCEWithLogitsLoss()
+        self.loss_function = segmentation_loss
         self.callbacks = build_callbacks_classifier(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         prediction_proba = self._transform(datagen, validation_datagen)
-        prediction_proba_ = [np.exp(np.squeeze(mask)) for mask in prediction_proba]
+        prediction_proba_ = [sigmoid(np.squeeze(mask)) for mask in prediction_proba]
         return {'predicted_masks': np.array(prediction_proba_)}
 
 
@@ -113,22 +116,3 @@ def build_callbacks_classifier(callbacks_config):
     return CallbackList(
         callbacks=[experiment_timing, model_checkpoints, lr_scheduler, training_monitor, validation_monitor,
                    neptune_monitor])
-
-
-class MockModel(BaseTransformer):
-    def __init__(self, **kwargs):
-        super().__init__()
-
-    def fit(self, datagen, validation_datagen, **kwargs):
-        return self
-
-    def transform(self, datagen, **kwargs):
-        X, steps = datagen
-        masks = np.ones((X.shape[0], 256, 256))
-        return {'predicted_masks': masks}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)

@@ -70,14 +70,23 @@ SOLUTION_CONFIG = AttrDict({
         },
     },
     'unet_network': {
-        'architecture_config': {'model_params': {},
+
+        'architecture_config': {'model_params': {'n_filters': params.n_filters,
+                                                 'conv_kernel': params.conv_kernel,
+                                                 'pool_kernel': params.pool_kernel,
+                                                 'pool_stride': params.pool_stride,
+                                                 'repeat_blocks': params.repeat_blocks,
+                                                 'batch_norm': params.batch_norm,
+                                                 'dropout': params.dropout,
+                                                 'num_classes': params.num_classes,
+                                                 'in_channels': params.in_channels,
+                                                 },
                                 'optimizer_params': {'lr': params.lr,
                                                      # 'momentum': params.momentum,
                                                      # 'nesterov': True
                                                      },
-                                'regularizer_params': {'regularize': False,
+                                'regularizer_params': {'regularize': True,
                                                        'weight_decay_conv2d': params.l2_reg_conv,
-                                                       'weight_decay_linear': params.l2_reg_dense
                                                        },
                                 'weights_init': {'function': 'normal',
                                                  'params': {'mean': 0,

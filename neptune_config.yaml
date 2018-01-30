@@ -6,7 +6,7 @@ tags: [starter, unet, bce]
 
 metric:
   channel: 'Final Validation Score'
-  goal: minimize
+  goal: maximize
 
 #Comment out if not in Cloud Environment
 #pip-requirements-file: requirements.txt
@@ -40,25 +40,20 @@ parameters:
 
   # U-Net parameters
   # see also: https://arxiv.org/pdf/1505.04597.pdf
-  image_width: 256
-  image_height: 256
-  kernel: 3
-  stride: 1
-  padding: 0
-  nonlinearity: 'relu'
-  repeat_blocks: 5
-  n_filters: 64
+  n_filters: 32
+  conv_kernel: 3
+  pool_kernel: 2
+  pool_stride: 1
+  repeat_blocks: 3
   batch_norm: 0  # 0 or 1
-  dropout: 0.3   # interval (0.0; 1.0)
-  # Copied implementation
+  dropout: 0.1   # interval (0.0; 1.0)
   num_classes: 2
   in_channels: 3
-  depth: 5
 
   # Training schedule
   epochs_nr: 100
-  batch_size_train: 32
-  batch_size_inference: 32
+  batch_size_train: 4
+  batch_size_inference: 4
   lr: 0.0001
   momentum: 0.9
   gamma: 0.97
@@ -66,7 +61,7 @@ parameters:
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_convo: 0.0001
+  l2_reg_conv: 0.0001
   l2_reg_dense: 0.0001
-  dropout_convo: 0.1
+  dropout_conv: 0.1
   dropout_dense: 0.0

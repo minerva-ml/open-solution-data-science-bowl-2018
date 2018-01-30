@@ -320,6 +320,6 @@ PIPELINES = {'dummy': {'train': dummy_train,
                        'inference': dummy_inference},
              'hello_dsb': {'train': seq_conv_train,
                            'inference': seq_conv_inference},
-             'unet_dsb': {'train': unet_train,
-                          'inference': unet_inference},
+             'unet': {'train': unet_train,
+                      'inference': unet_inference},
              }

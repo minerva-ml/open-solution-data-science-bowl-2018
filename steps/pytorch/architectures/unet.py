@@ -182,6 +182,7 @@ class UNet(nn.Module):
         for i in range(depth):
             ins = self.in_channels if i == 0 else outs
             outs = self.start_filts * (2 ** i)
+            print(ins, outs)
             pooling = True if i < depth - 1 else False
 
             down_conv = DownConv(ins, outs, pooling=pooling)
@@ -208,6 +209,7 @@ class UNet(nn.Module):
 
     def forward(self, x):
         encoder_outs = []
+        print(x)
 
         # encoder pathway, save outputs for merging
         for i, module in enumerate(self.down_convs):

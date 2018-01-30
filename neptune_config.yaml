@@ -35,8 +35,8 @@ parameters:
   num_workers: 1
 
   # General Params
-  image_h: 128
-  image_w: 128
+  image_h: 256
+  image_w: 256
 
   # U-Net parameters
   # see also: https://arxiv.org/pdf/1505.04597.pdf
@@ -50,7 +50,6 @@ parameters:
   n_filters: 64
   batch_norm: 0  # 0 or 1
   dropout: 0.3   # interval (0.0; 1.0)
-
   # Copied implementation
   num_classes: 2
   in_channels: 3

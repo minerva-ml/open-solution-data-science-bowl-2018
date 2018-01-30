@@ -20,7 +20,7 @@ class UnetModel(Model):
         self.model = UNet(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
-                                   **architecture_config['optimizer_params'])
+                                    **architecture_config['optimizer_params'])
         self.loss_function = nn.BCELoss()
         self.callbacks = build_callbacks_classifier(self.callbacks_config)
 
@@ -28,6 +28,7 @@ class UnetModel(Model):
         prediction_proba = self._transform(datagen, validation_datagen)
         prediction_proba_ = [np.squeeze(mask) for mask in prediction_proba]
         return {'predicted_masks': np.array(prediction_proba_)}
+
 
 class MockModel(BaseTransformer):
     def __init__(self, **kwargs):
@@ -54,7 +55,7 @@ class LoaderTestModel(Model):
         self.model = PyTorchLoaderTest(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
-                                   **architecture_config['optimizer_params'])
+                                    **architecture_config['optimizer_params'])
         self.loss_function = nn.BCELoss()
         self.callbacks = build_callbacks_classifier(self.callbacks_config)
 
@@ -62,6 +63,7 @@ class LoaderTestModel(Model):
         prediction_proba = self._transform(datagen, validation_datagen)
         prediction_proba_ = [np.squeeze(mask) for mask in prediction_proba]
         return {'predicted_masks': np.array(prediction_proba_)}
+
 
 # class Unet(PyTorchBasic):
 #     def __init__(self,
@@ -111,7 +113,6 @@ class PyTorchLoaderTest(PyTorchBasic):
         features = self.features(x)
         out = self.classifier(features)
         return out
-
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):

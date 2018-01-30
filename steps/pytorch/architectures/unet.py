@@ -1,15 +1,13 @@
 import torch
 import torch.nn as nn
 
-from .utils import Reshape
-
 
 class UNet(nn.Module):
     def __init__(self, conv_kernel,
                  pool_kernel, pool_stride,
                  repeat_blocks, n_filters,
                  batch_norm, dropout,
-                 in_channels, num_classes):
+                 in_channels):
         super(UNet, self).__init__()
 
         self.conv_kernel = conv_kernel
@@ -20,15 +18,14 @@ class UNet(nn.Module):
         self.batch_norm = batch_norm
         self.dropout = dropout
         self.in_channels = in_channels
-        self.num_classes = num_classes
 
-        self.input_layer = self._input_layer()
+        self.input_block = self._input_block()
         self.down_convs = self._down_convs()
         self.down_pools = self._down_pools()
-        self.floor_layer = self._floor_layer()
+        self.floor_block = self._floor_block()
         self.up_convs = self._up_convs()
         self.up_samples = self._up_samples()
-        self.classification_layer = self._classification_layer()
+        self.classification_block = self._classification_block()
 
     def _down_convs(self):
         down_convs = []
@@ -40,7 +37,7 @@ class UNet(nn.Module):
     def _up_convs(self):
         up_convs = []
         for i in range(self.repeat_blocks):
-            in_channels = int(self.n_filters * 2 ** (i + 1))
+            in_channels = int(self.n_filters * 2 ** (i + 2))
             up_convs.append(UpConv(in_channels, self.conv_kernel, self.batch_norm, self.dropout))
         return nn.ModuleList(up_convs)
 
@@ -55,62 +52,110 @@ class UNet(nn.Module):
     def _up_samples(self):
         up_samples = []
         for i in range(self.repeat_blocks):
-            in_channels = int(self.n_filters * 2 ** i)
-
-            up_samples.append(nn.ConvTranspose2d(in_channels=512,#in_channels,
-                                                 out_channels=256,#in_channels,
-                                                 kernel_size=(self.pool_kernel, self.pool_kernel),
-                                                 stride=self.pool_stride,
+            in_channels = int(self.n_filters * 2 ** (i + 2))
+            out_channels = int(self.n_filters * 2 ** (i + 1))
+            up_samples.append(nn.ConvTranspose2d(in_channels=in_channels,
+                                                 out_channels=out_channels,
+                                                 kernel_size=2,
+                                                 stride=2,
                                                  padding=0,
                                                  output_padding=0,
-                                                 bias=True
+                                                 bias=False
                                                  ))
         return nn.ModuleList(up_samples)
 
-    def _input_layer(self):
-        return nn.Conv2d(in_channels=self.in_channels, out_channels=self.n_filters,
-                         kernel_size=(self.conv_kernel, self.conv_kernel),
-                         stride=1, padding=1)
+    def _input_block(self):
+        if self.batch_norm:
+            input_block = nn.Sequential(nn.Conv2d(in_channels=self.in_channels, out_channels=self.n_filters,
+                                                  kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                  stride=1, padding=1),
+                                        nn.BatchNorm2d(num_features=self.n_filters),
+                                        nn.ReLU(),
 
-    def _floor_layer(self):
+                                        nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
+                                                  kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                  stride=1, padding=1),
+                                        nn.BatchNorm2d(num_features=self.n_filters),
+                                        nn.ReLU(),
+
+                                        nn.Dropout(self.dropout),
+                                        )
+        else:
+            input_block = nn.Sequential(nn.Conv2d(in_channels=self.in_channels, out_channels=self.n_filters,
+                                                  kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                  stride=1, padding=1),
+                                        nn.ReLU(),
+
+                                        nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
+                                                  kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                  stride=1, padding=1),
+                                        nn.ReLU(),
+
+                                        nn.Dropout(self.dropout),
+                                        )
+        return input_block
+
+    def _floor_block(self):
         in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
         return nn.Sequential(DownConv(in_channels, self.conv_kernel, self.batch_norm, self.dropout),
                              )
 
-    def _classification_layer(self):
-        return nn.Sequential(nn.Conv2d(in_channels=self.n_filters, out_channels=self.num_classes,
-                                       kernel_size=(1, 1), stride=1, padding=1),
-                             nn.Sigmoid()
-                             )
+    def _classification_block(self):
+        in_block = int(2 * self.n_filters)
+
+        if self.batch_norm:
+            classification_block = nn.Sequential(nn.Conv2d(in_channels=in_block, out_channels=self.n_filters,
+                                                           kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                           stride=1, padding=1),
+                                                 nn.BatchNorm2d(num_features=self.n_filters),
+                                                 nn.ReLU(),
+
+                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
+                                                           kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                           stride=1, padding=1),
+                                                 nn.BatchNorm2d(num_features=self.n_filters),
+                                                 nn.ReLU(),
+
+                                                 nn.Dropout(self.dropout),
+                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=1,
+                                                           kernel_size=(1, 1), stride=1, padding=0),
+                                                 )
+        else:
+            classification_block = nn.Sequential(nn.Conv2d(in_channels=in_block, out_channels=self.n_filters,
+                                                           kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                           stride=1, padding=1),
+                                                 nn.ReLU(),
+
+                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
+                                                           kernel_size=(self.conv_kernel, self.conv_kernel),
+                                                           stride=1, padding=1),
+                                                 nn.ReLU(),
+
+                                                 nn.Dropout(self.dropout),
+                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=1,
+                                                           kernel_size=(1, 1), stride=1, padding=0),
+                                                 )
+        return classification_block
 
     def forward(self, x):
-        x = self.input_layer(x)
+        x = self.input_block(x)
 
         down_convs_outputs = []
         for block, down_pool in zip(self.down_convs, self.down_pools):
             x = block(x)
             down_convs_outputs.append(x)
             x = down_pool(x)
-
-        x = self.floor_layer(x)
+        x = self.floor_block(x)
 
         for down_conv_output, block, up_sample in zip(reversed(down_convs_outputs),
                                                       reversed(self.up_convs),
                                                       reversed(self.up_samples)):
-            print(x.size(), up_sample)
             x = up_sample(x)
-            print(x.size(), down_conv_output.size())
             x = torch.cat((down_conv_output, x), dim=1)
-            print(x.size())
 
             x = block(x)
-            print(x.size())
 
-        print(x.size())
-
-        x = self.classification_layer(x)
-        print(x.size())
-
+        x = self.classification_block(x)
         return x
 
 

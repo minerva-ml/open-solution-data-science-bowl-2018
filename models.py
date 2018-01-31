@@ -22,7 +22,7 @@ class PyTorchUNet(Model):
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
         self.loss_function = segmentation_loss
-        self.callbacks = build_callbacks_classifier(self.callbacks_config)
+        self.callbacks = build_callbacks(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         prediction_proba = self._transform(datagen, validation_datagen)
@@ -38,7 +38,7 @@ class SequentialConvNet(Model):
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
         self.loss_function = nn.BCELoss()
-        self.callbacks = build_callbacks_classifier(self.callbacks_config)
+        self.callbacks = build_callbacks(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         prediction_proba = self._transform(datagen, validation_datagen)
@@ -105,7 +105,7 @@ def weight_regularization_unet(model, regularize, weight_decay_conv2d):
     return parameter_list
 
 
-def build_callbacks_classifier(callbacks_config):
+def build_callbacks(callbacks_config):
     experiment_timing = ExperimentTiming()
     model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])

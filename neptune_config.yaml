@@ -31,7 +31,7 @@ parameters:
   data_dir: /mnt/ml-team/dsb_2018/data
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_pipeline
-  overwrite: 0
+  overwrite: 1
   num_workers: 1
 
   # General Params
@@ -45,15 +45,15 @@ parameters:
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
-  repeat_blocks: 5
+  repeat_blocks: 6
 
   # Training schedule
   epochs_nr: 200
   batch_size_train: 32
   batch_size_inference: 32
-  lr: 0.001
+  lr: 0.0001
   momentum: 0.9
-  gamma: 0.97
+  gamma: 0.95
   patience: 5
 
   # Regularization

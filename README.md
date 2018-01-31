@@ -9,6 +9,16 @@ This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/
 ## Installation
 Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for instructions.
 
+#### Fast track:
+1. get repository and install requirements
+2. register to [Neptune](https://neptune.ml/ 'machine learning lab')
+3. run experiment:
+```bash
+$ neptune login
+$ neptune send experiment_manager.py --worker gcp-gpu-medium --config neptune_config.yaml --environment pytorch-0.2.0-gpu-py3 -- 'train_evaluate_predict_pipeline --pipeline_name unet'
+```
+4. collect submit from `output` directory.
+
 ## User support
 There are several ways to seek help:
 1. Kaggle [discussion](https://www.kaggle.com) is our primary way of communication.

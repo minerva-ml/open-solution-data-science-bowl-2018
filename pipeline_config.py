@@ -102,6 +102,7 @@ SOLUTION_CONFIG = AttrDict({
                                  'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {},
+            'early_stopping': {'patience': params.patience},
         },
     },
     'thresholder': {'threshold': 0.5},

@@ -35,8 +35,8 @@ parameters:
   num_workers: 1
 
   # General Params
-  image_h: 160
-  image_w: 160
+  image_h: 128
+  image_w: 128
   image_channels: 3
 
   # U-Net parameters
@@ -48,9 +48,9 @@ parameters:
   repeat_blocks: 5
 
   # Training schedule
-  epochs_nr: 200
-  batch_size_train: 16
-  batch_size_inference: 16
+  epochs_nr: 1000
+  batch_size_train: 32
+  batch_size_inference: 32
   lr: 0.0001
   momentum: 0.9
   gamma: 0.95

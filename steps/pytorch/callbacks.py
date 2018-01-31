@@ -44,6 +44,9 @@ class Callback:
         self.epoch_id += 1
         self.batch_id = 0
 
+    def on_epoch_end_break(self, *args, **kwargs):
+        return False
+
     def on_batch_begin(self, *args, **kwargs):
         pass
 
@@ -82,6 +85,13 @@ class CallbackList:
     def on_epoch_end(self, *args, **kwargs):
         for callback in self.callbacks:
             callback.on_epoch_end(*args, **kwargs)
+
+    def on_epoch_end_break(self, *args, **kwargs):
+        callback_out = []
+        for callback in self.callbacks:
+            out = callback.on_epoch_end_break(*args, **kwargs)
+            callback_out.append(out)
+        return any(callback_out)
 
     def on_batch_begin(self, *args, **kwargs):
         for callback in self.callbacks:
@@ -156,6 +166,32 @@ class ValidationMonitor(Callback):
                                                                                   self.batch_id,
                                                                                   val_loss))
         self.batch_id += 1
+
+
+class EarlyStopping(Callback):
+    def __init__(self, patience, minimize=True):
+        super().__init__()
+        self.patience = patience
+        self.minimize = minimize
+        self.best_score = None
+        self.epoch_since_best = 0
+
+    def on_epoch_end_break(self, *args, **kwargs):
+        val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+
+        if not self.best_score:
+            self.best_score = val_loss
+
+        if (self.minimize and val_loss < self.best_score) or (not self.minimize and val_loss > self.best_score):
+            self.best_score = val_loss
+            self.epoch_since_best = 0
+        else:
+            self.epoch_since_best += 1
+
+        if self.epoch_since_best > self.patience:
+            return True
+        else:
+            return False
 
 
 class ExponentialLRScheduler(Callback):

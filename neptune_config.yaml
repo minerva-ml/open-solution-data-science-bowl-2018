@@ -31,7 +31,7 @@ parameters:
   data_dir: /mnt/ml-team/dsb_2018/data
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_pipeline
-  overwrite: 1
+  overwrite: 0
   num_workers: 1
 
   # General Params

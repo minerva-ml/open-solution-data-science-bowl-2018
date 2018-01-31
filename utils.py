@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from PIL import Image
+from scipy import ndimage
 from attrdict import AttrDict
 
 
@@ -35,12 +36,32 @@ def get_logger():
     return logging.getLogger('dsb-2018')
 
 
+def decompose(mask):
+    labeled, nr_true = ndimage.label(mask)
+    masks = []
+    for i in range(1, nr_true + 1):
+        msk = labeled.copy()
+        msk[msk != i] = 0.
+        msk[msk == i] = 255.
+        masks.append(msk)
+
+    if not masks:
+        return [mask]
+    else:
+        return masks
+
+
 def create_submission(experiments_dir, meta, predictions, logger):
-    encoded_predictions = [' '.join(str(p) for p in run_length_encoding(pred)) for pred in predictions]
-    submission = pd.DataFrame({'ImageId': meta['ImageId'].values,
-                               'EncodedPixels': encoded_predictions})
+    image_ids, encodings = [], []
+    for image_id, prediction in zip(meta['ImageId'].values, predictions):
+        for mask in decompose(prediction):
+            image_ids.append(image_id)
+            encodings.append(' '.join(str(rle) for rle in run_length_encoding(mask > 128.)))
+
+    submission = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encodings})
     submission_filepath = os.path.join(experiments_dir, 'submission.csv')
     submission.to_csv(submission_filepath, index=None)
+
     logger.info('submission saved to {}'.format(submission_filepath))
     logger.info('submission head \n\n{}'.format(submission.head()))
 

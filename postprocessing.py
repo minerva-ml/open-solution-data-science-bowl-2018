@@ -11,7 +11,6 @@ class Resizer(BaseTransformer):
         resized_images = []
         for i, (image, target_size) in enumerate(tqdm(zip(images, target_sizes))):
             resized_image = resize(image, target_size)
-            # plt.imsave('/mnt/ml-team/dsb_2018/kuba/debug/proba_map{}.png'.format(i),resized_image)
             resized_images.append(resized_image)
         return {'resized_images': resized_images}
 
@@ -30,7 +29,6 @@ class Thresholder(BaseTransformer):
         binarized_images = []
         for i, image in enumerate(images):
             binarized_image = (image > self.threshold).astype(np.uint8)
-            # plt.imsave('/mnt/ml-team/dsb_2018/kuba/debug/binary_map{}.png'.format(i),binarized_image)
             binarized_images.append(binarized_image)
 
         return {'binarized_images': binarized_images}

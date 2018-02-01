@@ -1,16 +1,12 @@
 import numpy as np
-import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.externals import joblib
 
-from steps.base import BaseTransformer
+from steps.pytorch.architectures.unet import UNet
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from steps.pytorch.models import Model, PyTorchBasic
-from steps.pytorch.architectures.unet import UNet
 from steps.pytorch.validation import segmentation_loss
-
 from utils import sigmoid
 
 
@@ -109,8 +105,8 @@ def build_callbacks(callbacks_config):
     experiment_timing = ExperimentTiming()
     model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
-    validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
+    validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
 

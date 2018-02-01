@@ -1,7 +1,7 @@
 project-key: DSB
 
-name: dsb_journal
-tags: [starter, unet, bce]
+name: dsb_open_solution
+tags: [solution_1, unet]
 
 
 metric:
@@ -9,7 +9,7 @@ metric:
   goal: maximize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -22,16 +22,16 @@ exclude:
 
 parameters:
 # Cloud Environment
-  # data_dir: /public/dsb_2018_data/
-  # meta_dir: /public/dsb_2018_data/
-  # masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
-  # experiment_dir: /output/dsb/experiments/
+  data_dir:            /public/dsb_2018_data/
+  meta_dir:            /public/dsb_2018_data/
+  masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
+  experiment_dir:      /output/dsb/experiments/
 
 # Local Environment
-  data_dir: /mnt/ml-team/dsb_2018/data
-  meta_dir: /mnt/ml-team/dsb_2018/files
-  masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_pipeline
+  # data_dir: /path/to/data
+  # meta_dir: /path/to/data
+  # masks_overlayed_dir: /path/to/data/masks_overlayed
+  # experiment_dir: /path/to/work/dir
   overwrite: 1
   num_workers: 1
 
@@ -49,7 +49,7 @@ parameters:
   repeat_blocks: 5
 
   # Training schedule
-  epochs_nr: 1000
+  epochs_nr: 300
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.0005

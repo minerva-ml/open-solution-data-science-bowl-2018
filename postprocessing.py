@@ -1,10 +1,14 @@
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import numpy as np
+from scipy import ndimage as ndi
 from sklearn.externals import joblib
 from skimage.transform import resize
+from skimage.morphology import watershed
+from skimage.feature import peak_local_max
 
 from steps.base import BaseTransformer
+
 
 class Resizer(BaseTransformer):
     def transform(self, images, target_sizes):
@@ -32,6 +36,56 @@ class Thresholder(BaseTransformer):
             binarized_images.append(binarized_image)
 
         return {'binarized_images': binarized_images}
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
+class Whatershed(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, images):
+        detached_images = []
+        for i, image in enumerate(images):
+            detached_image = self.detach_nuclei(image)
+            detached_images.append(detached_image)
+        joblib.dump((images, detached_images), '/mnt/ml-team/dsb_2018/kuba/labeler_debug.pkl')
+        return {'detached_images': detached_images}
+
+    def detach_nuclei(self, image):
+        distance = ndi.distance_transform_edt(image)
+        local_maxi = peak_local_max(distance, indices=False, footprint=np.ones((3, 3)),
+                                    labels=image)
+        markers = ndi.label(local_maxi)[0]
+        labeled = watershed(-distance, markers, mask=image)
+        return labeled
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
+class NucleiLabeler(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, images):
+        labeled_images = []
+        for i, image in enumerate(images):
+            labeled_image = self.label(image)
+            labeled_images.append(labeled_image)
+
+        return {'labeled_images': labeled_images}
+
+    def label(self, mask):
+        labeled, nr_true = ndi.label(mask)
+        return labeled
 
     def load(self, filepath):
         return self

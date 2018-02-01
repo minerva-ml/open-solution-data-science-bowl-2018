@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 import yaml
 from PIL import Image
-from scipy import ndimage
 from attrdict import AttrDict
+from scipy import ndimage as ndi
 
 
 def read_yaml(filepath):
@@ -36,8 +36,17 @@ def get_logger():
     return logging.getLogger('dsb-2018')
 
 
-def decompose(mask):
-    labeled, nr_true = ndimage.label(mask)
+def decompose_pred(labeled):
+    nr_true = labeled.max()
+    return _decompose(labeled, nr_true)
+
+
+def decompose_true(mask):
+    labeled, nr_true = ndi.label(mask)
+    return _decompose(labeled, nr_true)
+
+
+def _decompose(labeled, nr_true):
     masks = []
     for i in range(1, nr_true + 1):
         msk = labeled.copy()
@@ -46,7 +55,7 @@ def decompose(mask):
         masks.append(msk)
 
     if not masks:
-        return [mask]
+        return [labeled]
     else:
         return masks
 
@@ -54,7 +63,7 @@ def decompose(mask):
 def create_submission(experiments_dir, meta, predictions, logger):
     image_ids, encodings = [], []
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
-        for mask in decompose(prediction):
+        for mask in decompose_pred(prediction):
             image_ids.append(image_id)
             encodings.append(' '.join(str(rle) for rle in run_length_encoding(mask > 128.)))
 

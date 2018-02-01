@@ -107,4 +107,5 @@ SOLUTION_CONFIG = AttrDict({
         },
     },
     'thresholder': {'threshold': 0.5},
+    'watershed': {}
 })

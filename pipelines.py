@@ -4,7 +4,7 @@ Implement trainable ensemble: XGBoost, random forest, Linear Regression
 
 from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit
-from postprocessing import Resizer, Thresholder
+from postprocessing import Resizer, Thresholder, Whatershed
 from loaders import MetadataImageSegmentationLoader
 from models import SequentialConvNet, PyTorchUNet
 from utils import squeeze_inputs
@@ -173,10 +173,17 @@ def unet_train(config):
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
+    watershed = Step(name='watershed',
+                     transformer=Whatershed(**config.watershed),
+                     input_steps=[thresholding],
+                     adapter={'images': ([('thresholding', 'binarized_images')]),
+                              },
+                     cache_dirpath=config.env.cache_dirpath)
+
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[thresholding],
-                  adapter={'y_pred': ([('thresholding', 'binarized_images')]),
+                  input_steps=[watershed],
+                  adapter={'y_pred': ([('watershed', 'detached_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -220,14 +227,25 @@ def unet_inference(config):
                         input_steps=[mask_resize],
                         adapter={'images': ([('mask_resize', 'resized_images')]),
                                  },
-                        cache_dirpath=config.env.cache_dirpath)
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
+
+    watershed = Step(name='watershed',
+                     overwrite_transformer=True,
+                     transformer=Whatershed(**config.watershed),
+                     input_steps=[thresholding],
+                     adapter={'images': ([('thresholding', 'binarized_images')]),
+                              },
+                     cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
+                  overwrite_transformer=True,
                   transformer=Dummy(),
-                  input_steps=[thresholding],
-                  adapter={'y_pred': ([('thresholding', 'binarized_images')]),
+                  input_steps=[watershed],
+                  adapter={'y_pred': ([('watershed', 'detached_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
+
     return output
 
 

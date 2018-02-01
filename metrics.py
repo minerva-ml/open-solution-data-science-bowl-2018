@@ -3,7 +3,7 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
 
-from utils import decompose
+from utils import decompose_pred, decompose_true
 
 
 def iou(gt, pred):
@@ -20,8 +20,8 @@ def iou(gt, pred):
 
 
 def compute_ious(gt, predictions):
-    gt_ = decompose(gt)
-    predictions_ = decompose(predictions)
+    gt_ = decompose_true(gt)
+    predictions_ = decompose_pred(predictions)
     gt_ = np.asarray([el.flatten() for el in gt_])
     predictions_ = np.asarray([el.flatten() for el in predictions_])
     ious = pairwise_distances(X=gt_, Y=predictions_, metric=iou)

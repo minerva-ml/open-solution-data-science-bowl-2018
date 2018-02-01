@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 from PIL import Image
 import numpy as np
-import names
 from deepsense import neptune
 from torch.optim.lr_scheduler import ExponentialLR
 
@@ -44,7 +43,7 @@ class Callback:
         self.epoch_id += 1
         self.batch_id = 0
 
-    def on_epoch_end_break(self, *args, **kwargs):
+    def training_break(self, *args, **kwargs):
         return False
 
     def on_batch_begin(self, *args, **kwargs):
@@ -86,11 +85,8 @@ class CallbackList:
         for callback in self.callbacks:
             callback.on_epoch_end(*args, **kwargs)
 
-    def on_epoch_end_break(self, *args, **kwargs):
-        callback_out = []
-        for callback in self.callbacks:
-            out = callback.on_epoch_end_break(*args, **kwargs)
-            callback_out.append(out)
+    def training_break(self, *args, **kwargs):
+        callback_out = [callback.training_break(*args, **kwargs) for callback in self.callbacks]
         return any(callback_out)
 
     def on_batch_begin(self, *args, **kwargs):
@@ -176,8 +172,10 @@ class EarlyStopping(Callback):
         self.best_score = None
         self.epoch_since_best = 0
 
-    def on_epoch_end_break(self, *args, **kwargs):
+    def training_break(self, *args, **kwargs):
+        self.model.eval()
         val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+        self.model.train()
 
         if not self.best_score:
             self.best_score = val_loss
@@ -316,6 +314,11 @@ class NeptuneMonitor(Callback):
 
 
 class NeptuneMonitorSegmentation(NeptuneMonitor):
+    def __init__(self, image_nr, image_resize):
+        super().__init__()
+        self.image_nr = image_nr
+        self.image_resize = image_resize
+
     def on_epoch_end(self, *args, **kwargs):
         epoch_avg_loss = self.epoch_loss_averager.value
         self.epoch_loss_averager.reset()
@@ -336,15 +339,20 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
             h, w = image_triplet.shape[1:]
             image_glued = np.zeros((h, 3 * w + 20))
 
-            image_glued[:, :h] = image_triplet[0, :, :]
-            image_glued[:, h + 10:2 * h + 10] = image_triplet[1, :, :]
-            image_glued[:, 2 * h + 20:] = image_triplet[2, :, :]
+            image_glued[:, :w] = image_triplet[0, :, :]
+            image_glued[:, w + 10:2 * w + 10] = image_triplet[1, :, :]
+            image_glued[:, 2 * w + 20:] = image_triplet[2, :, :]
 
             pill_image = Image.fromarray((image_glued * 255.).astype(np.uint8))
+            h_, w_ = image_glued.shape
+            pill_image = pill_image.resize((int(self.image_resize * w_), int(self.image_resize * h_)), Image.ANTIALIAS)
+
             self.ctx.channel_send("masks", neptune.Image(
                 name='epoch{}_batch{}_idx{}'.format(self.epoch_id, self.batch_id, i),
                 description="true and prediction masks",
                 data=pill_image))
+
+            if i == self.image_nr: break
 
 
 class ExperimentTiming(Callback):

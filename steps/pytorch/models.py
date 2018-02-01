@@ -60,7 +60,7 @@ class Model(BaseTransformer):
                 if batch_id == steps:
                     break
             self.callbacks.on_epoch_end()
-            if self.callbacks.on_epoch_end_break():
+            if self.callbacks.training_break():
                 break
         self.callbacks.on_train_end()
         return self

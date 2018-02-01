@@ -111,7 +111,7 @@ def build_callbacks(callbacks_config):
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
-    neptune_monitor = NeptuneMonitorSegmentation()
+    neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
 
     return CallbackList(

@@ -119,6 +119,11 @@ def seq_conv_inference(config):
 
 
 def unet_train(config):
+    """
+    U-Net architecture
+    :param config:
+    :return:
+    """
     xy_train = Step(name='xy_train',
                     transformer=XYSplit(**config.xy_splitter),
                     input_data=['input'],

@@ -91,7 +91,7 @@ def run_length_encoding(x):
 
 
 def read_params():
-    neptune_config = read_yaml('neptune_config.yaml')
+    neptune_config = read_yaml('neptune.yaml')
     params = neptune_config.parameters
     return params
 

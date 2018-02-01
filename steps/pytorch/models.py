@@ -1,14 +1,16 @@
 from functools import partial
+import shutil
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+from torch.nn import init
 from tqdm import tqdm
 
 from steps.base import BaseTransformer
-from .validation import torch_acc_score_multi_output, torch_acc_score
-from .utils import get_logger
+from .validation import torch_acc_score_multi_output
+from .utils import get_logger, save_model
 
 logger = get_logger()
 
@@ -59,6 +61,8 @@ class Model(BaseTransformer):
                 if batch_id == steps:
                     break
             self.callbacks.on_epoch_end()
+            if self.callbacks.training_break():
+                break
         self.callbacks.on_train_end()
         return self
 
@@ -69,6 +73,7 @@ class Model(BaseTransformer):
             X, target_var = Variable(X).cuda(), Variable(target_tensor).cuda()
         else:
             X, target_var = Variable(X), Variable(target_tensor)
+
         output = self.model(X)
 
         self.optimizer.zero_grad()
@@ -118,14 +123,13 @@ class Model(BaseTransformer):
         return self
 
     def save(self, filepath):
-        self.model.eval()
-        if torch.cuda.is_available():
-            self.model.cpu()
-            torch.save(self.model.state_dict(), filepath)
-            self.model.cuda()
+        checkpoint_callback = self.callbacks_config.get('model_checkpoint')
+        if checkpoint_callback:
+            checkpoint_filepath = checkpoint_callback['filepath']
+            shutil.copyfile(checkpoint_filepath, filepath)
+
         else:
-            torch.save(self.model.state_dict(), filepath)
-        self.model.train()
+            save_model(self.model, filepath)
 
 
 class MultiOutputModel(Model):
@@ -203,4 +207,6 @@ def init_weights_normal(model, mean, std_conv2d, std_linear):
 
 
 def init_weights_xavier(model):
-    torch.nn.init.xavier_uniform(model.weight)
+    if isinstance(model, nn.Conv2d):
+        init.xavier_normal(model.weight)
+        init.constant(model.bias, 0)

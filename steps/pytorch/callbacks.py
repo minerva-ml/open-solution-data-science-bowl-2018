@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 
 from PIL import Image
 import numpy as np
-import names
 from deepsense import neptune
 from torch.optim.lr_scheduler import ExponentialLR
 
@@ -44,6 +43,9 @@ class Callback:
         self.epoch_id += 1
         self.batch_id = 0
 
+    def training_break(self, *args, **kwargs):
+        return False
+
     def on_batch_begin(self, *args, **kwargs):
         pass
 
@@ -82,6 +84,10 @@ class CallbackList:
     def on_epoch_end(self, *args, **kwargs):
         for callback in self.callbacks:
             callback.on_epoch_end(*args, **kwargs)
+
+    def training_break(self, *args, **kwargs):
+        callback_out = [callback.training_break(*args, **kwargs) for callback in self.callbacks]
+        return any(callback_out)
 
     def on_batch_begin(self, *args, **kwargs):
         for callback in self.callbacks:
@@ -158,6 +164,34 @@ class ValidationMonitor(Callback):
         self.batch_id += 1
 
 
+class EarlyStopping(Callback):
+    def __init__(self, patience, minimize=True):
+        super().__init__()
+        self.patience = patience
+        self.minimize = minimize
+        self.best_score = None
+        self.epoch_since_best = 0
+
+    def training_break(self, *args, **kwargs):
+        self.model.eval()
+        val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+        self.model.train()
+
+        if not self.best_score:
+            self.best_score = val_loss
+
+        if (self.minimize and val_loss < self.best_score) or (not self.minimize and val_loss > self.best_score):
+            self.best_score = val_loss
+            self.epoch_since_best = 0
+        else:
+            self.epoch_since_best += 1
+
+        if self.epoch_since_best > self.patience:
+            return True
+        else:
+            return False
+
+
 class ExponentialLRScheduler(Callback):
     def __init__(self, gamma, epoch_every=1, batch_every=None):
         super().__init__()
@@ -200,48 +234,45 @@ class ExponentialLRScheduler(Callback):
 
 
 class ModelCheckpoint(Callback):
-    def __init__(self, checkpoint_dir, best_only=False, epoch_every=1, batch_every=None):
+    def __init__(self, filepath, epoch_every=1, minimize=True):
         super().__init__()
-        self.checkpoint_dir = checkpoint_dir
-        if best_only:
-            self.best_only = best_only
-            raise NotImplementedError
+        self.filepath = filepath
+        self.minimize = minimize
+        self.best_score = None
+
         if epoch_every == 0:
             self.epoch_every = False
         else:
             self.epoch_every = epoch_every
-        if batch_every == 0:
-            self.batch_every = False
-        else:
-            self.batch_every = batch_every
 
     def on_train_begin(self, *args, **kwargs):
         self.epoch_id = 0
         self.batch_id = 0
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
 
     def on_epoch_end(self, *args, **kwargs):
         if self.epoch_every and ((self.epoch_id % self.epoch_every) == 0):
-            full_path = os.path.join(self.checkpoint_dir, 'model_epoch{0}.torch'.format(self.epoch_id))
-            save_model(self.model, full_path)
-            logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, full_path))
+            self.model.eval()
+            val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+            self.model.train()
+
+            if not self.best_score:
+                self.best_score = val_loss
+
+            if (self.minimize and val_loss < self.best_score) or (not self.minimize and val_loss > self.best_score):
+                self.best_score = val_loss
+                save_model(self.model, self.filepath)
+                logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, self.filepath))
+
         self.epoch_id += 1
         self.batch_id = 0
-
-    def on_batch_end(self, *args, **kwargs):
-        if self.batch_every and ((self.batch_id % self.batch_every) == 0):
-            full_path = os.path.join(self.checkpoint_dir,
-                                     'model_epoch{0}_batch{1}.torch'.format(self.epoch_id, self.batch_id))
-            save_model(self.model, full_path)
-            logger.info('epoch {0} batch {1} model saved to {2}'.format(self.epoch_id, self.batch_id, full_path))
-        self.batch_id += 1
 
 
 class NeptuneMonitor(Callback):
     def __init__(self):
         super().__init__()
         self.ctx = neptune.Context()
-        self.random_name = names.get_first_name()
+        self.random_name = ''
         self.epoch_loss_averager = Averager()
 
     def on_train_begin(self, *args, **kwargs):
@@ -280,6 +311,11 @@ class NeptuneMonitor(Callback):
 
 
 class NeptuneMonitorSegmentation(NeptuneMonitor):
+    def __init__(self, image_nr, image_resize):
+        super().__init__()
+        self.image_nr = image_nr
+        self.image_resize = image_resize
+
     def on_epoch_end(self, *args, **kwargs):
         epoch_avg_loss = self.epoch_loss_averager.value
         self.epoch_loss_averager.reset()
@@ -300,15 +336,20 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
             h, w = image_triplet.shape[1:]
             image_glued = np.zeros((h, 3 * w + 20))
 
-            image_glued[:, :h] = image_triplet[0, :, :]
-            image_glued[:, h + 10:2 * h + 10] = image_triplet[1, :, :]
-            image_glued[:, 2 * h + 20:] = image_triplet[2, :, :]
+            image_glued[:, :w] = image_triplet[0, :, :]
+            image_glued[:, w + 10:2 * w + 10] = image_triplet[1, :, :]
+            image_glued[:, 2 * w + 20:] = image_triplet[2, :, :]
 
             pill_image = Image.fromarray((image_glued * 255.).astype(np.uint8))
+            h_, w_ = image_glued.shape
+            pill_image = pill_image.resize((int(self.image_resize * w_), int(self.image_resize * h_)), Image.ANTIALIAS)
+
             self.ctx.channel_send("masks", neptune.Image(
                 name='epoch{}_batch{}_idx{}'.format(self.epoch_id, self.batch_id, i),
                 description="true and prediction masks",
                 data=pill_image))
+
+            if i == self.image_nr: break
 
 
 class ExperimentTiming(Callback):

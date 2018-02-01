@@ -59,7 +59,7 @@ SOLUTION_CONFIG = AttrDict({
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'checkpoint_dir': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': 0.9955,
                              'epoch_every': 1},
@@ -70,20 +70,22 @@ SOLUTION_CONFIG = AttrDict({
         },
     },
     'unet_network': {
-        'architecture_config': {'model_params': {},
+
+        'architecture_config': {'model_params': {'n_filters': params.n_filters,
+                                                 'conv_kernel': params.conv_kernel,
+                                                 'pool_kernel': params.pool_kernel,
+                                                 'pool_stride': params.pool_stride,
+                                                 'repeat_blocks': params.repeat_blocks,
+                                                 'batch_norm': params.use_batch_norm,
+                                                 'dropout': params.dropout_conv,
+                                                 'in_channels': params.image_channels,
+                                                 },
                                 'optimizer_params': {'lr': params.lr,
-                                                     # 'momentum': params.momentum,
-                                                     # 'nesterov': True
                                                      },
-                                'regularizer_params': {'regularize': False,
+                                'regularizer_params': {'regularize': True,
                                                        'weight_decay_conv2d': params.l2_reg_conv,
-                                                       'weight_decay_linear': params.l2_reg_dense
                                                        },
-                                'weights_init': {'function': 'normal',
-                                                 'params': {'mean': 0,
-                                                            'std_conv2d': 0.01,
-                                                            'std_linear': 0.001
-                                                            },
+                                'weights_init': {'function': 'xavier',
                                                  },
                                 },
         'training_config': {'epochs': params.epochs_nr,
@@ -92,14 +94,16 @@ SOLUTION_CONFIG = AttrDict({
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'checkpoint_dir': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': 0.9955,
                              'epoch_every': 1},
             'training_monitor': {'batch_every': 1,
                                  'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {},
+            'neptune_monitor': {'image_nr': 4,
+                                'image_resize': 0.2},
+            'early_stopping': {'patience': params.patience},
         },
     },
     'thresholder': {'threshold': 0.5},

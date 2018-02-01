@@ -1,5 +1,4 @@
 import logging
-import yaml
 
 import cv2
 import numpy as np
@@ -88,7 +87,12 @@ def overlay_keypoints(img, pred_keypoints, true_keypoints, bin_nr):
 
 def save_model(model, path):
     model.eval()
-    torch.save(model.state_dict(), path)
+    if torch.cuda.is_available():
+        model.cpu()
+        torch.save(model.state_dict(), path)
+        model.cuda()
+    else:
+        torch.save(model.state_dict(), path)
     model.train()
 
 
@@ -113,3 +117,7 @@ class Averager:
     def reset(self):
         self.current_total = 0.0
         self.iterations = 0.0
+
+
+def sigmoid(x):
+    return 1. / (1 + np.exp(-x))

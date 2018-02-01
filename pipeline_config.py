@@ -59,7 +59,7 @@ SOLUTION_CONFIG = AttrDict({
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'checkpoint_dir': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': 0.9955,
                              'epoch_every': 1},
@@ -94,7 +94,7 @@ SOLUTION_CONFIG = AttrDict({
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'checkpoint_dir': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': 0.9955,
                              'epoch_every': 1},

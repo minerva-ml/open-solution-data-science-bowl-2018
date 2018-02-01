@@ -31,13 +31,13 @@ parameters:
   data_dir: /mnt/ml-team/dsb_2018/data
   meta_dir: /mnt/ml-team/dsb_2018/files
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kamil/
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_pipeline_dev
   overwrite: 1
   num_workers: 1
 
   # General Params
-  image_h: 128
-  image_w: 128
+  image_h: 32
+  image_w: 32
   image_channels: 3
 
   # U-Net parameters
@@ -46,7 +46,7 @@ parameters:
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
-  repeat_blocks: 5
+  repeat_blocks: 1
 
   # Training schedule
   epochs_nr: 1000

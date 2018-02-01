@@ -87,7 +87,12 @@ def overlay_keypoints(img, pred_keypoints, true_keypoints, bin_nr):
 
 def save_model(model, path):
     model.eval()
-    torch.save(model.state_dict(), path)
+    if torch.cuda.is_available():
+        model.cpu()
+        torch.save(model.state_dict(), path)
+        model.cuda()
+    else:
+        torch.save(model.state_dict(), path)
     model.train()
 
 

@@ -234,41 +234,38 @@ class ExponentialLRScheduler(Callback):
 
 
 class ModelCheckpoint(Callback):
-    def __init__(self, checkpoint_dir, best_only=False, epoch_every=1, batch_every=None):
+    def __init__(self, filepath, epoch_every=1, minimize=True):
         super().__init__()
-        self.checkpoint_dir = checkpoint_dir
-        if best_only:
-            self.best_only = best_only
-            raise NotImplementedError
+        self.filepath = filepath
+        self.minimize = minimize
+        self.best_score = None
+
         if epoch_every == 0:
             self.epoch_every = False
         else:
             self.epoch_every = epoch_every
-        if batch_every == 0:
-            self.batch_every = False
-        else:
-            self.batch_every = batch_every
 
     def on_train_begin(self, *args, **kwargs):
         self.epoch_id = 0
         self.batch_id = 0
-        os.makedirs(self.checkpoint_dir, exist_ok=True)
+        os.makedirs(self.filepath, exist_ok=True)
 
     def on_epoch_end(self, *args, **kwargs):
         if self.epoch_every and ((self.epoch_id % self.epoch_every) == 0):
-            full_path = os.path.join(self.checkpoint_dir, 'model_epoch{0}.torch'.format(self.epoch_id))
-            save_model(self.model, full_path)
-            logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, full_path))
+            self.model.eval()
+            val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+            self.model.train()
+
+            if not self.best_score:
+                self.best_score = val_loss
+
+            if (self.minimize and val_loss < self.best_score) or (not self.minimize and val_loss > self.best_score):
+                self.best_score = val_loss
+                save_model(self.model, self.filepath)
+                logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, self.filepath))
+
         self.epoch_id += 1
         self.batch_id = 0
-
-    def on_batch_end(self, *args, **kwargs):
-        if self.batch_every and ((self.batch_id % self.batch_every) == 0):
-            full_path = os.path.join(self.checkpoint_dir,
-                                     'model_epoch{0}_batch{1}.torch'.format(self.epoch_id, self.batch_id))
-            save_model(self.model, full_path)
-            logger.info('epoch {0} batch {1} model saved to {2}'.format(self.epoch_id, self.batch_id, full_path))
-        self.batch_id += 1
 
 
 class NeptuneMonitor(Callback):

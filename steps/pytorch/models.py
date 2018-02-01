@@ -1,4 +1,5 @@
 from functools import partial
+import shutil
 
 import numpy as np
 import torch
@@ -8,8 +9,8 @@ from torch.nn import init
 from tqdm import tqdm
 
 from steps.base import BaseTransformer
-from .validation import torch_acc_score_multi_output, torch_acc_score
-from .utils import get_logger
+from .validation import torch_acc_score_multi_output
+from .utils import get_logger, save_model
 
 logger = get_logger()
 
@@ -122,14 +123,13 @@ class Model(BaseTransformer):
         return self
 
     def save(self, filepath):
-        self.model.eval()
-        if torch.cuda.is_available():
-            self.model.cpu()
-            torch.save(self.model.state_dict(), filepath)
-            self.model.cuda()
+        checkpoint_callback = self.callbacks_config.get('model_checkpoint')
+        if checkpoint_callback:
+            checkpoint_filepath = checkpoint_callback['filepath']
+            shutil.copyfile(checkpoint_filepath, filepath)
+
         else:
-            torch.save(self.model.state_dict(), filepath)
-        self.model.train()
+            save_model(self.model, filepath)
 
 
 class MultiOutputModel(Model):

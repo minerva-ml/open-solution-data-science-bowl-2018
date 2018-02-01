@@ -10,7 +10,7 @@ This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/
 Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for instructions.
 
 #### Fast track:
-1. get repository and install requirements
+1. get repository, install [PyTorch](http://pytorch.org/) then remaining requirements
 2. register to [Neptune](https://neptune.ml/ 'machine learning lab')
 3. run experiment:
 ```bash

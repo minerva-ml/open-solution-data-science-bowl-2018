@@ -55,7 +55,7 @@ parameters:
   lr: 0.0005
   momentum: 0.9
   gamma: 0.99
-  patience: 10
+  patience: 1
 
   # Regularization
   use_batch_norm: 1

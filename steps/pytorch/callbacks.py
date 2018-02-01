@@ -248,7 +248,7 @@ class ModelCheckpoint(Callback):
     def on_train_begin(self, *args, **kwargs):
         self.epoch_id = 0
         self.batch_id = 0
-        os.makedirs(self.filepath, exist_ok=True)
+        os.makedirs(os.path.dirname(self.filepath), exist_ok=True)
 
     def on_epoch_end(self, *args, **kwargs):
         if self.epoch_every and ((self.epoch_id % self.epoch_every) == 0):

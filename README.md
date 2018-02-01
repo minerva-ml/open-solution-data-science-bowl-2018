@@ -17,7 +17,7 @@ Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/w
 $ neptune login
 $ neptune send main.py --worker gcp-gpu-medium --environment pytorch-0.2.0-gpu-py3 -- 'train_evaluate_predict_pipeline --pipeline_name unet'
 ```
-4. collect submit from `output` directory.
+4. collect submit from `/output/dsb/experiments` directory.
 
 ## User support
 There are several ways to seek help:

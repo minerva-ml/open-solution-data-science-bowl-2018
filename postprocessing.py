@@ -4,8 +4,7 @@ import numpy as np
 from scipy import ndimage as ndi
 from sklearn.externals import joblib
 from skimage.transform import resize
-from skimage.morphology import watershed
-from skimage.feature import peak_local_max
+import skimage.morphology as morph
 
 from steps.base import BaseTransformer
 
@@ -58,11 +57,19 @@ class Whatershed(BaseTransformer):
 
     def detach_nuclei(self, image):
         distance = ndi.distance_transform_edt(image)
-        local_maxi = peak_local_max(distance, indices=False, footprint=np.ones((3, 3)),
-                                    labels=image)
-        markers = ndi.label(local_maxi)[0]
-        labeled = watershed(-distance, markers, mask=image)
-        return labeled
+
+        eroded = distance
+        for i in range(3):
+            eroded = morph.erosion(eroded, selem=morph.square(5))
+
+        markers, nr_blobs = ndi.label(eroded)
+        labeled = morph.watershed(-distance, markers, mask=image)
+
+        dropped, _ = ndi.label(image - (labeled > 0))
+        dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
+
+        correct_labeled = dropped + labeled
+        return correct_labeled
 
     def load(self, filepath):
         return self

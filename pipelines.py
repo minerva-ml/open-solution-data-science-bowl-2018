@@ -171,9 +171,11 @@ def unet_train(config):
                         input_steps=[mask_resize],
                         adapter={'images': ([('mask_resize', 'resized_images')]),
                                  },
-                        cache_dirpath=config.env.cache_dirpath)
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
 
     watershed = Step(name='watershed',
+                     overwrite_transformer=True,
                      transformer=Whatershed(**config.watershed),
                      input_steps=[thresholding],
                      adapter={'images': ([('thresholding', 'binarized_images')]),
@@ -227,11 +229,9 @@ def unet_inference(config):
                         input_steps=[mask_resize],
                         adapter={'images': ([('mask_resize', 'resized_images')]),
                                  },
-                        cache_dirpath=config.env.cache_dirpath,
-                        cache_output=True)
+                        cache_dirpath=config.env.cache_dirpath)
 
     watershed = Step(name='watershed',
-                     overwrite_transformer=True,
                      transformer=Whatershed(**config.watershed),
                      input_steps=[thresholding],
                      adapter={'images': ([('thresholding', 'binarized_images')]),
@@ -239,7 +239,6 @@ def unet_inference(config):
                      cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
-                  overwrite_transformer=True,
                   transformer=Dummy(),
                   input_steps=[watershed],
                   adapter={'y_pred': ([('watershed', 'detached_images')]),

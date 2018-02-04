@@ -26,6 +26,7 @@ class UNet(nn.Module):
         self.up_convs = self._up_convs()
         self.up_samples = self._up_samples()
         self.classification_block = self._classification_block()
+        self.output_layer = self._output_layer()
 
     def _down_convs(self):
         down_convs = []
@@ -117,8 +118,6 @@ class UNet(nn.Module):
                                                  nn.ReLU(),
 
                                                  nn.Dropout(self.dropout),
-                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=1,
-                                                           kernel_size=(1, 1), stride=1, padding=0),
                                                  )
         else:
             classification_block = nn.Sequential(nn.Conv2d(in_channels=in_block, out_channels=self.n_filters,
@@ -132,10 +131,12 @@ class UNet(nn.Module):
                                                  nn.ReLU(),
 
                                                  nn.Dropout(self.dropout),
-                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=1,
-                                                           kernel_size=(1, 1), stride=1, padding=0),
                                                  )
         return classification_block
+
+    def _output_layer(self):
+        return nn.Conv2d(in_channels=self.n_filters, out_channels=1,
+                         kernel_size=(1, 1), stride=1, padding=0)
 
     def forward(self, x):
         x = self.input_block(x)
@@ -156,6 +157,7 @@ class UNet(nn.Module):
             x = block(x)
 
         x = self.classification_block(x)
+        x = self.output_layer(x)
         return x
 
 
@@ -189,9 +191,11 @@ class UNetMultitask(UNet):
 
             x = block(x)
 
-        x_mask = self.classification_block(x)
-        x_contour = self.classification_block(x)
-        x_center = self.classification_block(x)
+        x = self.classification_block(x)
+
+        x_mask = self.output_layer(x)
+        x_contour = self.output_layer(x)
+        x_center = self.output_layer(x)
 
         return x_mask, x_contour, x_center
 

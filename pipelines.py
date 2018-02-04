@@ -53,7 +53,7 @@ def unet_train(config):
                        transformer=Resizer(),
                        input_data=['input'],
                        input_steps=[unet],
-                       adapter={'images': ([('unet', 'predicted_masks')]),
+                       adapter={'images': ([('unet', 'mask_prediction')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)
@@ -111,7 +111,7 @@ def unet_inference(config):
                        transformer=Resizer(),
                        input_data=['input'],
                        input_steps=[unet],
-                       adapter={'images': ([('unet', 'predicted_masks')]),
+                       adapter={'images': ([('unet', 'mask_prediction')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)

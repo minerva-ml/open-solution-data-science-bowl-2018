@@ -5,7 +5,7 @@ import torch.optim as optim
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping, NeptuneMonitor
-from steps.pytorch.models import Model, ModelMultitask
+from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
 from callbacks import NeptuneMonitorSegmentation
@@ -30,7 +30,7 @@ class PyTorchUNet(Model):
         return outputs
 
 
-class PyTorchUNetMultitask(ModelMultitask):
+class PyTorchUNetMultitask(Model):
     def __init__(self, architecture_config, training_config, callbacks_config):
         super().__init__(architecture_config, training_config, callbacks_config)
         self.model = UNetMultitask(**architecture_config['model_params'])

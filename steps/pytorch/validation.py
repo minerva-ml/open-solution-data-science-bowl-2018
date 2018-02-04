@@ -65,16 +65,21 @@ def score_model(model, loss_function, datagen):
                 targets_var.append(Variable(target_tensor))
 
         outputs = model(X)
-        for (name, loss_function_one), output, target in zip(loss_function, outputs, targets_var):
-            loss = loss_function_one(output, target)
-            partial_batch_losses.setdefault(name, []).append(loss)
-        loss_sum = sum([l[0] for l in partial_batch_losses.values()])
+        if len(loss_function) == 1:
+            for (name, loss_function_one), target in zip(loss_function, targets_var):
+                loss_sum = loss_function_one(outputs, target)
+        else:
+            for (name, loss_function_one), output, target in zip(loss_function, outputs, targets_var):
+                loss = loss_function_one(output, target)
+                partial_batch_losses.setdefault(name, []).append(loss)
+            loss_sum = sum([l[0] for l in partial_batch_losses.values()])
         partial_batch_losses.setdefault('loss_sum', []).append(loss_sum)
         if batch_id == steps:
             break
 
     average_losses = {name: sum(losses) / steps for name, losses in partial_batch_losses.items()}
     return average_losses
+
 
 def torch_acc_score(output, target):
     output = output.data.cpu().numpy()

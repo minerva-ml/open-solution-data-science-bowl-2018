@@ -67,75 +67,6 @@ class Model(BaseTransformer):
         return self
 
     def _fit_loop(self, data):
-        X, target_tensor = data
-
-        if torch.cuda.is_available():
-            X, target_var = Variable(X).cuda(), Variable(target_tensor).cuda()
-        else:
-            X, target_var = Variable(X), Variable(target_tensor)
-
-        self.optimizer.zero_grad()
-        output = self.model(X)
-        partial_batch_losses = {}
-        for (name, loss_function) in self.loss_function:
-            partial_batch_losses['batch_{}'.format(name)] = loss_function(output, target_var)
-        batch_loss = sum(partial_batch_losses.values())
-        partial_batch_losses['batch_loss'] = batch_loss
-        batch_loss.backward()
-        self.optimizer.step()
-
-        return partial_batch_losses
-
-    def _transform(self, datagen, validation_datagen=None):
-        self.model.eval()
-        batch_gen, steps = datagen
-        outputs = []
-        for batch_id, data in enumerate(batch_gen):
-            if len(data) == 2:
-                X, targets = data
-            else:
-                X = data
-
-            if torch.cuda.is_available():
-                X = Variable(X).cuda()
-            else:
-                X = Variable(X)
-            output = self.model(X)
-            outputs.append(output.data.cpu().numpy())
-
-            if batch_id == steps:
-                break
-
-        outputs = np.vstack(outputs)
-        return outputs
-
-    def transform(self, datagen, validation_datagen=None):
-        predictions = self._transform(datagen, validation_datagen)
-        return NotImplementedError
-
-    def load(self, filepath):
-        self.model.eval()
-
-        if torch.cuda.is_available():
-            self.model.cpu()
-            self.model.load_state_dict(torch.load(filepath))
-            self.model.cuda()
-        else:
-            self.model.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
-        return self
-
-    def save(self, filepath):
-        checkpoint_callback = self.callbacks_config.get('model_checkpoint')
-        if checkpoint_callback:
-            checkpoint_filepath = checkpoint_callback['filepath']
-            shutil.copyfile(checkpoint_filepath, filepath)
-
-        else:
-            save_model(self.model, filepath)
-
-
-class ModelMultitask(Model):
-    def _fit_loop(self, data):
         X = data[0]
         targets_tensors = data[1:]
 
@@ -151,11 +82,15 @@ class ModelMultitask(Model):
                 targets_var.append(Variable(target_tensor))
 
         self.optimizer.zero_grad()
-        outputs = self.model(X)
+        outputs_batch = self.model(X)
         partial_batch_losses = {}
-        for (name, loss_function), output, target in zip(self.loss_function, outputs, targets_var):
-            partial_batch_losses[name] = loss_function(output, target)
-        batch_loss = sum(partial_batch_losses.values())
+        if len(outputs_batch) == len(self.output_names):
+            for (name, loss_function), output, target in zip(self.loss_function, outputs_batch, targets_var):
+                partial_batch_losses[name] = loss_function(output, target)
+            batch_loss = sum(partial_batch_losses.values())
+        else:
+            for (name, loss_function), target in zip(self.loss_function, targets_var):
+                batch_loss = loss_function(outputs_batch, target)
         partial_batch_losses['loss_sum'] = batch_loss
         batch_loss.backward()
         self.optimizer.step()
@@ -190,6 +125,30 @@ class ModelMultitask(Model):
 
         outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
         return outputs
+
+    def transform(self, datagen, validation_datagen=None):
+        predictions = self._transform(datagen, validation_datagen)
+        return NotImplementedError
+
+    def load(self, filepath):
+        self.model.eval()
+
+        if torch.cuda.is_available():
+            self.model.cpu()
+            self.model.load_state_dict(torch.load(filepath))
+            self.model.cuda()
+        else:
+            self.model.load_state_dict(torch.load(filepath, map_location=lambda storage, loc: storage))
+        return self
+
+    def save(self, filepath):
+        checkpoint_callback = self.callbacks_config.get('model_checkpoint')
+        if checkpoint_callback:
+            checkpoint_filepath = checkpoint_callback['filepath']
+            shutil.copyfile(checkpoint_filepath, filepath)
+
+        else:
+            save_model(self.model, filepath)
 
 
 class PyTorchBasic(nn.Module):

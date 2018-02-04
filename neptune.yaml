@@ -31,6 +31,8 @@ parameters:
   data_dir: /mnt/ml-team/dsb_2018/data
   meta_dir: /mnt/ml-team/dsb_2018/files
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
+  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed_dir
+  centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed_dir
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_watershed_pipeline
   overwrite: 0
   num_workers: 1

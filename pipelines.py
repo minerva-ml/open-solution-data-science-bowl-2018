@@ -183,12 +183,12 @@ def unet_multitask_train(config):
                        transformer=Resizer(),
                        input_data=['input'],
                        input_steps=[unet_multitask],
-                       adapter={'images': ([('unet_multitask', 'predicted_masks')]),
+                       adapter={'images': ([('unet_multitask', 'mask_prediction')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath)
 
-    thresholding = Step(name='thresholding',
+    mask_thresholding = Step(name='mask_thresholding',
                         transformer=Thresholder(**config.thresholder),
                         input_steps=[mask_resize],
                         adapter={'images': ([('mask_resize', 'resized_images')]),
@@ -196,18 +196,52 @@ def unet_multitask_train(config):
                         cache_dirpath=config.env.cache_dirpath,
                         cache_output=True)
 
-    watershed = Step(name='watershed',
-                     overwrite_transformer=True,
-                     transformer=Whatershed(**config.watershed),
-                     input_steps=[thresholding],
-                     adapter={'images': ([('thresholding', 'binarized_images')]),
-                              },
-                     cache_dirpath=config.env.cache_dirpath)
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[unet_multitask],
+                          adapter={'images': ([('unet_multitask', 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath)
+
+    contour_thresholding = Step(name='contour_thresholding',
+                        transformer=Thresholder(**config.thresholder),
+                        input_steps=[contour_resize],
+                        adapter={'images': ([('contour_resize', 'resized_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
+
+    center_resize = Step(name='center_resize',
+                         transformer=Resizer(),
+                         input_data=['input'],
+                         input_steps=[unet_multitask],
+                         adapter={'images': ([('unet_multitask', 'center_prediction')]),
+                                  'target_sizes': ([('input', 'target_sizes')]),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath)
+
+    center_thresholding = Step(name='center_thresholding',
+                        transformer=Thresholder(**config.thresholder),
+                        input_steps=[center_resize],
+                        adapter={'images': ([('center_resize', 'resized_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
+
+
+    labeler = Step(name='labeler',
+                   transformer=NucleiLabeler(),
+                   input_steps=[contour_thresholding],
+                   adapter={'images': ([('contour_thresholding', 'binarized_images')]),
+                            },
+                   cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[watershed],
-                  adapter={'y_pred': ([('watershed', 'detached_images')]),
+                  input_steps=[labeler],
+                  adapter={'y_pred': ([('labeler', 'labeled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -246,24 +280,69 @@ def unet_multitask_inference(config):
                                 },
                        cache_dirpath=config.env.cache_dirpath)
 
-    thresholding = Step(name='thresholding',
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[unet_multitask],
+                       adapter={'images': ([('unet_multitask', 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath)
+
+    mask_thresholding = Step(name='mask_thresholding',
                         transformer=Thresholder(**config.thresholder),
                         input_steps=[mask_resize],
                         adapter={'images': ([('mask_resize', 'resized_images')]),
                                  },
-                        cache_dirpath=config.env.cache_dirpath)
+                        cache_dirpath=config.env.cache_dirpath,
+                        )
 
-    watershed = Step(name='watershed',
-                     transformer=Whatershed(**config.watershed),
-                     input_steps=[thresholding],
-                     adapter={'images': ([('thresholding', 'binarized_images')]),
-                              },
-                     cache_dirpath=config.env.cache_dirpath)
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[unet_multitask],
+                          adapter={'images': ([('unet_multitask', 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath)
+
+    contour_thresholding = Step(name='contour_thresholding',
+                        transformer=Thresholder(**config.thresholder),
+                        input_steps=[contour_resize],
+                        adapter={'images': ([('contour_resize', 'resized_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        )
+
+    center_resize = Step(name='center_resize',
+                         transformer=Resizer(),
+                         input_data=['input'],
+                         input_steps=[unet_multitask],
+                         adapter={'images': ([('unet_multitask', 'center_prediction')]),
+                                  'target_sizes': ([('input', 'target_sizes')]),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath)
+
+    center_thresholding = Step(name='center_thresholding',
+                        transformer=Thresholder(**config.thresholder),
+                        input_steps=[center_resize],
+                        adapter={'images': ([('center_resize', 'resized_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        )
+
+
+    labeler = Step(name='labeler',
+                   transformer=NucleiLabeler(),
+                   input_steps=[mask_thresholding],
+                   adapter={'images': ([('mask_thresholding', 'binarized_images')]),
+                            },
+                   cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[watershed],
-                  adapter={'y_pred': ([('watershed', 'detached_images')]),
+                  input_steps=[labeler],
+                  adapter={'y_pred': ([('labeler', 'labeled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
 

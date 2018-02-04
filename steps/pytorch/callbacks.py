@@ -1,12 +1,10 @@
 import os
 from datetime import datetime, timedelta
 
-from PIL import Image
-import numpy as np
 from deepsense import neptune
 from torch.optim.lr_scheduler import ExponentialLR
 
-from .validation import score_model, get_prediction_masks
+from .validation import score_model
 from .utils import get_logger, Averager, save_model
 
 logger = get_logger()
@@ -41,7 +39,6 @@ class Callback:
 
     def on_epoch_end(self, *args, **kwargs):
         self.epoch_id += 1
-        self.batch_id = 0
 
     def training_break(self, *args, **kwargs):
         return False
@@ -123,7 +120,6 @@ class TrainingMonitor(Callback):
             if self.epoch_every and ((self.epoch_id % self.epoch_every) == 0):
                 logger.info('epoch {0} {1}:     {2:.5f}'.format(self.epoch_id, name, epoch_avg_loss))
         self.epoch_id += 1
-        self.batch_id = 0
 
     def on_batch_end(self, metrics, *args, **kwargs):
         for name, loss in metrics.items():
@@ -161,7 +157,6 @@ class ValidationMonitor(Callback):
                 loss = loss.data.cpu().numpy()[0]
                 logger.info('epoch {0} validation {1}:     {2:.5f}'.format(self.epoch_id, name, loss))
         self.epoch_id += 1
-        self.batch_id = 0
 
 
 class EarlyStopping(Callback):
@@ -226,7 +221,6 @@ class ExponentialLRScheduler(Callback):
             logger.info('epoch {0} current lr: {1}'.format(self.epoch_id + 1,
                                                            self.optimizer.state_dict()['param_groups'][0]['lr']))
         self.epoch_id += 1
-        self.batch_id = 0
 
     def on_batch_end(self, *args, **kwargs):
         if self.batch_every and ((self.batch_id % self.batch_every) == 0):
@@ -271,7 +265,6 @@ class ModelCheckpoint(Callback):
                 logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, self.filepath))
 
         self.epoch_id += 1
-        self.batch_id = 0
 
 
 class NeptuneMonitor(Callback):
@@ -301,7 +294,6 @@ class NeptuneMonitor(Callback):
     def on_epoch_end(self, *args, **kwargs):
         self._send_numeric_channels()
         self.epoch_id += 1
-        self.batch_id = 0
 
     def _send_numeric_channels(self, *args, **kwargs):
         for name, averager in self.epoch_loss_averagers.items():
@@ -317,42 +309,6 @@ class NeptuneMonitor(Callback):
         for name, loss in val_loss.items():
             loss = loss.data.cpu().numpy()[0]
             self.ctx.channel_send('epoch_val {}'.format(name), x=self.epoch_id, y=loss)
-
-
-class NeptuneMonitorSegmentation(NeptuneMonitor):
-    def __init__(self, image_nr, image_resize):
-        super().__init__()
-        self.image_nr = image_nr
-        self.image_resize = image_resize
-
-    def on_epoch_end(self, *args, **kwargs):
-        self._send_numeric_channels()
-        self._send_image_channels()
-        self.epoch_id += 1
-
-    def _send_image_channels(self):
-        self.model.eval()
-        pred_masks = get_prediction_masks(self.model, self.validation_datagen)
-        self.model.train()
-
-        for i, image_triplet in enumerate(pred_masks):
-            h, w = image_triplet.shape[1:]
-            image_glued = np.zeros((h, 3 * w + 20))
-
-            image_glued[:, :w] = image_triplet[0, :, :]
-            image_glued[:, w + 10:2 * w + 10] = image_triplet[1, :, :]
-            image_glued[:, 2 * w + 20:] = image_triplet[2, :, :]
-
-            pill_image = Image.fromarray((image_glued * 255.).astype(np.uint8))
-            h_, w_ = image_glued.shape
-            pill_image = pill_image.resize((int(self.image_resize * w_), int(self.image_resize * h_)), Image.ANTIALIAS)
-
-            self.ctx.channel_send("masks", neptune.Image(
-                name='epoch{}_batch{}_idx{}'.format(self.epoch_id, self.batch_id, i),
-                description="true and prediction masks",
-                data=pill_image))
-
-            if i == self.image_nr: break
 
 
 class ExperimentTiming(Callback):

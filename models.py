@@ -4,10 +4,11 @@ import torch.optim as optim
 
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
-    NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler, EarlyStopping, NeptuneMonitor
+    ExperimentTiming, ExponentialLRScheduler, EarlyStopping, NeptuneMonitor
 from steps.pytorch.models import Model, ModelMultitask
 from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
+from callbacks import NeptuneMonitorSegmentation, NeptuneMonitorSegmentationMultitask
 
 
 class PyTorchUNet(Model):
@@ -18,12 +19,15 @@ class PyTorchUNet(Model):
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
         self.loss_function = [('mask_loss', segmentation_loss)]
+        self.output_names = ['mask']
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
-        prediction_proba = self._transform(datagen, validation_datagen)
-        prediction_proba_ = [sigmoid(np.squeeze(mask)) for mask in prediction_proba]
-        return {'predicted_masks': np.array(prediction_proba_)}
+        outputs = self._transform(datagen, validation_datagen)
+        for name, prediction in outputs.items():
+            prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
+            outputs[name] = np.array(prediction_)
+        return outputs
 
 
 class PyTorchUNetMultitask(ModelMultitask):
@@ -36,12 +40,15 @@ class PyTorchUNetMultitask(ModelMultitask):
         self.loss_function = [('mask_loss', segmentation_loss),
                               ('contour_loss', segmentation_loss),
                               ('center_loss', segmentation_loss)]
+        self.output_names = ['mask', 'contour', 'center']
         self.callbacks = callbacks_unet_multitask(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
-        prediction_proba = self._transform(datagen, validation_datagen)
-        prediction_proba_ = [sigmoid(np.squeeze(mask)) for mask in prediction_proba]
-        return {'predicted_masks': np.array(prediction_proba_)}
+        outputs = self._transform(datagen, validation_datagen)
+        for name, prediction in outputs.items():
+            prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
+            outputs[name] = np.array(prediction_)
+        return outputs
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):

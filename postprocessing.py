@@ -47,23 +47,19 @@ class Whatershed(BaseTransformer):
     def __init__(self, **kwargs):
         pass
 
-    def transform(self, images):
+    def transform(self, images, centers):
         detached_images = []
-        for i, image in enumerate(images):
-            detached_image = self.detach_nuclei(image)
+        for image, center in zip(images, centers):
+            detached_image = self.detach_nuclei(image, center)
             detached_images.append(detached_image)
         joblib.dump((images, detached_images), '/mnt/ml-team/dsb_2018/kuba/labeler_debug.pkl')
         return {'detached_images': detached_images}
 
-    def detach_nuclei(self, image):
+    def detach_nuclei(self, image, center):
         distance = ndi.distance_transform_edt(image)
 
-        eroded = distance
-        for i in range(3):
-            eroded = morph.erosion(eroded, selem=morph.square(5))
-
-        markers, nr_blobs = ndi.label(eroded)
-        labeled = morph.watershed(-distance, markers, mask=image)
+        markers, nr_blobs = ndi.label(center)
+        labeled = morph.watershed(-distance, center, mask=image)
 
         dropped, _ = ndi.label(image - (labeled > 0))
         dropped = np.where(dropped > 0, dropped + nr_blobs, 0)

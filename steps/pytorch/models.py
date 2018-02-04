@@ -9,7 +9,6 @@ from torch.nn import init
 from tqdm import tqdm
 
 from steps.base import BaseTransformer
-from .validation import torch_acc_score_multi_output
 from .utils import get_logger, save_model
 
 logger = get_logger()
@@ -25,6 +24,7 @@ class Model(BaseTransformer):
         self.model = None
         self.optimizer = None
         self.loss_function = None
+        self.output_names = None
         self.callbacks = None
 
     def _initialize_model_weights(self):
@@ -164,32 +164,31 @@ class ModelMultitask(Model):
 
     def _transform(self, datagen, validation_datagen=None):
         self.model.eval()
-
         batch_gen, steps = datagen
-
-        outputs = []
-        for batch_id, data in enumerate(tqdm(batch_gen, total=steps)):
-            X, target = data
+        outputs = {}
+        for batch_id, data in enumerate(batch_gen):
+            if len(data) == len(self.output_names) + 1:
+                X = data[0]
+                targets_tensors = data[1:]
+            else:
+                X = data
 
             if torch.cuda.is_available():
                 X = Variable(X).cuda()
             else:
                 X = Variable(X)
 
-            batch_outputs = self.model.forward_target(X)
-            for i, batch_output in enumerate(batch_outputs):
-                batch_output_numpy = batch_output.data.cpu().numpy()
-                try:
-                    outputs[i].append(batch_output_numpy)
-                except Exception:
-                    outputs.append([])
-                    outputs[i].append(batch_output_numpy)
+            outputs_batch = self.model(X)
+            if len(outputs_batch) == len(self.output_names):
+                for name, output in zip(self.output_names, outputs_batch):
+                    outputs.setdefault(name, []).append(output.data.cpu().numpy())
+            else:
+                outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
 
             if batch_id == steps:
                 break
 
-        outputs = [np.vstack(output) for output in outputs]
-        outputs = np.stack(outputs, axis=1)
+        outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 
 

@@ -25,6 +25,14 @@ def segmentation_loss(output, target):
     return bce(output, target) + dice(output, target)
 
 
+def segmentation_loss_multitask(outputs, targets):
+    losses = []
+    for output, target in zip(outputs, targets):
+        loss = segmentation_loss(output, target)
+        losses.append(loss)
+    return sum(losses) / len(losses)
+
+
 def cross_entropy(output, target, squeeze=False):
     if squeeze:
         target = target.squeeze(1)
@@ -38,11 +46,11 @@ def mse(output, target, squeeze=False):
 
 
 def multi_output_cross_entropy(outputs, targets):
-    loss_seq = []
+    losses = []
     for output, target in zip(outputs, targets):
         loss = cross_entropy(output, target)
-        loss_seq.append(loss)
-    return sum(loss_seq) / len(loss_seq)
+        losses.append(loss)
+    return sum(losses) / len(losses)
 
 
 def get_prediction_masks(model, datagen):

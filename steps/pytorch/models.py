@@ -132,26 +132,38 @@ class Model(BaseTransformer):
             save_model(self.model, filepath)
 
 
-class MultiOutputModel(Model):
-    def _fit_loop(self, data):
-        X, targets_tensor = data
+class ModelMultitask(Model):
+    def __init__(self, architecture_config, training_config, callbacks_config):
+        super().__init__(architecture_config, training_config, callbacks_config)
+        self.loss_functions = None
 
-        targets_tensor = targets_tensor.transpose(0, 1)
+    def _fit_loop(self, data):
+        X = data[0]
+        targets_tensors = data[1:]
 
         if torch.cuda.is_available():
-            X, targets_var = Variable(X).cuda(), Variable(targets_tensor).cuda()
+            X = Variable(X).cuda()
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(Variable(target_tensor).cuda())
         else:
-            X, targets_var = Variable(X), Variable(targets_tensor)
+            X = Variable(X)
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(Variable(target_tensor))
+
         self.optimizer.zero_grad()
         outputs = self.model(X)
-        batch_loss = self.loss_function(outputs, targets_var)
+        partial_batch_losses = {}
+        for (name, loss_function), output, target in zip(self.loss_functions, outputs, targets_var):
+            partial_batch_losses['batch_{}'.format(name)] = loss_function(output, target)
+        batch_loss = sum(partial_batch_losses.values())
+        partial_batch_losses['batch_loss'] = batch_loss
+        print(batch_loss)
         batch_loss.backward()
         self.optimizer.step()
 
-        batch_loss_ = batch_loss.data.cpu().numpy()[0]
-        batch_acc = torch_acc_score_multi_output(outputs, targets_tensor)
-        return {'batch_loss': batch_loss_,
-                'batch_acc': batch_acc}
+        return partial_batch_losses
 
     def _transform(self, datagen, validation_datagen=None):
         self.model.eval()

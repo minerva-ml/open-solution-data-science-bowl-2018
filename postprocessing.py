@@ -79,9 +79,6 @@ class Whatershed(BaseTransformer):
 
 
 class NucleiLabeler(BaseTransformer):
-    def __init__(self, **kwargs):
-        pass
-
     def transform(self, images):
         labeled_images = []
         for i, image in enumerate(images):

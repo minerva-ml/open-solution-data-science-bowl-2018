@@ -2,11 +2,11 @@ import numpy as np
 import torch.nn as nn
 import torch.optim as optim
 
-from steps.pytorch.architectures.unet import UNet
+from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
-    NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler, EarlyStopping
-from steps.pytorch.models import Model, PyTorchBasic
-from steps.pytorch.validation import segmentation_loss
+    NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler, EarlyStopping, NeptuneMonitor
+from steps.pytorch.models import Model, ModelMultitask
+from steps.pytorch.validation import segmentation_loss, segmentation_loss_multitask
 from utils import sigmoid
 
 
@@ -18,7 +18,7 @@ class PyTorchUNet(Model):
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
         self.loss_function = segmentation_loss
-        self.callbacks = build_callbacks(self.callbacks_config)
+        self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         prediction_proba = self._transform(datagen, validation_datagen)
@@ -26,60 +26,22 @@ class PyTorchUNet(Model):
         return {'predicted_masks': np.array(prediction_proba_)}
 
 
-class SequentialConvNet(Model):
+class PyTorchUNetMultitask(ModelMultitask):
     def __init__(self, architecture_config, training_config, callbacks_config):
         super().__init__(architecture_config, training_config, callbacks_config)
-        self.model = PyTorchSequentialConvNet(**architecture_config['model_params'])
-        self.weight_regularization = weight_regularization
+        self.model = UNetMultitask(**architecture_config['model_params'])
+        self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = nn.BCELoss()
-        self.callbacks = build_callbacks(self.callbacks_config)
+        self.loss_functions = [('mask_loss', segmentation_loss),
+                               ('contour_loss', segmentation_loss),
+                               ('center_loss', segmentation_loss)]
+        self.callbacks = callbacks_unet_multitask(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         prediction_proba = self._transform(datagen, validation_datagen)
-        prediction_proba_ = [np.squeeze(mask) for mask in prediction_proba]
+        prediction_proba_ = [sigmoid(np.squeeze(mask)) for mask in prediction_proba]
         return {'predicted_masks': np.array(prediction_proba_)}
-
-
-class PyTorchSequentialConvNet(PyTorchBasic):
-    def __init__(self):
-        super().__init__()
-        self.features = nn.Sequential(
-            nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=128, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-        )
-
-        self.classifier = nn.Sequential(
-            nn.Conv2d(in_channels=64, out_channels=1, kernel_size=1, padding=0),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        features = self.features(x)
-        out = self.classifier(features)
-        return out
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):
@@ -101,13 +63,27 @@ def weight_regularization_unet(model, regularize, weight_decay_conv2d):
     return parameter_list
 
 
-def build_callbacks(callbacks_config):
+def callbacks_unet(callbacks_config):
     experiment_timing = ExperimentTiming()
     model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
+    early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
+
+    return CallbackList(
+        callbacks=[experiment_timing, model_checkpoints, lr_scheduler, training_monitor, validation_monitor,
+                   neptune_monitor, early_stopping])
+
+
+def callbacks_unet_multitask(callbacks_config):
+    experiment_timing = ExperimentTiming()
+    model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
+    lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
+    training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
+    validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
+    neptune_monitor = NeptuneMonitor()
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
 
     return CallbackList(

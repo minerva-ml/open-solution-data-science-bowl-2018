@@ -159,6 +159,40 @@ class UNet(nn.Module):
         return x
 
 
+class UNetMultitask(UNet):
+    def __init__(self, conv_kernel,
+                 pool_kernel, pool_stride,
+                 repeat_blocks, n_filters,
+                 batch_norm, dropout,
+                 in_channels):
+        super(UNetMultitask, self).__init__(conv_kernel,
+                                            pool_kernel, pool_stride,
+                                            repeat_blocks, n_filters,
+                                            batch_norm, dropout,
+                                            in_channels)
+
+    def forward(self, x):
+        x = self.input_block(x)
+
+        down_convs_outputs = []
+        for block, down_pool in zip(self.down_convs, self.down_pools):
+            x = block(x)
+            down_convs_outputs.append(x)
+            x = down_pool(x)
+        x = self.floor_block(x)
+
+        for down_conv_output, block, up_sample in zip(reversed(down_convs_outputs),
+                                                      reversed(self.up_convs),
+                                                      reversed(self.up_samples)):
+            x = up_sample(x)
+            x = torch.cat((down_conv_output, x), dim=1)
+
+            x = block(x)
+
+        x = self.classification_block(x)
+        return x, x, x
+
+
 class DownConv(nn.Module):
     def __init__(self, in_channels, kernel_size, batch_norm, dropout):
         super(DownConv, self).__init__()

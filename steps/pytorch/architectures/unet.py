@@ -189,8 +189,11 @@ class UNetMultitask(UNet):
 
             x = block(x)
 
-        x = self.classification_block(x)
-        return x, x, x
+        x_mask = self.classification_block(x)
+        x_contour = self.classification_block(x)
+        x_center = self.classification_block(x)
+
+        return x_mask, x_contour, x_center
 
 
 class DownConv(nn.Module):

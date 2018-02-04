@@ -6,7 +6,7 @@ from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     NeptuneMonitorSegmentation, ExperimentTiming, ExponentialLRScheduler, EarlyStopping, NeptuneMonitor
 from steps.pytorch.models import Model, ModelMultitask
-from steps.pytorch.validation import segmentation_loss, segmentation_loss_multitask
+from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
 
 
@@ -17,7 +17,7 @@ class PyTorchUNet(Model):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = segmentation_loss
+        self.loss_function = [('mask_loss', segmentation_loss)]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
@@ -33,9 +33,9 @@ class PyTorchUNetMultitask(ModelMultitask):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_functions = [('mask_loss', segmentation_loss),
-                               ('contour_loss', segmentation_loss),
-                               ('center_loss', segmentation_loss)]
+        self.loss_function = [('mask_loss', segmentation_loss),
+                              ('contour_loss', segmentation_loss),
+                              ('center_loss', segmentation_loss)]
         self.callbacks = callbacks_unet_multitask(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):

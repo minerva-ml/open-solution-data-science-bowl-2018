@@ -20,7 +20,6 @@ class Callback:
         self.model = None
         self.optimizer = None
         self.loss_function = None
-        self.loss_functions = None
         self.validation_datagen = None
         self.lr_scheduler = None
 
@@ -28,7 +27,6 @@ class Callback:
         self.model = transformer.model
         self.optimizer = transformer.optimizer
         self.loss_function = transformer.loss_function
-        self.loss_functions = transformer.loss_functions
         self.validation_datagen = validation_datagen
 
     def on_train_begin(self, *args, **kwargs):
@@ -129,6 +127,7 @@ class TrainingMonitor(Callback):
 
     def on_batch_end(self, metrics, *args, **kwargs):
         for name, loss in metrics.items():
+            loss = loss.data.cpu().numpy()[0]
             if name in self.epoch_loss_averagers.keys():
                 self.epoch_loss_averagers[name].send(loss)
             else:
@@ -156,22 +155,13 @@ class ValidationMonitor(Callback):
             self.model.eval()
             val_loss = score_model(self.model,
                                    self.loss_function,
-                                   self.loss_functions,
                                    self.validation_datagen)
             self.model.train()
-            logger.info('epoch {0} validation loss:     {1:.5f}'.format(self.epoch_id, val_loss))
+            for name, loss in val_loss.items():
+                loss = loss.data.cpu().numpy()[0]
+                logger.info('epoch {0} validation {1}:     {2:.5f}'.format(self.epoch_id, name, loss))
         self.epoch_id += 1
         self.batch_id = 0
-
-    def on_batch_end(self, metrics, *args, **kwargs):
-        if self.batch_every and ((self.batch_id % self.batch_every) == 0):
-            self.model.eval()
-            val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
-            self.model.train()
-            logger.info('epoch {0} batch {1} validation loss:     {2:.5f}'.format(self.epoch_id,
-                                                                                  self.batch_id,
-                                                                                  val_loss))
-        self.batch_id += 1
 
 
 class EarlyStopping(Callback):
@@ -185,13 +175,16 @@ class EarlyStopping(Callback):
     def training_break(self, *args, **kwargs):
         self.model.eval()
         val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+        loss_sum = val_loss['loss_sum']
+        loss_sum = loss_sum.data.cpu().numpy()[0]
+
         self.model.train()
 
         if not self.best_score:
-            self.best_score = val_loss
+            self.best_score = loss_sum
 
-        if (self.minimize and val_loss < self.best_score) or (not self.minimize and val_loss > self.best_score):
-            self.best_score = val_loss
+        if (self.minimize and loss_sum < self.best_score) or (not self.minimize and loss_sum > self.best_score):
+            self.best_score = loss_sum
             self.epoch_since_best = 0
         else:
             self.epoch_since_best += 1
@@ -264,13 +257,16 @@ class ModelCheckpoint(Callback):
         if self.epoch_every and ((self.epoch_id % self.epoch_every) == 0):
             self.model.eval()
             val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+            loss_sum = val_loss['loss_sum']
+            loss_sum = loss_sum.data.cpu().numpy()[0]
+
             self.model.train()
 
             if not self.best_score:
-                self.best_score = val_loss
+                self.best_score = loss_sum
 
-            if (self.minimize and val_loss < self.best_score) or (not self.minimize and val_loss > self.best_score):
-                self.best_score = val_loss
+            if (self.minimize and loss_sum < self.best_score) or (not self.minimize and loss_sum > self.best_score):
+                self.best_score = loss_sum
                 save_model(self.model, self.filepath)
                 logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, self.filepath))
 
@@ -282,42 +278,45 @@ class NeptuneMonitor(Callback):
     def __init__(self):
         super().__init__()
         self.ctx = neptune.Context()
-        self.random_name = ''
         self.epoch_loss_averager = Averager()
 
     def on_train_begin(self, *args, **kwargs):
-        self.epoch_loss_averager.reset()
+        self.epoch_loss_averagers = {}
         self.epoch_id = 0
         self.batch_id = 0
 
     def on_batch_end(self, metrics, *args, **kwargs):
-        batch_loss = metrics['batch_loss']
+        for name, loss in metrics.items():
+            loss = loss.data.cpu().numpy()[0]
 
-        self.epoch_loss_averager.send(batch_loss)
+            if name in self.epoch_loss_averagers.keys():
+                self.epoch_loss_averagers[name].send(loss)
+            else:
+                self.epoch_loss_averagers[name] = Averager()
 
-        logs = {'epoch_id': self.epoch_id, 'batch_id': self.batch_id, 'batch_loss': batch_loss}
-
-        self.ctx.channel_send('batch_loss {}'.format(self.random_name), x=logs['batch_id'], y=logs['batch_loss'])
+            self.ctx.channel_send('batch {}'.format(name), x=self.batch_id, y=loss)
 
         self.batch_id += 1
 
     def on_epoch_end(self, *args, **kwargs):
-        epoch_avg_loss = self.epoch_loss_averager.value
-        self.epoch_loss_averager.reset()
+        self._send_numeric_channels()
+        self.epoch_id += 1
+        self.batch_id = 0
+
+    def _send_numeric_channels(self, *args, **kwargs):
+        for name, averager in self.epoch_loss_averagers.items():
+            epoch_avg_loss = averager.value
+            averager.reset()
+            self.ctx.channel_send('epoch {}'.format(name), x=self.epoch_id, y=epoch_avg_loss)
 
         self.model.eval()
-        val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
+        val_loss = score_model(self.model,
+                               self.loss_function,
+                               self.validation_datagen)
         self.model.train()
-
-        logs = {'epoch_id': self.epoch_id, 'batch_id': self.batch_id, 'epoch_loss': epoch_avg_loss,
-                'epoch_val_loss': val_loss}
-        self._send_numeric_channels(logs)
-        self.epoch_id += 1
-
-    def _send_numeric_channels(self, logs):
-        self.ctx.channel_send('epoch_loss {}'.format(self.random_name), x=logs['epoch_id'], y=logs['epoch_loss'])
-        self.ctx.channel_send('epoch_val_loss {}'.format(self.random_name), x=logs['epoch_id'],
-                              y=logs['epoch_val_loss'])
+        for name, loss in val_loss.items():
+            loss = loss.data.cpu().numpy()[0]
+            self.ctx.channel_send('epoch_val {}'.format(name), x=self.epoch_id, y=loss)
 
 
 class NeptuneMonitorSegmentation(NeptuneMonitor):
@@ -327,21 +326,15 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
         self.image_resize = image_resize
 
     def on_epoch_end(self, *args, **kwargs):
-        epoch_avg_loss = self.epoch_loss_averager.value
-        self.epoch_loss_averager.reset()
+        self._send_numeric_channels()
+        self._send_image_channels()
+        self.epoch_id += 1
 
+    def _send_image_channels(self):
         self.model.eval()
-        val_loss = score_model(self.model, self.loss_function, self.validation_datagen)
         pred_masks = get_prediction_masks(self.model, self.validation_datagen)
         self.model.train()
 
-        logs = {'epoch_id': self.epoch_id, 'batch_id': self.batch_id, 'epoch_loss': epoch_avg_loss,
-                'epoch_val_loss': val_loss}
-        self._send_numeric_channels(logs)
-        self._send_image_channels(pred_masks)
-        self.epoch_id += 1
-
-    def _send_image_channels(self, pred_masks):
         for i, image_triplet in enumerate(pred_masks):
             h, w = image_triplet.shape[1:]
             image_glued = np.zeros((h, 3 * w + 20))

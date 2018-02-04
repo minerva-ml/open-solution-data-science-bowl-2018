@@ -74,15 +74,17 @@ class Model(BaseTransformer):
         else:
             X, target_var = Variable(X), Variable(target_tensor)
 
-        output = self.model(X)
-
         self.optimizer.zero_grad()
-        batch_loss = self.loss_function(output, target_var)
+        output = self.model(X)
+        partial_batch_losses = {}
+        for (name, loss_function) in self.loss_function:
+            partial_batch_losses['batch_{}'.format(name)] = loss_function(output, target_var)
+        batch_loss = sum(partial_batch_losses.values())
+        partial_batch_losses['batch_loss'] = batch_loss
         batch_loss.backward()
         self.optimizer.step()
 
-        batch_loss_ = batch_loss.data.cpu().numpy()[0]
-        return {'batch_loss': batch_loss_}
+        return partial_batch_losses
 
     def _transform(self, datagen, validation_datagen=None):
         self.model.eval()
@@ -133,10 +135,6 @@ class Model(BaseTransformer):
 
 
 class ModelMultitask(Model):
-    def __init__(self, architecture_config, training_config, callbacks_config):
-        super().__init__(architecture_config, training_config, callbacks_config)
-        self.loss_functions = None
-
     def _fit_loop(self, data):
         X = data[0]
         targets_tensors = data[1:]
@@ -155,11 +153,10 @@ class ModelMultitask(Model):
         self.optimizer.zero_grad()
         outputs = self.model(X)
         partial_batch_losses = {}
-        for (name, loss_function), output, target in zip(self.loss_functions, outputs, targets_var):
+        for (name, loss_function), output, target in zip(self.loss_function, outputs, targets_var):
             partial_batch_losses['batch_{}'.format(name)] = loss_function(output, target)
         batch_loss = sum(partial_batch_losses.values())
         partial_batch_losses['batch_loss'] = batch_loss
-        print(batch_loss)
         batch_loss.backward()
         self.optimizer.step()
 

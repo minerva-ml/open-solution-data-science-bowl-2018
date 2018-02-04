@@ -25,14 +25,6 @@ def segmentation_loss(output, target):
     return bce(output, target) + dice(output, target)
 
 
-def segmentation_loss_multitask(outputs, targets):
-    losses = []
-    for output, target in zip(outputs, targets):
-        loss = segmentation_loss(output, target)
-        losses.append(loss)
-    return sum(losses) / len(losses)
-
-
 def cross_entropy(output, target, squeeze=False):
     if squeeze:
         target = target.squeeze(1)
@@ -77,56 +69,33 @@ def score_model(model, loss_function, datagen):
     Refactor this ugglyness
     """
     batch_gen, steps = datagen
-    total_loss, total_acc = [], []
+    partial_batch_losses = {}
     for batch_id, data in enumerate(batch_gen):
-        X, targets = data
+        X = data[0]
+        targets_tensors = data[1:]
 
         if torch.cuda.is_available():
-            X, targets_var = Variable(X).cuda(), Variable(targets).cuda()
+            X = Variable(X).cuda()
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(Variable(target_tensor).cuda())
         else:
-            X, targets_var = Variable(X), Variable(targets)
+            X = Variable(X)
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(Variable(target_tensor))
+
         outputs = model(X)
-        batch_loss = loss_function(outputs, targets_var).data.cpu().numpy()[0]
-
-        total_loss.append(batch_loss)
-
+        for (name, loss_function_one), output, target in zip(loss_function, outputs, targets_var):
+            loss = loss_function_one(output, target)
+            partial_batch_losses.setdefault(name, []).append(loss)
+        loss_sum = sum(partial_batch_losses.values())
+        partial_batch_losses.setdefault('loss_sum', []).append(loss_sum)
         if batch_id == steps:
             break
 
-    avg_loss = sum(total_loss) / steps
-    return avg_loss
-
-
-def score_model_multi_output(model, loss_function, datagen):
-    """
-    Todo:
-    Refactor this ugglyness
-    """
-    batch_gen, steps = datagen
-
-    total_loss, total_acc = [], []
-    for batch_id, data in enumerate(batch_gen):
-        X, targets = data
-
-        targets = targets.transpose(0, 1)
-
-        if torch.cuda.is_available():
-            X, targets_var = Variable(X).cuda(), Variable(targets).cuda()
-        else:
-            X, targets_var = Variable(X), Variable(targets)
-        outputs = model(X)
-        batch_loss = loss_function(outputs, targets_var).data.cpu().numpy()[0]
-        batch_acc = torch_acc_score_multi_output(outputs, targets)
-
-        total_loss.append(batch_loss)
-        total_acc.append(batch_acc)
-
-        if batch_id == steps:
-            break
-
-    avg_loss = sum(total_loss) / steps
-    avg_acc = sum(total_acc) / steps
-    return avg_loss, avg_acc
+    average_losses = {name: sum(losses) / steps for name, losses in partial_batch_losses.items()}
+    return average_losses
 
 
 def predict_on_batch_multi_output(model, datagen):

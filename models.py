@@ -8,7 +8,7 @@ from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMon
 from steps.pytorch.models import Model, ModelMultitask
 from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation, NeptuneMonitorSegmentationMultitask
+from callbacks import NeptuneMonitorSegmentation
 
 
 class PyTorchUNet(Model):
@@ -41,7 +41,7 @@ class PyTorchUNetMultitask(ModelMultitask):
                               ('contour_loss', segmentation_loss),
                               ('center_loss', segmentation_loss)]
         self.output_names = ['mask', 'contour', 'center']
-        self.callbacks = callbacks_unet_multitask(self.callbacks_config)
+        self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         outputs = self._transform(datagen, validation_datagen)
@@ -77,20 +77,6 @@ def callbacks_unet(callbacks_config):
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
-    early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
-
-    return CallbackList(
-        callbacks=[experiment_timing, model_checkpoints, lr_scheduler, training_monitor, validation_monitor,
-                   neptune_monitor, early_stopping])
-
-
-def callbacks_unet_multitask(callbacks_config):
-    experiment_timing = ExperimentTiming()
-    model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
-    lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
-    training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
-    validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
-    neptune_monitor = NeptuneMonitor()
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
 
     return CallbackList(

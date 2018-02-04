@@ -18,6 +18,7 @@ class Callback:
         self.model = None
         self.optimizer = None
         self.loss_function = None
+        self.output_names = None
         self.validation_datagen = None
         self.lr_scheduler = None
 
@@ -25,6 +26,7 @@ class Callback:
         self.model = transformer.model
         self.optimizer = transformer.optimizer
         self.loss_function = transformer.loss_function
+        self.output_names = transformer.output_names
         self.validation_datagen = validation_datagen
 
     def on_train_begin(self, *args, **kwargs):
@@ -349,12 +351,6 @@ class ExperimentTiming(Callback):
 
 
 class CallbackReduceLROnPlateau(Callback):  # thank you keras
-    def __init__(self):
-        super().__init__()
-        pass
-
-
-class CallbackEarlyStopping(Callback):  # thank you keras
     def __init__(self):
         super().__init__()
         pass

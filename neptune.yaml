@@ -19,6 +19,7 @@ exclude:
   - .git
   - .idea
   - .ipynb_checkpoints
+  - devbook.ipynb
 
 parameters:
 # Cloud Environment
@@ -51,7 +52,7 @@ parameters:
   repeat_blocks: 3
 
   # Training schedule
-  epochs_nr: 2
+  epochs_nr: 1000
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.0005

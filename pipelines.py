@@ -233,8 +233,8 @@ def unet_multitask_train(config):
 
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
-                   input_steps=[contour_thresholding],
-                   adapter={'images': ([('contour_thresholding', 'binarized_images')]),
+                   input_steps=[mask_thresholding],
+                   adapter={'images': ([('mask_thresholding', 'binarized_images')]),
                             },
                    cache_dirpath=config.env.cache_dirpath)
 

@@ -40,39 +40,6 @@ SOLUTION_CONFIG = AttrDict({
                                                },
                                  },
                },
-    'sequential_convnet': {
-        'architecture_config': {'model_params': {},
-                                'optimizer_params': {'lr': params.lr,
-                                                     # 'momentum': params.momentum,
-                                                     # 'nesterov': True
-                                                     },
-                                'regularizer_params': {'regularize': True,
-                                                       'weight_decay_conv2d': params.l2_reg_conv,
-                                                       'weight_decay_linear': params.l2_reg_dense
-                                                       },
-                                'weights_init': {'function': 'normal',
-                                                 'params': {'mean': 0,
-                                                            'std_conv2d': 0.01,
-                                                            'std_linear': 0.001
-                                                            },
-                                                 },
-                                },
-        'training_config': {'epochs': params.epochs_nr,
-                            'shuffle': True,
-                            'batch_size': params.batch_size_train,
-                            },
-        'callbacks_config': {
-            'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
-                'epoch_every': 1},
-            'lr_scheduler': {'gamma': 0.9955,
-                             'epoch_every': 1},
-            'training_monitor': {'batch_every': 1,
-                                 'epoch_every': 1},
-            'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {},
-        },
-    },
     'unet': {
 
         'architecture_config': {'model_params': {'n_filters': params.n_filters,

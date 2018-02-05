@@ -122,7 +122,8 @@ class Model(BaseTransformer):
                 outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
             else:
                 for name, output in zip(self.output_names, outputs_batch):
-                    outputs.setdefault(name, []).append(output.data.cpu().numpy())
+                    output_ = output.data.cpu().numpy()
+                    outputs.setdefault(name, []).append(output_)
             if batch_id == steps:
                 break
         outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}

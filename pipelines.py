@@ -189,12 +189,12 @@ def unet_multitask_train(config):
                        cache_dirpath=config.env.cache_dirpath)
 
     mask_thresholding = Step(name='mask_thresholding',
-                        transformer=Thresholder(**config.thresholder),
-                        input_steps=[mask_resize],
-                        adapter={'images': ([('mask_resize', 'resized_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        cache_output=True)
+                             transformer=Thresholder(**config.thresholder),
+                             input_steps=[mask_resize],
+                             adapter={'images': ([('mask_resize', 'resized_images')]),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath,
+                             cache_output=True)
 
     contour_resize = Step(name='contour_resize',
                           transformer=Resizer(),
@@ -206,12 +206,12 @@ def unet_multitask_train(config):
                           cache_dirpath=config.env.cache_dirpath)
 
     contour_thresholding = Step(name='contour_thresholding',
-                        transformer=Thresholder(**config.thresholder),
-                        input_steps=[contour_resize],
-                        adapter={'images': ([('contour_resize', 'resized_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        cache_output=True)
+                                transformer=Thresholder(**config.thresholder),
+                                input_steps=[contour_resize],
+                                adapter={'images': ([('contour_resize', 'resized_images')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath,
+                                cache_output=True)
 
     center_resize = Step(name='center_resize',
                          transformer=Resizer(),
@@ -223,13 +223,22 @@ def unet_multitask_train(config):
                          cache_dirpath=config.env.cache_dirpath)
 
     center_thresholding = Step(name='center_thresholding',
-                        transformer=Thresholder(**config.thresholder),
-                        input_steps=[center_resize],
-                        adapter={'images': ([('center_resize', 'resized_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        cache_output=True)
+                               transformer=Thresholder(**config.thresholder),
+                               input_steps=[center_resize],
+                               adapter={'images': ([('center_resize', 'resized_images')]),
+                                        },
+                               cache_dirpath=config.env.cache_dirpath,
+                               cache_output=True)
 
+    watershed = Step(name='watershed',
+                     overwrite_transformer=True,
+                     transformer=Whatershed(),
+                     input_steps=[center_thresholding, mask_thresholding],
+                     adapter={'images': ([('mask_thresholding', 'binarized_images')]),
+                              'centers': ([('center_thresholding', 'binarized_images')])
+                              },
+                     cache_dirpath=config.env.cache_dirpath,
+                     cache_output=True)
 
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
@@ -240,8 +249,8 @@ def unet_multitask_train(config):
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[labeler],
-                  adapter={'y_pred': ([('labeler', 'labeled_images')]),
+                  input_steps=[watershed],
+                  adapter={'y_pred': ([('watershed', 'detached_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -290,12 +299,12 @@ def unet_multitask_inference(config):
                        cache_dirpath=config.env.cache_dirpath)
 
     mask_thresholding = Step(name='mask_thresholding',
-                        transformer=Thresholder(**config.thresholder),
-                        input_steps=[mask_resize],
-                        adapter={'images': ([('mask_resize', 'resized_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        )
+                             transformer=Thresholder(**config.thresholder),
+                             input_steps=[mask_resize],
+                             adapter={'images': ([('mask_resize', 'resized_images')]),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath,
+                             )
 
     contour_resize = Step(name='contour_resize',
                           transformer=Resizer(),
@@ -307,12 +316,12 @@ def unet_multitask_inference(config):
                           cache_dirpath=config.env.cache_dirpath)
 
     contour_thresholding = Step(name='contour_thresholding',
-                        transformer=Thresholder(**config.thresholder),
-                        input_steps=[contour_resize],
-                        adapter={'images': ([('contour_resize', 'resized_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        )
+                                transformer=Thresholder(**config.thresholder),
+                                input_steps=[contour_resize],
+                                adapter={'images': ([('contour_resize', 'resized_images')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath,
+                                )
 
     center_resize = Step(name='center_resize',
                          transformer=Resizer(),
@@ -324,13 +333,20 @@ def unet_multitask_inference(config):
                          cache_dirpath=config.env.cache_dirpath)
 
     center_thresholding = Step(name='center_thresholding',
-                        transformer=Thresholder(**config.thresholder),
-                        input_steps=[center_resize],
-                        adapter={'images': ([('center_resize', 'resized_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        )
+                               transformer=Thresholder(**config.thresholder),
+                               input_steps=[center_resize],
+                               adapter={'images': ([('center_resize', 'resized_images')]),
+                                        },
+                               cache_dirpath=config.env.cache_dirpath,
+                               )
 
+    watershed = Step(name='watershed',
+                     transformer=Whatershed(),
+                     input_steps=[center_thresholding, mask_thresholding],
+                     adapter={'images': ([('mask_thresholding', 'binarized_images')]),
+                              'centers': ([('center_thresholding', 'binarized_images')])
+                              },
+                     cache_dirpath=config.env.cache_dirpath)
 
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
@@ -341,8 +357,8 @@ def unet_multitask_inference(config):
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[labeler],
-                  adapter={'y_pred': ([('labeler', 'labeled_images')]),
+                  input_steps=[watershed],
+                  adapter={'y_pred': ([('watershed', 'detached_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
 

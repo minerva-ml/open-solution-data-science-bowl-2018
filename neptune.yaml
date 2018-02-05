@@ -35,7 +35,7 @@ parameters:
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed_dir
   centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed_dir
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_tripled_dev
-  overwrite: 1
+  overwrite: 0
   num_workers: 1
 
   # General Params
@@ -58,7 +58,7 @@ parameters:
   lr: 0.0005
   momentum: 0.9
   gamma: 0.99
-  patience: 50
+  patience: 10
 
   # Regularization
   use_batch_norm: 1

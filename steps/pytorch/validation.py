@@ -65,10 +65,12 @@ def score_model(model, loss_function, datagen):
             for (name, loss_function_one), target in zip(loss_function, targets_var):
                 loss_sum = loss_function_one(outputs, target)
         else:
+            batch_losses = []
             for (name, loss_function_one), output, target in zip(loss_function, outputs, targets_var):
                 loss = loss_function_one(output, target)
+                batch_losses.append(loss)
                 partial_batch_losses.setdefault(name, []).append(loss)
-            loss_sum = sum([l[0] for l in partial_batch_losses.values()])
+            loss_sum = sum(batch_losses)
         partial_batch_losses.setdefault('sum', []).append(loss_sum)
         if batch_id == steps:
             break

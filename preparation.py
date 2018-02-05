@@ -61,12 +61,12 @@ def overlay_centers(images_dir, subdir_name, target_dir):
 def get_contour(img):
     img_contour = np.zeros_like(img).astype(np.uint8)
     _, contours, hierarchy = cv2.findContours(img.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    cv2.drawContours(img_contour, contours, -1, (255, 255, 255), 2)
+    cv2.drawContours(img_contour, contours, -1, (255, 255, 255), 4)
     return img_contour
 
 
 def get_center(img):
     img_center = np.zeros_like(img).astype(np.uint8)
     y, x = ndi.measurements.center_of_mass(img)
-    cv2.circle(img_center, (int(x), int(y)), 3, (255, 255, 255), -1)
+    cv2.circle(img_center, (int(x), int(y)), 4, (255, 255, 255), -1)
     return img_center

@@ -35,7 +35,7 @@ parameters:
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed_dir
   centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed_dir
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_tripled_dev
-  overwrite: 1
+  overwrite: 0
   num_workers: 1
 
   # General Params
@@ -52,17 +52,17 @@ parameters:
   repeat_blocks: 3
 
   # Training schedule
-  epochs_nr: 2
+  epochs_nr: 1000
   batch_size_train: 32
   batch_size_inference: 32
-  lr: 0.0005
+  lr: 0.001
   momentum: 0.9
   gamma: 0.99
-  patience: 10
+  patience: 50
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_conv: 0.00001
+  l2_reg_conv: 0.000001
   l2_reg_dense: 0.0
-  dropout_conv: 0.1
+  dropout_conv: 0.05
   dropout_dense: 0.0

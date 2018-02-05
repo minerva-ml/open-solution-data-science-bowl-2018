@@ -114,15 +114,13 @@ class Model(BaseTransformer):
                 X = Variable(X)
 
             outputs_batch = self.model(X)
-            if len(outputs_batch) == len(self.output_names):
+            if len(self.output_names) == 1:
+                outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
+            else:
                 for name, output in zip(self.output_names, outputs_batch):
                     outputs.setdefault(name, []).append(output.data.cpu().numpy())
-            else:
-                outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
-
             if batch_id == steps:
                 break
-
         outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 

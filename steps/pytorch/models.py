@@ -95,7 +95,7 @@ class Model(BaseTransformer):
             for (name, loss_function), output, target in zip(self.loss_function, outputs_batch, targets_var):
                 partial_batch_losses[name] = loss_function(output, target)
             batch_loss = sum(partial_batch_losses.values())
-        partial_batch_losses['loss_sum'] = batch_loss
+        partial_batch_losses['sum'] = batch_loss
         batch_loss.backward()
         self.optimizer.step()
 

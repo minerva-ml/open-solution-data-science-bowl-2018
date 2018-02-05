@@ -173,6 +173,10 @@ class UNetMultitask(UNet):
                                             batch_norm, dropout,
                                             in_channels)
 
+        self.mask_output = self._output_layer()
+        self.contour_output = self._output_layer()
+        self.center_output = self._output_layer()
+
     def forward(self, x):
         x = self.input_block(x)
 
@@ -193,9 +197,9 @@ class UNetMultitask(UNet):
 
         x = self.classification_block(x)
 
-        x_mask = self.output_layer(x)
-        x_contour = self.output_layer(x)
-        x_center = self.output_layer(x)
+        x_mask = self.mask_output(x)
+        x_contour = self.contour_output(x)
+        x_center = self.center_output(x)
 
         return x_mask, x_contour, x_center
 

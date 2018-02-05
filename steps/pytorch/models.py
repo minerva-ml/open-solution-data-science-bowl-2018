@@ -84,13 +84,14 @@ class Model(BaseTransformer):
         self.optimizer.zero_grad()
         outputs_batch = self.model(X)
         partial_batch_losses = {}
-        if len(outputs_batch) == len(self.output_names):
+
+        if len(self.output_names) == 1:
+            for (name, loss_function), target in zip(self.loss_function, targets_var):
+                batch_loss = loss_function(outputs_batch, target)
+        else:
             for (name, loss_function), output, target in zip(self.loss_function, outputs_batch, targets_var):
                 partial_batch_losses[name] = loss_function(output, target)
             batch_loss = sum(partial_batch_losses.values())
-        else:
-            for (name, loss_function), target in zip(self.loss_function, targets_var):
-                batch_loss = loss_function(outputs_batch, target)
         partial_batch_losses['loss_sum'] = batch_loss
         batch_loss.backward()
         self.optimizer.step()

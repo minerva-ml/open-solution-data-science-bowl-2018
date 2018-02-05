@@ -26,16 +26,18 @@ parameters:
 #  data_dir:            /public/dsb_2018_data/
 #  meta_dir:            /public/dsb_2018_data/
 #  masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
+#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+#  centers_overlayed_dir: /public/dsb_2018_data/centers_overlayed/
 #  experiment_dir:      /output/dsb/experiments/
 
 # Local Environment
   data_dir: /mnt/ml-team/dsb_2018/data
   meta_dir: /mnt/ml-team/dsb_2018/files
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed_dir
-  centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed_dir
+  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
+  centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_tripled_dev
-  overwrite: 0
+  overwrite: 1
   num_workers: 1
 
   # General Params
@@ -49,7 +51,7 @@ parameters:
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
-  repeat_blocks: 5
+  repeat_blocks: 4
 
   # Training schedule
   epochs_nr: 1000
@@ -58,13 +60,13 @@ parameters:
   lr: 0.0005
   momentum: 0.9
   gamma: 0.99
-  patience: 10
+  patience: 100
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_conv: 0.000001
+  l2_reg_conv: 0.0001
   l2_reg_dense: 0.0
-  dropout_conv: 0.05
+  dropout_conv: 0.15
   dropout_dense: 0.0
 
   # Postprocessing

@@ -66,3 +66,6 @@ parameters:
   l2_reg_dense: 0.0
   dropout_conv: 0.05
   dropout_dense: 0.0
+
+  # Postprocessing
+  min_nuclei_size: 20

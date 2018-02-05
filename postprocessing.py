@@ -1,12 +1,15 @@
-import matplotlib.pyplot as plt
+from itertools import product
+
 from tqdm import tqdm
 import numpy as np
 from scipy import ndimage as ndi
+from scipy.stats import itemfreq
 from sklearn.externals import joblib
 from skimage.transform import resize
 import skimage.morphology as morph
 
 from steps.base import BaseTransformer
+from utils import relabel
 
 
 class Resizer(BaseTransformer):
@@ -60,9 +63,39 @@ class Whatershed(BaseTransformer):
 
         dropped, _ = ndi.label(image - (labeled > 0))
         dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
-
         correct_labeled = dropped + labeled
-        return correct_labeled
+
+        return relabel(correct_labeled)
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
+class Dropper(BaseTransformer):
+    def __init__(self, min_size):
+        self.min_size = min_size
+
+    def transform(self, labels):
+        labeled_images = []
+        for i, image in enumerate(labels):
+            labeled_image = self.drop_small(image)
+            labeled_images.append(labeled_image)
+
+        return {'labels': labeled_images}
+
+    def drop_small(self, img):
+        freqs = itemfreq(img)
+        small_blob_id = freqs[freqs[:, 1] < self.min_size, 0]
+
+        h, w = img.shape
+        for i, j in product(range(h), range(w)):
+            if img[i, j] in small_blob_id:
+                img[i, j] = 0
+
+        return relabel(img)
 
     def load(self, filepath):
         return self

@@ -1,3 +1,4 @@
+from itertools import product
 import logging
 import os
 
@@ -170,3 +171,18 @@ def squeeze_inputs(inputs):
 
 def sigmoid(x):
     return 1. / (1 + np.exp(-x))
+
+
+def relabel(img):
+    h, w = img.shape
+
+    relabel_dict = {}
+
+    for i, k in enumerate(np.unique(img)):
+        if k == 0:
+            relabel_dict[k] = 0
+        else:
+            relabel_dict[k] = i
+    for i, j in product(range(h), range(w)):
+        img[i, j] = relabel_dict[img[i, j]]
+    return img

@@ -4,7 +4,7 @@ Implement trainable ensemble: XGBoost, random forest, Linear Regression
 
 from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit
-from postprocessing import Resizer, Thresholder, Whatershed, NucleiLabeler
+from postprocessing import Resizer, Thresholder, Whatershed, NucleiLabeler, Dropper
 from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader
 from models import PyTorchUNet, PyTorchUNetMultitask
 from utils import squeeze_inputs
@@ -240,6 +240,15 @@ def unet_multitask_train(config):
                      cache_dirpath=config.env.cache_dirpath,
                      cache_output=True)
 
+    drop_smaller = Step(name='drop_smaller',
+                        overwrite_transformer=True,
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed],
+                        adapter={'labels': ([('watershed', 'labels')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
+
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
                    input_steps=[mask_thresholding],
@@ -249,8 +258,8 @@ def unet_multitask_train(config):
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[watershed],
-                  adapter={'y_pred': ([('watershed', 'detached_images')]),
+                  input_steps=[drop_smaller],
+                  adapter={'y_pred': ([('drop_smaller', 'detached_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -348,6 +357,13 @@ def unet_multitask_inference(config):
                               },
                      cache_dirpath=config.env.cache_dirpath)
 
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed],
+                        adapter={'labels': ([('watershed', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
                    input_steps=[mask_thresholding],
@@ -357,8 +373,8 @@ def unet_multitask_inference(config):
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[watershed],
-                  adapter={'y_pred': ([('watershed', 'detached_images')]),
+                  input_steps=[drop_smaller],
+                  adapter={'y_pred': ([('drop_smaller', 'labels')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
 

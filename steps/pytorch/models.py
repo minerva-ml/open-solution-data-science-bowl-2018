@@ -24,8 +24,11 @@ class Model(BaseTransformer):
         self.model = None
         self.optimizer = None
         self.loss_function = None
-        self.output_names = None
         self.callbacks = None
+
+    @property
+    def output_names(self):
+        return [name for (name, func) in self.loss_function]
 
     def _initialize_model_weights(self):
         logger.info('initializing model weights...')

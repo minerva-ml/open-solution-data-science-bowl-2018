@@ -43,10 +43,6 @@ def multi_output_cross_entropy(outputs, targets):
 
 
 def score_model(model, loss_function, datagen):
-    """
-    Todo:
-    Refactor this ugglyness
-    """
     batch_gen, steps = datagen
     partial_batch_losses = {}
     for batch_id, data in enumerate(batch_gen):

@@ -8,10 +8,6 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from utils import get_logger
-
-logger = get_logger()
-
 
 def train_valid_split(meta, validation_size):
     meta_train = meta[meta['is_train'] == 1]

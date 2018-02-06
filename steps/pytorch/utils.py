@@ -1,28 +1,9 @@
 import logging
+import sys
 
 import cv2
 import numpy as np
 import torch
-
-
-def init_logger():
-    logger = logging.getLogger('steps')
-    logger.setLevel(logging.INFO)
-    message_format = logging.Formatter(fmt='%(asctime)s %(name)s >>> %(message)s',
-                                       datefmt='%Y-%m-%d %H-%M-%S')
-
-    # console handler for validation info
-    ch_va = logging.StreamHandler()
-    ch_va.setLevel(logging.INFO)
-
-    ch_va.setFormatter(fmt=message_format)
-
-    # add the handlers to the logger
-    logger.addHandler(ch_va)
-
-
-def get_logger():
-    return logging.getLogger('steps')
 
 
 def denormalize_img(img):

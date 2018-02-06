@@ -9,7 +9,8 @@ from torch.nn import init
 from tqdm import tqdm
 
 from steps.base import BaseTransformer
-from .utils import get_logger, save_model
+from steps.utils import get_logger
+from .utils import save_model
 
 logger = get_logger()
 

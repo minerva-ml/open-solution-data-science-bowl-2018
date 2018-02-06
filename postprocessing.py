@@ -74,6 +74,26 @@ class Whatershed(BaseTransformer):
         joblib.dump({}, filepath)
 
 
+class Cutter(BaseTransformer):
+    def transform(self, images, contours):
+        detached_images = []
+        for image, contour in zip(images, contours):
+            detached_image = self.detach_nuclei(image, contour)
+            detached_images.append(detached_image)
+        return {'detached_images': detached_images}
+
+    def detach_nuclei(self, image, contour):
+        image = np.where(contour + image == 2, 0, image)
+        labeled, nr_true = ndi.label(image)
+        return labeled
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
 class Dropper(BaseTransformer):
     def __init__(self, min_size):
         self.min_size = min_size

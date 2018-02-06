@@ -254,7 +254,7 @@ def prepro_multitask_inference(config):
                                 cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoader(**config.loader),
+                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_inference],
                       adapter={'X': ([('reader_inference', 'X')]),

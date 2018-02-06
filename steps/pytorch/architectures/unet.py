@@ -110,27 +110,25 @@ class UNet(nn.Module):
                                                            stride=1, padding=1),
                                                  nn.BatchNorm2d(num_features=self.n_filters),
                                                  nn.ReLU(),
+                                                 nn.Dropout(self.dropout),
 
                                                  nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
                                                            kernel_size=(self.conv_kernel, self.conv_kernel),
                                                            stride=1, padding=1),
                                                  nn.BatchNorm2d(num_features=self.n_filters),
                                                  nn.ReLU(),
-
-                                                 nn.Dropout(self.dropout),
                                                  )
         else:
             classification_block = nn.Sequential(nn.Conv2d(in_channels=in_block, out_channels=self.n_filters,
                                                            kernel_size=(self.conv_kernel, self.conv_kernel),
                                                            stride=1, padding=1),
                                                  nn.ReLU(),
+                                                 nn.Dropout(self.dropout),
 
                                                  nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
                                                            kernel_size=(self.conv_kernel, self.conv_kernel),
                                                            stride=1, padding=1),
                                                  nn.ReLU(),
-
-                                                 nn.Dropout(self.dropout),
                                                  )
         return classification_block
 

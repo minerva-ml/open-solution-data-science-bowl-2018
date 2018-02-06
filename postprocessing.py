@@ -94,6 +94,37 @@ class Cutter(BaseTransformer):
         joblib.dump({}, filepath)
 
 
+class Combiner(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, images, contours, centers):
+        detached_images = []
+        for image, contour, center in tqdm(zip(images, contours, centers)):
+            detached_image = self.detach_nuclei(image, contour, center)
+            detached_images.append(detached_image)
+        return {'detached_images': detached_images}
+
+    def detach_nuclei(self, image, contour, center):
+        mask = np.where(contour + image == 2, 0, image)
+
+        distance = ndi.distance_transform_edt(mask)
+        markers, nr_blobs = ndi.label(center)
+        labeled = morph.watershed(-distance, markers, mask=image)
+
+        dropped, _ = ndi.label(image - (labeled > 0))
+        dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
+        correct_labeled = dropped + labeled
+
+        return relabel(correct_labeled)
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
 class Dropper(BaseTransformer):
     def __init__(self, min_size):
         self.min_size = min_size

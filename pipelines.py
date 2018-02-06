@@ -228,7 +228,7 @@ def prepro_multitask_train(config):
                             cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
+                      transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
                       input_data=['input'],
                       input_steps=[xy_train, xy_inference],
                       adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
@@ -254,7 +254,7 @@ def prepro_multitask_inference(config):
                                 cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoader(**config.loader),
+                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_inference],
                       adapter={'X': ([('reader_inference', 'X')]),

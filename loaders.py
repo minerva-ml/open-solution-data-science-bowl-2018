@@ -53,6 +53,42 @@ class MetadataImageSegmentationDataset(Dataset):
             return Xi
 
 
+class MetadataImageSegmentationDatasetInMemory(Dataset):
+    def __init__(self, X, y, train_mode, image_transform, mask_transform, image_augment):
+        super().__init__()
+        self.X = X
+        if y is not None:
+            self.y = y
+        else:
+            self.y = None
+
+        self.train_mode = train_mode
+        self.image_transform = image_transform
+        self.mask_transform = mask_transform
+        self.image_augment = image_augment
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, index):
+        Xi = self.X[index]
+        if self.image_augment is not None:
+            Xi = self.image_augment(Xi)
+
+        if self.image_transform is not None:
+            Xi = self.image_transform(Xi)
+
+        if self.y is not None and self.train_mode:
+            Mi = self.y[0][index]
+            if self.image_augment is not None:
+                Mi = self.image_augment(Mi)
+            if self.mask_transform is not None:
+                Mi = self.mask_transform(Mi)
+            return Xi, Mi
+        else:
+            return Xi
+
+
 class MetadataImageSegmentationMultitaskDataset(Dataset):
     def __init__(self, X, y, train_mode, image_transform, mask_transform, image_augment):
         super().__init__()
@@ -92,6 +128,52 @@ class MetadataImageSegmentationMultitaskDataset(Dataset):
             Mi = self.load_image(mask_filepath)
             CTi = self.load_image(contour_filepath)
             CRi = self.load_image(center_filepath)
+
+            if self.image_augment is not None:
+                Mi = self.image_augment(Mi)
+                CTi = self.image_augment(CTi)
+                CRi = self.image_augment(CRi)
+
+            if self.mask_transform is not None:
+                Mi = self.mask_transform(Mi)
+                CTi = self.mask_transform(CTi)
+                CRi = self.mask_transform(CRi)
+
+            return Xi, Mi, CTi, CRi
+        else:
+            return Xi
+
+
+class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
+    def __init__(self, X, y, train_mode, image_transform, mask_transform, image_augment):
+        super().__init__()
+        self.X = X
+        if y is not None:
+            self.y = y
+        else:
+            self.y = None
+
+        self.train_mode = train_mode
+        self.image_transform = image_transform
+        self.mask_transform = mask_transform
+        self.image_augment = image_augment
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, index):
+        Xi = self.X[index]
+        print(Xi)
+        if self.image_augment is not None:
+            Xi = self.image_augment(Xi)
+
+        if self.image_transform is not None:
+            Xi = self.image_transform(Xi)
+
+        if self.y is not None and self.train_mode:
+            Mi = self.y[0][index]
+            CTi = self.y[1][index]
+            CRi = self.y[2][index]
 
             if self.image_augment is not None:
                 Mi = self.image_augment(Mi)
@@ -157,8 +239,11 @@ class MetadataImageSegmentationLoader(BaseTransformer):
                                    image_transform=self.image_transform)
 
         datagen = DataLoader(dataset, **loader_params)
-
-        steps = ceil(X.shape[0] / loader_params.batch_size)
+        if isinstance(X,list):
+            print(len(X))
+            steps = ceil(len(X) / loader_params.batch_size)
+        else:
+            steps = ceil(X.shape[0] / loader_params.batch_size)
         return datagen, steps
 
     def load(self, filepath):
@@ -175,6 +260,18 @@ class MetadataImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
         self.dataset = MetadataImageSegmentationMultitaskDataset
+
+
+class MetadataImageSegmentationLoaderInMemory(MetadataImageSegmentationLoader):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+        self.dataset = MetadataImageSegmentationDatasetInMemory
+
+
+class MetadataImageSegmentationMultitaskLoaderInMemory(MetadataImageSegmentationLoader):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+        self.dataset = MetadataImageSegmentationMultitaskDatasetInMemory
 
 
 def binarize(x):

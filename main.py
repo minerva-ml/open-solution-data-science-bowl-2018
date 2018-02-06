@@ -58,7 +58,7 @@ def _train_pipeline(pipeline_name, validation_size):
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
                       'train_mode': True,
-                      'target_sizes': meta_train_split[SIZE_COLUMNS].values
+                      'target_sizes': meta_train_split[SIZE_COLUMNS].values,
                       },
             }
 
@@ -66,6 +66,7 @@ def _train_pipeline(pipeline_name, validation_size):
     pipeline.clean_cache()
     pipeline.fit_transform(data)
     pipeline.clean_cache()
+
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)

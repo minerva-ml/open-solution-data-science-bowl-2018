@@ -39,6 +39,7 @@ parameters:
   experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/in_memory_loader
   overwrite: 1
   num_workers: 1
+  load_in_memory: 1
 
   # General Params
   image_h: 128

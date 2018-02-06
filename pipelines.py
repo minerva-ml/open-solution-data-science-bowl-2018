@@ -25,7 +25,7 @@ def unet(config, train_mode):
         prepro = prepro_inference(config)
 
     unet = Step(name='unet',
-                transformer=PyTorchUNetMultitask(**config.unet),
+                transformer=PyTorchUNet(**config.unet),
                 input_steps=[prepro],
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output)
@@ -99,7 +99,7 @@ def prepro_train(config):
                                 cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoader(**config.loader),
+                      transformer=MetadataImageSegmentationLoaderInMemory(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_train, reader_inference],
                       adapter={'X': ([('reader_train', 'X')]),

@@ -68,10 +68,10 @@ class MetadataImageSegmentationDatasetInMemory(Dataset):
         self.image_augment = image_augment
 
     def __len__(self):
-        return self.X.shape[0]
+        return len(self.X[0])
 
     def __getitem__(self, index):
-        Xi = self.X[index]
+        Xi = self.X[0][index]
         if self.image_augment is not None:
             Xi = self.image_augment(Xi)
 
@@ -159,11 +159,10 @@ class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
         self.image_augment = image_augment
 
     def __len__(self):
-        return self.X.shape[0]
+        return len(self.X[0])
 
     def __getitem__(self, index):
-        Xi = self.X[index]
-        print(Xi)
+        Xi = self.X[0][index]
         if self.image_augment is not None:
             Xi = self.image_augment(Xi)
 
@@ -240,8 +239,7 @@ class MetadataImageSegmentationLoader(BaseTransformer):
 
         datagen = DataLoader(dataset, **loader_params)
         if isinstance(X,list):
-            print(len(X))
-            steps = ceil(len(X) / loader_params.batch_size)
+            steps = ceil(len(X[0]) / loader_params.batch_size)
         else:
             steps = ceil(X.shape[0] / loader_params.batch_size)
         return datagen, steps

@@ -51,7 +51,7 @@ class Whatershed(BaseTransformer):
 
     def transform(self, images, centers):
         detached_images = []
-        for image, center in zip(images, centers):
+        for image, center in tqdm(zip(images, centers)):
             detached_image = self.detach_nuclei(image, center)
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
@@ -77,7 +77,7 @@ class Whatershed(BaseTransformer):
 class Cutter(BaseTransformer):
     def transform(self, images, contours):
         detached_images = []
-        for image, contour in zip(images, contours):
+        for image, contour in tqdm(zip(images, contours)):
             detached_image = self.detach_nuclei(image, contour)
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
@@ -100,7 +100,7 @@ class Dropper(BaseTransformer):
 
     def transform(self, labels):
         labeled_images = []
-        for i, image in enumerate(labels):
+        for image in tqdm(labels):
             labeled_image = self.drop_small(image)
             labeled_images.append(labeled_image)
 

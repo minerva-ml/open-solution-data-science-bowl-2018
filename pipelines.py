@@ -56,7 +56,7 @@ def unet_multitask(config, train_mode):
     else:
         save_output = False
         load_saved_output = False
-        prepro = prepro_multitask_train(config)
+        prepro = prepro_multitask_inference(config)
 
     unet_multitask = Step(name='unet_multitask',
                           transformer=PyTorchUNetMultitask(**config.unet),

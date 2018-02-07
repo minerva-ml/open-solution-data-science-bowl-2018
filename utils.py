@@ -185,3 +185,18 @@ def relabel(img):
     for i, j in product(range(h), range(w)):
         img[i, j] = relabel_dict[img[i, j]]
     return img
+
+
+def relabel_random_colors(img, max_colours=1000):
+    keys = list(range(1, max_colours, 1))
+    np.random.shuffle(keys)
+    values = list(range(1, max_colours, 1))
+    np.random.shuffle(values)
+    funky_dict = {k: v for k, v in zip(keys, values)}
+    funky_dict[0] = 0
+
+    h, w = img.shape
+
+    for i, j in product(range(h), range(w)):
+        img[i, j] = funky_dict[img[i, j]]
+    return img

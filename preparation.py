@@ -14,6 +14,7 @@ def train_valid_split(meta, validation_size):
     meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
     return meta_train_split, meta_valid_split
 
+
 def overlay_masks(images_dir, subdir_name, target_dir):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
@@ -34,7 +35,7 @@ def overlay_contours(images_dir, subdir_name, target_dir):
             image = plt.imread(image_filepath)
             masks.append(get_contour(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
-        # print(overlayed_masks.min(), overlayed_masks.max())
+
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         plt.imsave(target_filepath, overlayed_masks)

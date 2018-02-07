@@ -36,7 +36,7 @@ parameters:
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
   centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_multitask
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev
   overwrite: 0
   num_workers: 1
   load_in_memory: 1

@@ -240,7 +240,7 @@ class MetadataImageSegmentationLoader(BaseTransformer):
             flow, steps = self.get_datagen(X, None, False, self.loader_params.inference)
 
         if X_valid is not None and y_valid is not None:
-            valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, True, self.loader_params.inference)
+            valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, False, self.loader_params.inference)
         else:
             valid_flow = None
             valid_steps = None

@@ -41,11 +41,11 @@ class MetadataImageSegmentationDataset(Dataset):
         img_filepath = self.X[index]
         Xi = self.load_image(img_filepath)
 
-        if self.y is not None and self.train_mode:
+        if self.y is not None:
             mask_filepath = self.y[index]
             Mi = self.load_image(mask_filepath)
 
-            if self.image_augment_with_target is not None:
+            if self.train_mode and self.image_augment_with_target is not None:
                 Xi, Mi = from_pil(Xi, Mi)
                 Xi, Mi = self.image_augment_with_target(Xi, Mi)
                 Xi = self.image_augment(Xi)
@@ -86,10 +86,10 @@ class MetadataImageSegmentationDatasetInMemory(Dataset):
     def __getitem__(self, index):
         Xi = self.X[0][index]
 
-        if self.y is not None and self.train_mode:
+        if self.y is not None:
             Mi = self.y[0][index]
 
-            if self.image_augment_with_target is not None:
+            if self.train_mode and self.image_augment_with_target is not None:
                 Xi, Mi = from_pil(Xi, Mi)
                 Xi, Mi = self.image_augment_with_target(Xi, Mi)
                 Xi = self.image_augment(Xi)
@@ -135,7 +135,7 @@ class MetadataImageSegmentationMultitaskDataset(Dataset):
         img_filepath = self.X[index]
 
         Xi = self.load_image(img_filepath)
-        if self.y is not None and self.train_mode:
+        if self.y is not None:
             mask_filepath = self.y[index, 0]
             contour_filepath = self.y[index, 1]
             center_filepath = self.y[index, 2]
@@ -144,7 +144,7 @@ class MetadataImageSegmentationMultitaskDataset(Dataset):
             CTi = self.load_image(contour_filepath)
             CRi = self.load_image(center_filepath)
 
-            if self.image_augment_with_target is not None:
+            if self.train_mode and self.image_augment_with_target is not None:
                 Xi, Mi, CTi, CRi = from_pil(Xi, Mi, CTi, CRi)
                 Xi, Mi, CTi, CRi = self.image_augment_with_target(Xi, Mi, CTi, CRi)
                 Xi = self.image_augment(Xi)
@@ -187,12 +187,12 @@ class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
     def __getitem__(self, index):
         Xi = self.X[0][index]
 
-        if self.y is not None and self.train_mode:
+        if self.y is not None:
             Mi = self.y[0][index]
             CTi = self.y[1][index]
             CRi = self.y[2][index]
 
-            if self.image_augment_with_target is not None:
+            if self.train_mode and self.image_augment_with_target is not None:
                 Xi, Mi, CTi, CRi = from_pil(Xi, Mi, CTi, CRi)
                 Xi, Mi, CTi, CRi = self.image_augment_with_target(Xi, Mi, CTi, CRi)
                 Xi = self.image_augment(Xi)
@@ -205,6 +205,7 @@ class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
 
             if self.image_transform is not None:
                 Xi = self.image_transform(Xi)
+
             return Xi, Mi, CTi, CRi
         else:
             if self.image_transform is not None:

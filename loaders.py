@@ -8,6 +8,13 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 
 from steps.base import BaseTransformer
+from steps.pytorch.augmentation import ImgAug
+from augmentation import basic_seq
+from utils import from_pil, to_pil
+
+"""
+adjust code to https://github.com/creafz/kaggle-carvana
+"""
 
 
 class MetadataImageSegmentationDataset(Dataset):
@@ -163,11 +170,6 @@ class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
 
     def __getitem__(self, index):
         Xi = self.X[0][index]
-        if self.image_augment is not None:
-            Xi = self.image_augment(Xi)
-
-        if self.image_transform is not None:
-            Xi = self.image_transform(Xi)
 
         if self.y is not None and self.train_mode:
             Mi = self.y[0][index]
@@ -175,17 +177,24 @@ class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
             CRi = self.y[2][index]
 
             if self.image_augment is not None:
-                Mi = self.image_augment(Mi)
-                CTi = self.image_augment(CTi)
-                CRi = self.image_augment(CRi)
+                if self.y is not None and self.train_mode:
+                    Xi, Mi, CTi, CRi = from_pil(Xi, Mi, CTi, CRi)
+                    Xi, Mi, CTi, CRi = self.image_augment(Xi, Mi, CTi, CRi)
+                    Xi, Mi, CTi, CRi = to_pil(Xi, Mi, CTi, CRi)
+                else:
+                    Xi = self.image_augment(Xi)
+
+            if self.image_transform is not None:
+                Xi = self.image_transform(Xi)
 
             if self.mask_transform is not None:
                 Mi = self.mask_transform(Mi)
                 CTi = self.mask_transform(CTi)
                 CRi = self.mask_transform(CRi)
-
             return Xi, Mi, CTi, CRi
         else:
+            if self.image_transform is not None:
+                Xi = self.image_transform(Xi)
             return Xi
 
 
@@ -207,7 +216,7 @@ class MetadataImageSegmentationLoader(BaseTransformer):
                                                   transforms.Lambda(binarize),
                                                   transforms.Lambda(to_tensor),
                                                   ])
-        self.image_augment = None
+        self.image_augment = ImgAug(basic_seq)
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode and y is not None:
@@ -238,10 +247,7 @@ class MetadataImageSegmentationLoader(BaseTransformer):
                                    image_transform=self.image_transform)
 
         datagen = DataLoader(dataset, **loader_params)
-        if isinstance(X,list):
-            steps = ceil(len(X[0]) / loader_params.batch_size)
-        else:
-            steps = ceil(X.shape[0] / loader_params.batch_size)
+        steps = len(datagen)
         return datagen, steps
 
     def load(self, filepath):

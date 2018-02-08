@@ -190,7 +190,8 @@ def prepro_multitask_train(config):
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')]),
                                      },
-                            cache_dirpath=config.env.cache_dirpath)
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=True, load_saved_output=True)
 
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader_multitask),
@@ -198,7 +199,8 @@ def prepro_multitask_train(config):
                                 adapter={'meta': ([('input', 'meta_valid')]),
                                          'train_mode': ([('input', 'train_mode')]),
                                          },
-                                cache_dirpath=config.env.cache_dirpath)
+                                cache_dirpath=config.env.cache_dirpath,
+                                save_output=True, load_saved_output=True)
 
         loader = Step(name='loader',
                       transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),

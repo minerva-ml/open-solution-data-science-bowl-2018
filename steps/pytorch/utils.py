@@ -102,8 +102,6 @@ def sigmoid(x):
     return 1. / (1 + np.exp(-x))
 
 
-
-
 class ImgAug:
     def __init__(self, augmenters):
         if not isinstance(augmenters, list):
@@ -113,6 +111,7 @@ class ImgAug:
 
     def _pre_call_hook(self):
         seq = iaa.Sequential(self.augmenters)
+        seq.reseed()
         self.seq_det = seq.to_deterministic()
 
     def transform(self, *images):

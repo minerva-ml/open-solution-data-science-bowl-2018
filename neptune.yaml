@@ -36,7 +36,7 @@ parameters:
   masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
   centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/multitask_augmentations
   overwrite: 1
   num_workers: 1
   load_in_memory: 1
@@ -58,7 +58,7 @@ parameters:
   epochs_nr: 1000
   batch_size_train: 12
   batch_size_inference: 12
-  lr: 0.0005
+  lr: 0.0001
   momentum: 0.9
   gamma: 0.99
   patience: 20

@@ -67,6 +67,7 @@ def _train_pipeline(pipeline_name, validation_size):
     pipeline.fit_transform(data)
     pipeline.clean_cache()
 
+
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)

@@ -12,6 +12,7 @@ Y_COLUMNS = ['file_path_mask']
 Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
+                 'load_in_memory': params.load_in_memory,
                  'num_workers': 6,
                  'num_classes': 2,
                  'img_H-W': (256, 256),
@@ -21,12 +22,21 @@ GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},
+    'execution': GLOBAL_CONFIG,
     'xy_splitter': {'x_columns': X_COLUMNS,
                     'y_columns': Y_COLUMNS
                     },
     'xy_splitter_multitask': {'x_columns': X_COLUMNS,
                               'y_columns': Y_COLUMNS_MULTITASK
                               },
+    'reader_single': {'x_columns': X_COLUMNS,
+                      'y_columns': Y_COLUMNS,
+                      'target_shape': GLOBAL_CONFIG['img_H-W']
+                      },
+    'reader_multitask': {'x_columns': X_COLUMNS,
+                         'y_columns': Y_COLUMNS_MULTITASK,
+                         'target_shape': GLOBAL_CONFIG['img_H-W']
+                         },
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,
                                   },

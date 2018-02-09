@@ -1,10 +1,12 @@
 from functools import partial
 
-from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader
-from models import PyTorchUNetMultitask
-from postprocessing import Resizer, Thresholder, Whatershed, NucleiLabeler, Dropper
 from steps.base import Step, Dummy
-from steps.preprocessing import XYSplit
+from steps.preprocessing import XYSplit, ImageReader
+from postprocessing import Resizer, Thresholder, Watershed, NucleiLabeler, Dropper, \
+    WatershedCenter, WatershedContour, WatershedCombined
+from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
+    MetadataImageSegmentationMultitaskLoaderInMemory, MetadataImageSegmentationLoaderInMemory
+from models import PyTorchUNet, PyTorchUNetMultitask
 from utils import squeeze_inputs
 
 
@@ -19,7 +21,7 @@ def unet(config, train_mode):
         preprocessing = preprocessing_inference(config)
 
     unet = Step(name='unet',
-                transformer=PyTorchUNetMultitask(**config.unet),
+                transformer=PyTorchUNet(**config.unet),
                 input_steps=[preprocessing],
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output)
@@ -51,7 +53,8 @@ def unet_multitask(config, train_mode):
                           transformer=PyTorchUNetMultitask(**config.unet),
                           input_steps=[preprocessing],
                           cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output, load_saved_output=load_saved_output)
+                          save_output=save_output,
+                          load_saved_output=load_saved_output)
 
     mask_postprocessed = mask_postprocessing(unet_multitask, config, save_output=save_output)
     #contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
@@ -68,39 +71,37 @@ def unet_multitask(config, train_mode):
     return output
 
 
-def preprocessing_train(config):
-    xy_train = Step(name='xy_train',
-                    transformer=XYSplit(**config.xy_splitter),
-                    input_data=['input'],
-                    adapter={'meta': ([('input', 'meta')]),
-                             'train_mode': ([('input', 'train_mode')])
-                             },
-                    cache_dirpath=config.env.cache_dirpath)
+def prepro_train(config):
+    if config.execution.load_in_memory:
+        reader_train = Step(name='reader_train',
+                            transformer=ImageReader(**config.reader_single),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')]),
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
 
-    xy_inference = Step(name='xy_inference',
-                        transformer=XYSplit(**config.xy_splitter),
-                        input_data=['input'],
-                        adapter={'meta': ([('input', 'meta_valid')]),
-                                 'train_mode': ([('input', 'train_mode')])
-                                 },
-                        cache_dirpath=config.env.cache_dirpath)
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**config.reader_single),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta_valid')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
 
-    loader = Step(name='loader',
-                  transformer=MetadataImageSegmentationLoader(**config.loader),
-                  input_data=['input'],
-                  input_steps=[xy_train, xy_inference],
-                  adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
-                           'y': ([('xy_train', 'y')], squeeze_inputs),
-                           'train_mode': ([('input', 'train_mode')]),
-                           'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
-                           'y_valid': ([('xy_inference', 'y')], squeeze_inputs),
-                           },
-                  cache_dirpath=config.env.cache_dirpath)
-    return loader
-
-
-def preprocessing_inference(config):
-    xy_inference = Step(name='xy_inference',
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationLoaderInMemory(**config.loader),
+                      input_data=['input'],
+                      input_steps=[reader_train, reader_inference],
+                      adapter={'X': ([('reader_train', 'X')]),
+                               'y': ([('reader_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('reader_inference', 'X')]),
+                               'y_valid': ([('reader_inference', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_train = Step(name='xy_train',
                         transformer=XYSplit(**config.xy_splitter),
                         input_data=['input'],
                         adapter={'meta': ([('input', 'meta')]),
@@ -108,68 +109,168 @@ def preprocessing_inference(config):
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
-    loader = Step(name='loader',
-                  transformer=MetadataImageSegmentationLoader(**config.loader),
-                  input_data=['input'],
-                  input_steps=[xy_inference, xy_inference],
-                  adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
-                           'y': ([('xy_inference', 'y')], squeeze_inputs),
-                           'train_mode': ([('input', 'train_mode')]),
-                           },
-                  cache_dirpath=config.env.cache_dirpath)
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**config.xy_splitter),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta_valid')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_train, xy_inference],
+                      adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
+                               'y': ([('xy_train', 'y')], squeeze_inputs),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y_valid': ([('xy_inference', 'y')], squeeze_inputs),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
     return loader
 
 
-def preprocessing_multitask_train(config):
-    xy_train = Step(name='xy_train',
-                    transformer=XYSplit(**config.xy_splitter_multitask),
-                    input_data=['input'],
-                    adapter={'meta': ([('input', 'meta')]),
-                             'train_mode': ([('input', 'train_mode')])
-                             },
-                    cache_dirpath=config.env.cache_dirpath)
+def prepro_inference(config):
+    if config.execution.load_in_memory:
 
-    xy_inference = Step(name='xy_inference',
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**config.reader_single),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationLoaderInMemory(**config.loader),
+                      input_data=['input'],
+                      input_steps=[reader_inference],
+                      adapter={'X': ([('reader_inference', 'X')]),
+                               'y': ([('reader_inference', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**config.xy_splitter),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_inference, xy_inference],
+                      adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y': ([('xy_inference', 'y')], squeeze_inputs),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    return loader
+
+
+def prepro_multitask_train(config):
+    if config.execution.load_in_memory:
+        reader_train = Step(name='reader_train',
+                            transformer=ImageReader(**config.reader_multitask),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')]),
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**config.reader_multitask),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta_valid')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
+                      input_data=['input'],
+                      input_steps=[reader_train, reader_inference],
+                      adapter={'X': ([('reader_train', 'X')]),
+                               'y': ([('reader_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('reader_inference', 'X')]),
+                               'y_valid': ([('reader_inference', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_train = Step(name='xy_train',
                         transformer=XYSplit(**config.xy_splitter_multitask),
                         input_data=['input'],
-                        adapter={'meta': ([('input', 'meta_valid')]),
-                                 'train_mode': ([('input', 'train_mode')])
-                                 },
-                        cache_dirpath=config.env.cache_dirpath)
-
-    loader = Step(name='loader',
-                  transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
-                  input_data=['input'],
-                  input_steps=[xy_train, xy_inference],
-                  adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
-                           'y': ([('xy_train', 'y')]),
-                           'train_mode': ([('input', 'train_mode')]),
-                           'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
-                           'y_valid': ([('xy_inference', 'y')]),
-                           },
-                  cache_dirpath=config.env.cache_dirpath)
-
-    return loader
-
-
-def preprocessing_multitask_inference(config):
-    xy_inference = Step(name='xy_inference',
-                        transformer=XYSplit(**config.xy_splitter),
-                        input_data=['input'],
                         adapter={'meta': ([('input', 'meta')]),
                                  'train_mode': ([('input', 'train_mode')])
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
-    loader = Step(name='loader',
-                  transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
-                  input_data=['input'],
-                  input_steps=[xy_inference, xy_inference],
-                  adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
-                           'y': ([('xy_inference', 'y')], squeeze_inputs),
-                           'train_mode': ([('input', 'train_mode')]),
-                           },
-                  cache_dirpath=config.env.cache_dirpath)
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**config.xy_splitter_multitask),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta_valid')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_train, xy_inference],
+                      adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
+                               'y': ([('xy_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y_valid': ([('xy_inference', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+
+    return loader
+
+
+def prepro_multitask_inference(config):
+    if config.execution.load_in_memory:
+
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**config.reader_multitask),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
+                      input_data=['input'],
+                      input_steps=[reader_inference],
+                      adapter={'X': ([('reader_inference', 'X')]),
+                               'y': ([('reader_inference', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**config.xy_splitter),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_inference, xy_inference],
+                      adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y': ([('xy_inference', 'y')], squeeze_inputs),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
     return loader
 
 
@@ -239,7 +340,7 @@ def center_postprocessing(model, config, save_output=True):
 
 def combiner_watershed(mask, center, config, save_output=True):
     watershed = Step(name='watershed',
-                     transformer=Whatershed(),
+                     transformer=Watershed(),
                      input_steps=[mask, center],
                      adapter={'images': ([(mask.name, 'binarized_images')]),
                               'centers': ([(center.name, 'binarized_images')])
@@ -251,6 +352,67 @@ def combiner_watershed(mask, center, config, save_output=True):
                         transformer=Dropper(**config.dropper),
                         input_steps=[watershed],
                         adapter={'labels': ([('watershed', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+    return drop_smaller
+
+
+def watershed_centers(mask, center, config, save_output=True):
+    watershed_center = Step(name='watershed_center',
+                            transformer=WatershedCenter(),
+                            input_steps=[mask, center],
+                            adapter={'images': ([(mask.name, 'binarized_images')]),
+                                     'centers': ([(center.name, 'binarized_images')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=save_output)
+
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_center],
+                        adapter={'labels': ([('watershed_center', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+    return drop_smaller
+
+
+def watershed_contours(mask, contour, config, save_output=True):
+    watershed_contour = Step(name='watershed_contour',
+                             transformer=WatershedContour(),
+                             input_steps=[mask, contour],
+                             adapter={'images': ([(mask.name, 'binarized_images')]),
+                                      'contours': ([(contour.name, 'binarized_images')]),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath,
+                             save_output=save_output)
+
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_contour],
+                        adapter={'labels': ([('watershed_contour', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+    return drop_smaller
+
+
+def watershed_combined(mask, contour, center, config, save_output=True):
+    watershed_combined = Step(name='watershed_combined',
+                              transformer=WatershedCombined(),
+                              input_steps=[mask, contour, center],
+                              adapter={'images': ([(mask.name, 'binarized_images')]),
+                                       'contours': ([(contour.name, 'binarized_images')]),
+                                       'centers': ([(center.name, 'binarized_images')]),
+                                       },
+                              cache_dirpath=config.env.cache_dirpath,
+                              save_output=save_output)
+
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_combined],
+                        adapter={'labels': ([('watershed_combined', 'detached_images')]),
                                  },
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output)

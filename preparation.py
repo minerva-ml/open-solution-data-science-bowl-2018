@@ -35,7 +35,7 @@ def overlay_contours(images_dir, subdir_name, target_dir):
             image = plt.imread(image_filepath)
             masks.append(get_contour(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
-        # print(overlayed_masks.min(), overlayed_masks.max())
+
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         plt.imsave(target_filepath, overlayed_masks)

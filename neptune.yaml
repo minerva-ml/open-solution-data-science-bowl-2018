@@ -68,7 +68,7 @@ parameters:
   use_batch_norm: 1
   l2_reg_conv: 0.0001
   l2_reg_dense: 0.0
-  dropout_conv: 0.15
+  dropout_conv: 0.1
   dropout_dense: 0.0
 
   # Postprocessing

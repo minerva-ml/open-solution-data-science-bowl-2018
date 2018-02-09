@@ -52,7 +52,8 @@ def unet_multitask(config, train_mode):
                           transformer=PyTorchUNetMultitask(**config.unet),
                           input_steps=[preprocessing],
                           cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output, load_saved_output=load_saved_output)
+                          save_output=save_output,
+                          load_saved_output=load_saved_output)
 
     mask_postprocessed = mask_postprocessing(unet_multitask, config, save_output=save_output)
     #contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
@@ -338,7 +339,7 @@ def center_postprocessing(model, config, save_output=True):
 
 def combiner_watershed(mask, center, config, save_output=True):
     watershed = Step(name='watershed',
-                     transformer=Whatershed(),
+                     transformer=Watershed(),
                      input_steps=[mask, center],
                      adapter={'images': ([(mask.name, 'binarized_images')]),
                               'centers': ([(center.name, 'binarized_images')])
@@ -356,11 +357,72 @@ def combiner_watershed(mask, center, config, save_output=True):
     return drop_smaller
 
 
-def nuclei_labeler(posptrocessed_mask, config, save_output=True):
+def watershed_centers(mask, center, config, save_output=True):
+    watershed_center = Step(name='watershed_center',
+                            transformer=WatershedCenter(),
+                            input_steps=[mask, center],
+                            adapter={'images': ([(mask.name, 'binarized_images')]),
+                                     'centers': ([(center.name, 'binarized_images')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=save_output)
+
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_center],
+                        adapter={'labels': ([('watershed_center', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+    return drop_smaller
+
+
+def watershed_contours(mask, contour, config, save_output=True):
+    watershed_contour = Step(name='watershed_contour',
+                             transformer=WatershedContour(),
+                             input_steps=[mask, contour],
+                             adapter={'images': ([(mask.name, 'binarized_images')]),
+                                      'contours': ([(contour.name, 'binarized_images')]),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath,
+                             save_output=save_output)
+
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_contour],
+                        adapter={'labels': ([('watershed_contour', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+    return drop_smaller
+
+
+def watershed_combined(mask, contour, center, config, save_output=True):
+    watershed_combined = Step(name='watershed_combined',
+                              transformer=WatershedCombined(),
+                              input_steps=[mask, contour, center],
+                              adapter={'images': ([(mask.name, 'binarized_images')]),
+                                       'contours': ([(contour.name, 'binarized_images')]),
+                                       'centers': ([(center.name, 'binarized_images')]),
+                                       },
+                              cache_dirpath=config.env.cache_dirpath,
+                              save_output=save_output)
+
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_combined],
+                        adapter={'labels': ([('watershed_combined', 'detached_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+    return drop_smaller
+
+
+def nuclei_labeler(postprocessed_mask, config, save_output=True):
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
-                   input_steps=[posptrocessed_mask],
-                   adapter={'images': ([(posptrocessed_mask.name, 'binarized_images')]),
+                   input_steps=[postprocessed_mask],
+                   adapter={'images': ([(postprocessed_mask.name, 'binarized_images')]),
                             },
                    cache_dirpath=config.env.cache_dirpath,
                    save_output=save_output)

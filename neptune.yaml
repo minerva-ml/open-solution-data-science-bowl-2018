@@ -9,7 +9,7 @@ metric:
   goal: maximize
 
 #Comment out if not in Cloud Environment
-pip-requirements-file: requirements.txt
+#pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -19,19 +19,24 @@ exclude:
   - .git
   - .idea
   - .ipynb_checkpoints
+  - devbook.ipynb
 
 parameters:
 # Cloud Environment
-  data_dir:            /public/dsb_2018_data/
-  meta_dir:            /public/dsb_2018_data/
-  masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
-  experiment_dir:      /output/dsb/experiments/
+#  data_dir:            /public/dsb_2018_data/
+#  meta_dir:            /public/dsb_2018_data/
+#  masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
+#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+#  centers_overlayed_dir: /public/dsb_2018_data/centers_overlayed/
+#  experiment_dir:      /output/dsb/experiments/
 
 # Local Environment
-  # data_dir: /path/to/data
-  # meta_dir: /path/to/data
-  # masks_overlayed_dir: /path/to/data/masks_overlayed
-  # experiment_dir: /path/to/work/dir
+  data_dir: /mnt/ml-team/dsb_2018/data
+  meta_dir: /mnt/ml-team/dsb_2018/files
+  masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
+  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
+  centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed
+  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/in_memory_loader
   overwrite: 1
   num_workers: 1
 
@@ -49,17 +54,20 @@ parameters:
   repeat_blocks: 5
 
   # Training schedule
-  epochs_nr: 300
+  epochs_nr: 1000
   batch_size_train: 32
   batch_size_inference: 32
   lr: 0.0005
   momentum: 0.9
   gamma: 0.99
-  patience: 10
+  patience: 20
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_conv: 0.00001
+  l2_reg_conv: 0.0001
   l2_reg_dense: 0.0
-  dropout_conv: 0.1
+  dropout_conv: 0.15
   dropout_dense: 0.0
+
+  # Postprocessing
+  min_nuclei_size: 20

@@ -7,9 +7,9 @@ import pandas as pd
 
 from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS, SIZE_COLUMNS
 from pipelines import PIPELINES
-from preparation import train_valid_split, overlay_masks
+from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers
 from metrics import intersection_over_union, intersection_over_union_thresholds
-from utils import init_logger, get_logger, read_masks, read_params, create_submission, generate_metadata
+from utils import get_logger, read_masks, read_params, create_submission, generate_metadata
 
 logger = get_logger()
 ctx = neptune.Context()
@@ -24,7 +24,10 @@ def action():
 @action.command()
 def prepare_metadata():
     logger.info('creating metadata')
-    meta = generate_metadata(data_dir=params.data_dir, masks_overlayed_dir=params.masks_overlayed_dir)
+    meta = generate_metadata(data_dir=params.data_dir,
+                             masks_overlayed_dir=params.masks_overlayed_dir,
+                             contours_overlayed_dir=params.contours_overlayed_dir,
+                             centers_overlayed_dir=params.centers_overlayed_dir)
     meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
 
 
@@ -32,6 +35,10 @@ def prepare_metadata():
 def prepare_masks():
     logger.info('overlaying masks')
     overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
+    logger.info('overlaying contours')
+    overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
+    logger.info('overlaying centers')
+    overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
 
 
 @action.command()
@@ -56,8 +63,9 @@ def _train_pipeline(pipeline_name, validation_size):
             }
 
     pipeline = PIPELINES[pipeline_name]['train'](SOLUTION_CONFIG)
+    pipeline.clean_cache()
     pipeline.fit_transform(data)
-
+    pipeline.clean_cache()
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
@@ -80,7 +88,9 @@ def _evaluate_pipeline(pipeline_name, validation_size):
     y_true = read_masks(meta_valid_split[Y_COLUMNS].values)
 
     pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+    pipeline.clean_cache()
     output = pipeline.transform(data)
+    pipeline.clean_cache()
     y_pred = output['y_pred']
 
     logger.info('Calculating IOU and IOUT Scores')
@@ -111,7 +121,9 @@ def _predict_pipeline(pipeline_name):
             }
 
     pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+    pipeline.clean_cache()
     output = pipeline.transform(data)
+    pipeline.clean_cache()
     y_pred = output['y_pred']
 
     create_submission(params.experiment_dir, meta_test, y_pred, logger)
@@ -150,5 +162,4 @@ def evaluate_predict_pipeline(pipeline_name, validation_size):
 
 
 if __name__ == "__main__":
-    init_logger()
     action()

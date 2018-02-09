@@ -53,6 +53,61 @@ class MetadataImageSegmentationDataset(Dataset):
             return Xi
 
 
+class MetadataImageSegmentationMultitaskDataset(Dataset):
+    def __init__(self, X, y, train_mode, image_transform, mask_transform, image_augment):
+        super().__init__()
+        self.X = X
+        if y is not None:
+            self.y = y
+        else:
+            self.y = None
+
+        self.train_mode = train_mode
+        self.image_transform = image_transform
+        self.mask_transform = mask_transform
+        self.image_augment = image_augment
+
+    def load_image(self, img_filepath):
+        image = Image.open(img_filepath, 'r')
+        return image.convert('RGB')
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, index):
+        img_filepath = self.X[index]
+
+        Xi = self.load_image(img_filepath)
+        if self.image_augment is not None:
+            Xi = self.image_augment(Xi)
+
+        if self.image_transform is not None:
+            Xi = self.image_transform(Xi)
+
+        if self.y is not None and self.train_mode:
+            mask_filepath = self.y[index, 0]
+            contour_filepath = self.y[index, 1]
+            center_filepath = self.y[index, 2]
+
+            Mi = self.load_image(mask_filepath)
+            CTi = self.load_image(contour_filepath)
+            CRi = self.load_image(center_filepath)
+
+            if self.image_augment is not None:
+                Mi = self.image_augment(Mi)
+                CTi = self.image_augment(CTi)
+                CRi = self.image_augment(CRi)
+
+            if self.mask_transform is not None:
+                Mi = self.mask_transform(Mi)
+                CTi = self.mask_transform(CTi)
+                CRi = self.mask_transform(CRi)
+
+            return Xi, Mi, CTi, CRi
+        else:
+            return Xi
+
+
 class MetadataImageSegmentationLoader(BaseTransformer):
     def __init__(self, loader_params, dataset_params):
         super().__init__()
@@ -114,6 +169,12 @@ class MetadataImageSegmentationLoader(BaseTransformer):
     def save(self, filepath):
         params = {'loader_params': self.loader_params}
         joblib.dump(params, filepath)
+
+
+class MetadataImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+        self.dataset = MetadataImageSegmentationMultitaskDataset
 
 
 def binarize(x):

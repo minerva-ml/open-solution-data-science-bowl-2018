@@ -1,19 +1,21 @@
 import os
+import shutil
 import pprint
 
 import numpy as np
 from scipy import sparse
 from sklearn.externals import joblib
 
-from steps.utils import view_graph, plot_graph
-from utils import get_logger
+from steps.utils import view_graph, plot_graph, get_logger, initialize_logger
 
+initialize_logger()
 logger = get_logger()
 
 
 class Step:
-    def __init__(self, name, transformer, input_steps=[], input_data=[], adapter=None, cache_dirpath=None,
-                 cache_output=False, overwrite_transformer=False, save_graph=False):
+    def __init__(self, name, transformer, input_steps=[], input_data=[], adapter=None,
+                 cache_dirpath=None, cache_output=True, save_output=False, load_saved_output=False,
+                 save_graph=False, force_fitting=False):
         self.name = name
         self.transformer = transformer
 
@@ -21,8 +23,10 @@ class Step:
         self.input_data = input_data
         self.adapter = adapter
 
-        self.overwrite_transformer = overwrite_transformer
+        self.force_fitting = force_fitting
         self.cache_output = cache_output
+        self.save_output = save_output
+        self.load_saved_output = load_saved_output
 
         self.cache_dirpath = cache_dirpath
         self._prep_cache(cache_dirpath)
@@ -33,14 +37,24 @@ class Step:
             joblib.dump(self.graph_info, graph_filepath)
 
     def _prep_cache(self, cache_dirpath):
-        for dirname in ['transformers', 'outputs']:
+        for dirname in ['transformers', 'outputs', 'tmp']:
             os.makedirs(os.path.join(cache_dirpath, dirname), exist_ok=True)
 
         self.cache_dirpath_transformers = os.path.join(cache_dirpath, 'transformers')
         self.save_dirpath_outputs = os.path.join(cache_dirpath, 'outputs')
+        self.save_dirpath_tmp = os.path.join(cache_dirpath, 'tmp')
 
         self.cache_filepath_step_transformer = os.path.join(self.cache_dirpath_transformers, self.name)
         self.save_filepath_step_output = os.path.join(self.save_dirpath_outputs, '{}'.format(self.name))
+        self.save_filepath_step_tmp = os.path.join(self.save_dirpath_tmp, '{}'.format(self.name))
+
+    def clean_cache(self):
+        for name, step in self.all_steps.items():
+            step._clean_cache()
+
+    def _clean_cache(self):
+        if os.path.exists(self.save_filepath_step_tmp):
+            os.remove(self.save_filepath_step_tmp)
 
     @property
     def named_steps(self):
@@ -55,12 +69,19 @@ class Step:
 
     @property
     def output_is_cached(self):
+        return os.path.exists(self.save_filepath_step_tmp)
+
+    @property
+    def output_is_saved(self):
         return os.path.exists(self.save_filepath_step_output)
 
     def fit_transform(self, data):
-        if self.output_is_cached and self.cache_output and not self.overwrite_transformer:
+        if self.output_is_cached and not self.force_fitting:
             logger.info('step {} loading output...'.format(self.name))
-            step_output_data = self._load_output()
+            step_output_data = self._load_output(self.save_filepath_step_tmp)
+        elif self.output_is_saved and self.load_saved_output and not self.force_fitting:
+            logger.info('step {} loading output...'.format(self.name))
+            step_output_data = self._load_output(self.save_filepath_step_output)
         else:
             step_inputs = {}
             if self.input_data is not None:
@@ -78,34 +99,38 @@ class Step:
         return step_output_data
 
     def _cached_fit_transform(self, step_inputs):
-        if self.transformer_is_cached and not self.overwrite_transformer:
+        if self.transformer_is_cached and not self.force_fitting:
             logger.info('step {} loading transformer...'.format(self.name))
             self.transformer.load(self.cache_filepath_step_transformer)
             logger.info('step {} transforming...'.format(self.name))
             step_output_data = self.transformer.transform(**step_inputs)
-            if self.cache_output:
-                logger.info('step {} saving outputs...'.format(self.name))
-                self._save_output(step_output_data)
         else:
             logger.info('step {} fitting and transforming...'.format(self.name))
             step_output_data = self.transformer.fit_transform(**step_inputs)
             logger.info('step {} saving transformer...'.format(self.name))
             self.transformer.save(self.cache_filepath_step_transformer)
-            if self.cache_output:
-                logger.info('step {} saving outputs...'.format(self.name))
-                self._save_output(step_output_data)
+
+        if self.cache_output:
+            logger.info('step {} caching outputs...'.format(self.name))
+            self._save_output(step_output_data, self.save_filepath_step_tmp)
+        if self.save_output:
+            logger.info('step {} saving outputs...'.format(self.name))
+            self._save_output(step_output_data, self.save_filepath_step_output)
         return step_output_data
 
-    def _load_output(self):
-        return joblib.load(self.save_filepath_step_output)
+    def _load_output(self, filepath):
+        return joblib.load(filepath)
 
-    def _save_output(self, output_data):
-        joblib.dump(output_data, self.save_filepath_step_output)
+    def _save_output(self, output_data, filepath):
+        joblib.dump(output_data, filepath)
 
     def transform(self, data):
-        if self.output_is_cached and self.cache_output:
+        if self.output_is_cached:
             logger.info('step {} loading output...'.format(self.name))
-            step_output_data = self._load_output()
+            step_output_data = self._load_output(self.save_filepath_step_tmp)
+        elif self.output_is_saved and self.load_saved_output:
+            logger.info('step {} loading output...'.format(self.name))
+            step_output_data = self._load_output(self.save_filepath_step_output)
         else:
             step_inputs = {}
             if self.input_data is not None:
@@ -128,11 +153,14 @@ class Step:
             self.transformer.load(self.cache_filepath_step_transformer)
             logger.info('step {} transforming...'.format(self.name))
             step_output_data = self.transformer.transform(**step_inputs)
-            if self.cache_output:
-                logger.info('step {} saving outputs...'.format(self.name))
-                self._save_output(step_output_data)
         else:
             raise ValueError('No transformer cached {}'.format(self.name))
+        if self.cache_output:
+            logger.info('step {} caching outputs...'.format(self.name))
+            self._save_output(step_output_data, self.save_filepath_step_tmp)
+        if self.save_output:
+            logger.info('step {} saving outputs...'.format(self.name))
+            self._save_output(step_output_data, self.save_filepath_step_output)
         return step_output_data
 
     def adapt(self, step_inputs):

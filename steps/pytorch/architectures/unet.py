@@ -26,6 +26,7 @@ class UNet(nn.Module):
         self.up_convs = self._up_convs()
         self.up_samples = self._up_samples()
         self.classification_block = self._classification_block()
+        self.output_layer = self._output_layer()
 
     def _down_convs(self):
         down_convs = []
@@ -109,33 +110,31 @@ class UNet(nn.Module):
                                                            stride=1, padding=1),
                                                  nn.BatchNorm2d(num_features=self.n_filters),
                                                  nn.ReLU(),
+                                                 nn.Dropout(self.dropout),
 
                                                  nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
                                                            kernel_size=(self.conv_kernel, self.conv_kernel),
                                                            stride=1, padding=1),
                                                  nn.BatchNorm2d(num_features=self.n_filters),
                                                  nn.ReLU(),
-
-                                                 nn.Dropout(self.dropout),
-                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=1,
-                                                           kernel_size=(1, 1), stride=1, padding=0),
                                                  )
         else:
             classification_block = nn.Sequential(nn.Conv2d(in_channels=in_block, out_channels=self.n_filters,
                                                            kernel_size=(self.conv_kernel, self.conv_kernel),
                                                            stride=1, padding=1),
                                                  nn.ReLU(),
+                                                 nn.Dropout(self.dropout),
 
                                                  nn.Conv2d(in_channels=self.n_filters, out_channels=self.n_filters,
                                                            kernel_size=(self.conv_kernel, self.conv_kernel),
                                                            stride=1, padding=1),
                                                  nn.ReLU(),
-
-                                                 nn.Dropout(self.dropout),
-                                                 nn.Conv2d(in_channels=self.n_filters, out_channels=1,
-                                                           kernel_size=(1, 1), stride=1, padding=0),
                                                  )
         return classification_block
+
+    def _output_layer(self):
+        return nn.Conv2d(in_channels=self.n_filters, out_channels=1,
+                         kernel_size=(1, 1), stride=1, padding=0)
 
     def forward(self, x):
         x = self.input_block(x)
@@ -156,7 +155,51 @@ class UNet(nn.Module):
             x = block(x)
 
         x = self.classification_block(x)
+        x = self.output_layer(x)
         return x
+
+
+class UNetMultitask(UNet):
+    def __init__(self, conv_kernel,
+                 pool_kernel, pool_stride,
+                 repeat_blocks, n_filters,
+                 batch_norm, dropout,
+                 in_channels):
+        super(UNetMultitask, self).__init__(conv_kernel,
+                                            pool_kernel, pool_stride,
+                                            repeat_blocks, n_filters,
+                                            batch_norm, dropout,
+                                            in_channels)
+
+        self.mask_output = self._output_layer()
+        self.contour_output = self._output_layer()
+        self.center_output = self._output_layer()
+
+    def forward(self, x):
+        x = self.input_block(x)
+
+        down_convs_outputs = []
+        for block, down_pool in zip(self.down_convs, self.down_pools):
+            x = block(x)
+            down_convs_outputs.append(x)
+            x = down_pool(x)
+        x = self.floor_block(x)
+
+        for down_conv_output, block, up_sample in zip(reversed(down_convs_outputs),
+                                                      reversed(self.up_convs),
+                                                      reversed(self.up_samples)):
+            x = up_sample(x)
+            x = torch.cat((down_conv_output, x), dim=1)
+
+            x = block(x)
+
+        x = self.classification_block(x)
+
+        x_mask = self.mask_output(x)
+        x_contour = self.contour_output(x)
+        x_center = self.center_output(x)
+
+        return x_mask, x_contour, x_center
 
 
 class DownConv(nn.Module):

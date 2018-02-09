@@ -9,8 +9,8 @@ from torch.nn import init
 from tqdm import tqdm
 
 from steps.base import BaseTransformer
-from .validation import torch_acc_score_multi_output
-from .utils import get_logger, save_model
+from steps.utils import get_logger
+from .utils import save_model
 
 logger = get_logger()
 
@@ -26,6 +26,10 @@ class Model(BaseTransformer):
         self.optimizer = None
         self.loss_function = None
         self.callbacks = None
+
+    @property
+    def output_names(self):
+        return [name for (name, func) in self.loss_function]
 
     def _initialize_model_weights(self):
         logger.info('initializing model weights...')
@@ -67,30 +71,45 @@ class Model(BaseTransformer):
         return self
 
     def _fit_loop(self, data):
-        X, target_tensor = data
+        X = data[0]
+        targets_tensors = data[1:]
 
         if torch.cuda.is_available():
-            X, target_var = Variable(X).cuda(), Variable(target_tensor).cuda()
+            X = Variable(X).cuda()
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(Variable(target_tensor).cuda())
         else:
-            X, target_var = Variable(X), Variable(target_tensor)
-
-        output = self.model(X)
+            X = Variable(X)
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(Variable(target_tensor))
 
         self.optimizer.zero_grad()
-        batch_loss = self.loss_function(output, target_var)
+        outputs_batch = self.model(X)
+        partial_batch_losses = {}
+
+        if len(self.output_names) == 1:
+            for (name, loss_function), target in zip(self.loss_function, targets_var):
+                batch_loss = loss_function(outputs_batch, target)
+        else:
+            for (name, loss_function), output, target in zip(self.loss_function, outputs_batch, targets_var):
+                partial_batch_losses[name] = loss_function(output, target)
+            batch_loss = sum(partial_batch_losses.values())
+        partial_batch_losses['sum'] = batch_loss
         batch_loss.backward()
         self.optimizer.step()
 
-        batch_loss_ = batch_loss.data.cpu().numpy()[0]
-        return {'batch_loss': batch_loss_}
+        return partial_batch_losses
 
     def _transform(self, datagen, validation_datagen=None):
         self.model.eval()
         batch_gen, steps = datagen
-        outputs = []
+        outputs = {}
         for batch_id, data in enumerate(batch_gen):
-            if len(data) == 2:
-                X, targets = data
+            if len(data) == len(self.output_names) + 1:
+                X = data[0]
+                targets_tensors = data[1:]
             else:
                 X = data
 
@@ -98,13 +117,17 @@ class Model(BaseTransformer):
                 X = Variable(X).cuda()
             else:
                 X = Variable(X)
-            output = self.model(X)
-            outputs.append(output.data.cpu().numpy())
 
+            outputs_batch = self.model(X)
+            if len(self.output_names) == 1:
+                outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
+            else:
+                for name, output in zip(self.output_names, outputs_batch):
+                    output_ = output.data.cpu().numpy()
+                    outputs.setdefault(name, []).append(output_)
             if batch_id == steps:
                 break
-
-        outputs = np.vstack(outputs)
+        outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 
     def transform(self, datagen, validation_datagen=None):
@@ -130,58 +153,6 @@ class Model(BaseTransformer):
 
         else:
             save_model(self.model, filepath)
-
-
-class MultiOutputModel(Model):
-    def _fit_loop(self, data):
-        X, targets_tensor = data
-
-        targets_tensor = targets_tensor.transpose(0, 1)
-
-        if torch.cuda.is_available():
-            X, targets_var = Variable(X).cuda(), Variable(targets_tensor).cuda()
-        else:
-            X, targets_var = Variable(X), Variable(targets_tensor)
-        self.optimizer.zero_grad()
-        outputs = self.model(X)
-        batch_loss = self.loss_function(outputs, targets_var)
-        batch_loss.backward()
-        self.optimizer.step()
-
-        batch_loss_ = batch_loss.data.cpu().numpy()[0]
-        batch_acc = torch_acc_score_multi_output(outputs, targets_tensor)
-        return {'batch_loss': batch_loss_,
-                'batch_acc': batch_acc}
-
-    def _transform(self, datagen, validation_datagen=None):
-        self.model.eval()
-
-        batch_gen, steps = datagen
-
-        outputs = []
-        for batch_id, data in enumerate(tqdm(batch_gen, total=steps)):
-            X, target = data
-
-            if torch.cuda.is_available():
-                X = Variable(X).cuda()
-            else:
-                X = Variable(X)
-
-            batch_outputs = self.model.forward_target(X)
-            for i, batch_output in enumerate(batch_outputs):
-                batch_output_numpy = batch_output.data.cpu().numpy()
-                try:
-                    outputs[i].append(batch_output_numpy)
-                except Exception:
-                    outputs.append([])
-                    outputs[i].append(batch_output_numpy)
-
-            if batch_id == steps:
-                break
-
-        outputs = [np.vstack(output) for output in outputs]
-        outputs = np.stack(outputs, axis=1)
-        return outputs
 
 
 class PyTorchBasic(nn.Module):

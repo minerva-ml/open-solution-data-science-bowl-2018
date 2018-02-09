@@ -2,7 +2,7 @@ from functools import partial
 
 from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit, ImageReader
-from postprocessing import Resizer, Thresholder, Whatershed, NucleiLabeler, Dropper, \
+from postprocessing import Resizer, Thresholder, Watershed, NucleiLabeler, Dropper, \
     WatershedCenter, WatershedContour, WatershedCombined
 from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
     MetadataImageSegmentationMultitaskLoaderInMemory, MetadataImageSegmentationLoaderInMemory
@@ -340,7 +340,7 @@ def center_postprocessing(model, config, save_output=True):
 
 def combiner_watershed(mask, center, config, save_output=True):
     watershed = Step(name='watershed',
-                     transformer=Whatershed(),
+                     transformer=Watershed(),
                      input_steps=[mask, center],
                      adapter={'images': ([(mask.name, 'binarized_images')]),
                               'centers': ([(center.name, 'binarized_images')])

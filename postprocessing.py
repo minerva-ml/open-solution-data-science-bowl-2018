@@ -45,6 +45,35 @@ class Thresholder(BaseTransformer):
         joblib.dump({}, filepath)
 
 
+class Watershed(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, images, centers):
+        detached_images = []
+        for image, center in tqdm(zip(images, centers)):
+            detached_image = self.detach_nuclei(image, center)
+            detached_images.append(detached_image)
+        return {'detached_images': detached_images}
+
+    def detach_nuclei(self, image, center):
+        distance = ndi.distance_transform_edt(image)
+        markers, nr_blobs = ndi.label(center)
+        labeled = morph.watershed(-distance, markers, mask=image)
+
+        dropped, _ = ndi.label(image - (labeled > 0))
+        dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
+        correct_labeled = dropped + labeled
+
+        return relabel(correct_labeled)
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
 class WatershedCenter(BaseTransformer):
     def transform(self, images, centers):
         detached_images = []

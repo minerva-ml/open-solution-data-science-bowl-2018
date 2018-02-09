@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 import scipy.ndimage as ndi
 from skimage.transform import resize
 import numpy as np
-from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans
 import torch
 from torchvision import models
@@ -15,10 +14,21 @@ from torchvision import models
 
 def train_valid_split(meta, validation_size):
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = train_test_split(meta_train,
-                                                          test_size=validation_size,
-                                                          random_state=1234)
+    meta_train_split, meta_valid_split = split_on_column(meta_train,
+                                                         column='vgg_features_clusters',
+                                                         test_size=validation_size,
+                                                         random_state=1)
     return meta_train_split, meta_valid_split
+
+
+def split_on_column(meta, column, test_size, random_state=1):
+    categories = meta[column].unique()
+    np.random.seed(random_state)
+    valid_categories = np.random.choice(categories,
+                                        int(test_size * len(categories)))
+    valid = meta[meta[column].isin(valid_categories)]
+    train = meta[~(meta[column].isin(valid_categories))]
+    return train, valid
 
 
 def overlay_masks(images_dir, subdir_name, target_dir):

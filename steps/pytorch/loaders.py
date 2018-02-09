@@ -1,12 +1,10 @@
-import os
+from math import ceil
 
 import matplotlib.pyplot as plt
-from math import ceil
-import numpy as np
-from sklearn.externals import joblib
 import torch
-from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
+from sklearn.externals import joblib
+from torch.utils.data import Dataset, DataLoader
 
 from steps.base import BaseTransformer
 

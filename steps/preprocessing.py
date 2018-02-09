@@ -1,9 +1,6 @@
-from tqdm import tqdm
-
 from PIL import Image
-import numpy as np
 from sklearn.externals import joblib
-from sklearn.feature_extraction import text
+from tqdm import tqdm
 
 from .base import BaseTransformer
 
@@ -85,22 +82,3 @@ class ImageReader(BaseTransformer):
                   'y_columns': self.y_columns
                   }
         joblib.dump(params, filepath)
-
-
-class TfidfVectorizer(BaseTransformer):
-    def __init__(self, **kwargs):
-        self.vectorizer = text.TfidfVectorizer(**kwargs)
-
-    def fit(self, text):
-        self.vectorizer.fit(text)
-        return self
-
-    def transform(self, text):
-        return {'features': self.vectorizer.transform(text)}
-
-    def load(self, filepath):
-        self.vectorizer = joblib.load(filepath)
-        return self
-
-    def save(self, filepath):
-        joblib.dump(self.vectorizer, filepath)

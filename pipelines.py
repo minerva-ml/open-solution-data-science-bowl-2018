@@ -1,12 +1,12 @@
 from functools import partial
 
-from steps.base import Step, Dummy
-from steps.preprocessing import XYSplit, ImageReader
-from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, WatershedCombined
 from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
     MetadataImageSegmentationMultitaskLoaderInMemory, MetadataImageSegmentationLoaderInMemory
 from models import PyTorchUNet, PyTorchUNetMultitask
+from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
+    WatershedCenter, WatershedContour, WatershedCombined
+from steps.base import Step, Dummy
+from steps.preprocessing import XYSplit, ImageReader
 from utils import squeeze_inputs
 
 

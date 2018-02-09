@@ -1,12 +1,12 @@
-import os
 import glob
+import os
 
 import cv2
 import matplotlib.pyplot as plt
-import scipy.ndimage as ndi
-from tqdm import tqdm
 import numpy as np
+import scipy.ndimage as ndi
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 
 def train_valid_split(meta, validation_size):

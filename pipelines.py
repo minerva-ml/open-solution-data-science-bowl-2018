@@ -19,21 +19,21 @@ def unet(config, train_mode):
     if train_mode:
         save_output = True
         load_saved_output = True
-        prepro = prepro_train(config)
+        preprocessing = preprocessing_train(config)
     else:
         save_output = False
         load_saved_output = False
-        prepro = prepro_inference(config)
+        preprocessing = preprocessing_inference(config)
 
     unet = Step(name='unet',
                 transformer=PyTorchUNet(**config.unet),
-                input_steps=[prepro],
+                input_steps=[preprocessing],
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output)
 
-    mask_postpro = mask_postprocessing(unet, config, save_output=save_output)
+    mask_postprocessed = mask_postprocessing(unet, config, save_output=save_output)
 
-    detached = nuclei_labeler(mask_postpro, config, save_output=save_output)
+    detached = nuclei_labeler(mask_postprocessed, config, save_output=save_output)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -54,23 +54,27 @@ def unet_multitask(config, train_mode):
     if train_mode:
         save_output = True
         load_saved_output = True
-        prepro = prepro_multitask_train(config)
+        preprocessing = preprocessing_multitask_train(config)
     else:
         save_output = False
         load_saved_output = False
-        prepro = prepro_multitask_inference(config)
+        preprocessing = preprocessing_multitask_inference(config)
 
     unet_multitask = Step(name='unet_multitask',
                           transformer=PyTorchUNetMultitask(**config.unet),
-                          input_steps=[prepro],
+                          input_steps=[preprocessing],
                           cache_dirpath=config.env.cache_dirpath,
                           save_output=save_output, load_saved_output=load_saved_output)
 
-    mask_postpro = mask_postprocessing(unet_multitask, config, save_output=save_output)
-    contour_postpro = contour_postprocessing(unet_multitask, config, save_output=save_output)
-    center_postpro = center_postprocessing(unet_multitask, config, save_output=save_output)
+    mask_postprocessed = mask_postprocessing(unet_multitask, config, save_output=save_output)
+    contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
+    center_postprocessed = center_postprocessing(unet_multitask, config, save_output=save_output)
 
-    detached = watershed_combined(mask_postpro, contour_postpro, center_postpro, config, save_output=save_output)
+    detached = watershed_combined(mask_postprocessed,
+                                  contour_postprocessed,
+                                  center_postprocessed,
+                                  config,
+                                  save_output=save_output)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -81,7 +85,7 @@ def unet_multitask(config, train_mode):
     return output
 
 
-def prepro_train(config):
+def preprocessing_train(config):
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
                             transformer=ImageReader(**config.reader_single),
@@ -141,7 +145,7 @@ def prepro_train(config):
     return loader
 
 
-def prepro_inference(config):
+def preprocessing_inference(config):
     if config.execution.load_in_memory:
 
         reader_inference = Step(name='reader_inference',
@@ -182,7 +186,7 @@ def prepro_inference(config):
     return loader
 
 
-def prepro_multitask_train(config):
+def preprocessing_multitask_train(config):
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
                             transformer=ImageReader(**config.reader_multitask),
@@ -245,7 +249,7 @@ def prepro_multitask_train(config):
     return loader
 
 
-def prepro_multitask_inference(config):
+def preprocessing_multitask_inference(config):
     if config.execution.load_in_memory:
 
         reader_inference = Step(name='reader_inference',
@@ -411,11 +415,11 @@ def watershed_combined(mask, contour, center, config, save_output=True):
     return drop_smaller
 
 
-def nuclei_labeler(posptrocessed_mask, config, save_output=True):
+def nuclei_labeler(postprocessed_mask, config, save_output=True):
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
-                   input_steps=[posptrocessed_mask],
-                   adapter={'images': ([(posptrocessed_mask.name, 'binarized_images')]),
+                   input_steps=[postprocessed_mask],
+                   adapter={'images': ([(postprocessed_mask.name, 'binarized_images')]),
                             },
                    cache_dirpath=config.env.cache_dirpath,
                    save_output=save_output)

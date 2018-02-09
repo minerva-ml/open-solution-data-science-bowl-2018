@@ -17,7 +17,7 @@ def train_valid_split(meta, validation_size, valid_category_ids=None):
     meta_train_split, meta_valid_split = split_on_column(meta_train,
                                                          column='vgg_features_clusters',
                                                          test_size=validation_size,
-                                                         random_state=1,
+                                                         random_state=1234,
                                                          valid_category_ids=valid_category_ids
                                                          )
     return meta_train_split, meta_valid_split

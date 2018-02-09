@@ -171,18 +171,8 @@ def watershed_contour(image, contour):
     dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
     correct_labeled = dropped + labeled
 
-    return correct_labeled
+    return relabel(correct_labeled)
 
 
-def watershed_combined(image, contour, center):
-    mask = np.where(contour + image == 2, 0, image)
-
-    distance = ndi.distance_transform_edt(mask)
-    markers, nr_blobs = ndi.label(mask)
-    labeled = morph.watershed(-distance, markers, mask=image)
-
-    dropped, _ = ndi.label(image - (labeled > 0))
-    dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
-    correct_labeled = dropped + labeled
-
-    return correct_labeled
+def watershed_combined(markers, boundary, center, area_threshold=0.05):
+    return watershed_contour(markers,center)

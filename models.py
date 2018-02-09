@@ -1,14 +1,13 @@
 import numpy as np
-import torch.nn as nn
 import torch.optim as optim
 
+from callbacks import NeptuneMonitorSegmentation
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
-    ExperimentTiming, ExponentialLRScheduler, EarlyStopping, NeptuneMonitor
+    ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation
 
 
 class PyTorchUNet(Model):

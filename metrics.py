@@ -1,7 +1,6 @@
-from tqdm import tqdm
-
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
+from tqdm import tqdm
 
 from utils import decompose_pred, decompose_true
 

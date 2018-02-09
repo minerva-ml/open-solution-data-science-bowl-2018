@@ -1,9 +1,7 @@
-from tqdm import tqdm
-
 from PIL import Image
-import numpy as np
 from sklearn.externals import joblib
 from sklearn.feature_extraction import text
+from tqdm import tqdm
 
 from .base import BaseTransformer
 

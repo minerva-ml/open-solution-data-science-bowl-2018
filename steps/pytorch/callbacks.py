@@ -5,8 +5,8 @@ from deepsense import neptune
 from torch.optim.lr_scheduler import ExponentialLR
 
 from steps.utils import get_logger
-from .validation import score_model
 from .utils import Averager, save_model
+from .validation import score_model
 
 logger = get_logger()
 

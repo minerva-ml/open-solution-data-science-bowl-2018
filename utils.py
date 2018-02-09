@@ -200,3 +200,41 @@ def relabel_random_colors(img, max_colours=1000):
     for i, j in product(range(h), range(w)):
         img[i, j] = funky_dict[img[i, j]]
     return img
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

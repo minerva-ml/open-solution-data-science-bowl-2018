@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_1, unet]
+tags: [solution_2, unet]
 
 
 metric:
@@ -9,7 +9,7 @@ metric:
   goal: maximize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -23,21 +23,21 @@ exclude:
 
 parameters:
 # Cloud Environment
-#  data_dir:            /public/dsb_2018_data/
-#  meta_dir:            /public/dsb_2018_data/
-#  masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
-#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
-#  centers_overlayed_dir: /public/dsb_2018_data/centers_overlayed/
-#  experiment_dir:      /output/dsb/experiments/
+  data_dir:            /public/dsb_2018_data/
+  meta_dir:            /public/dsb_2018_data/
+  masks_overlayed_dir: /public/dsb_2018_data/masks_overlayed/
+  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+  centers_overlayed_dir: /public/dsb_2018_data/centers_overlayed/
+  experiment_dir:      /output/dsb/experiments/
 
 # Local Environment
-  data_dir: /mnt/ml-team/dsb_2018/data
-  meta_dir: /mnt/ml-team/dsb_2018/files
-  masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
-  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-  centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir: /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev
-  overwrite: 0
+#  data_dir: /mnt/ml-team/dsb_2018/data
+#  meta_dir: /mnt/ml-team/dsb_2018/files
+#  masks_overlayed_dir: /mnt/ml-team/dsb_2018/files/masks_overlayed
+#  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
+#  centers_overlayed_dir: /mnt/ml-team/dsb_2018/files/centers_overlayed
+#  experiment_dir: /mnt/ml-team/dsb_2018/kamil
+  overwrite: 1
   num_workers: 1
   load_in_memory: 1
 
@@ -65,10 +65,10 @@ parameters:
 
   # Regularization
   use_batch_norm: 1
-  l2_reg_conv: 0.00001
+  l2_reg_conv: 0.0001
   l2_reg_dense: 0.0
   dropout_conv: 0.1
   dropout_dense: 0.0
 
   # Postprocessing
-  min_nuclei_size: 10
+  min_nuclei_size: 20

@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import torch
+from imgaug import augmenters as iaa
 
 
 def denormalize_img(img):
@@ -99,3 +100,27 @@ class Averager:
 
 def sigmoid(x):
     return 1. / (1 + np.exp(-x))
+
+
+class ImgAug:
+    def __init__(self, augmenters):
+        if not isinstance(augmenters, list):
+            augmenters = [augmenters]
+        self.augmenters = augmenters
+        self.seq_det = None
+
+    def _pre_call_hook(self):
+        seq = iaa.Sequential(self.augmenters)
+        seq.reseed()
+        self.seq_det = seq.to_deterministic()
+
+    def transform(self, *images):
+        images = [self.seq_det.augment_image(image) for image in images]
+        if len(images) == 1:
+            return images[0]
+        else:
+            return images
+
+    def __call__(self, *args):
+        self._pre_call_hook()
+        return self.transform(*args)

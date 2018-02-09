@@ -3,13 +3,19 @@ from functools import partial
 from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
     MetadataImageSegmentationMultitaskLoaderInMemory, MetadataImageSegmentationLoaderInMemory
 from models import PyTorchUNet, PyTorchUNetMultitask
-from postprocessing import Resizer, Thresholder, Whatershed, NucleiLabeler, Dropper
+from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
+    WatershedCenter, WatershedContour, WatershedCombined
 from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit, ImageReader
 from utils import squeeze_inputs
 
 
 def unet(config, train_mode):
+    """
+    U-Net architecture
+    :param config:
+    :return:
+    """
     if train_mode:
         save_output = True
         load_saved_output = True
@@ -39,6 +45,12 @@ def unet(config, train_mode):
 
 
 def unet_multitask(config, train_mode):
+    """
+    U-Net architecture
+    :param config:
+    :return:
+    """
+
     if train_mode:
         save_output = True
         load_saved_output = True
@@ -52,14 +64,17 @@ def unet_multitask(config, train_mode):
                           transformer=PyTorchUNetMultitask(**config.unet),
                           input_steps=[preprocessing],
                           cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output,
-                          load_saved_output=load_saved_output)
+                          save_output=save_output, load_saved_output=load_saved_output)
 
     mask_postprocessed = mask_postprocessing(unet_multitask, config, save_output=save_output)
-    #contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
+    contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
     center_postprocessed = center_postprocessing(unet_multitask, config, save_output=save_output)
 
-    detached = combiner_watershed(mask_postprocessed, center_postprocessed, config, save_output=save_output)
+    detached = watershed_combined(mask_postprocessed,
+                                  contour_postprocessed,
+                                  center_postprocessed,
+                                  config,
+                                  save_output=save_output)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -179,7 +194,8 @@ def preprocessing_multitask_train(config):
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')]),
                                      },
-                            cache_dirpath=config.env.cache_dirpath)
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=True, load_saved_output=True)
 
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader_multitask),
@@ -187,7 +203,8 @@ def preprocessing_multitask_train(config):
                                 adapter={'meta': ([('input', 'meta_valid')]),
                                          'train_mode': ([('input', 'train_mode')]),
                                          },
-                                cache_dirpath=config.env.cache_dirpath)
+                                cache_dirpath=config.env.cache_dirpath,
+                                save_output=True, load_saved_output=True)
 
         loader = Step(name='loader',
                       transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
@@ -335,26 +352,6 @@ def center_postprocessing(model, config, save_output=True):
                                cache_dirpath=config.env.cache_dirpath,
                                save_output=save_output)
     return center_thresholding
-
-
-def combiner_watershed(mask, center, config, save_output=True):
-    watershed = Step(name='watershed',
-                     transformer=Watershed(),
-                     input_steps=[mask, center],
-                     adapter={'images': ([(mask.name, 'binarized_images')]),
-                              'centers': ([(center.name, 'binarized_images')])
-                              },
-                     cache_dirpath=config.env.cache_dirpath,
-                     save_output=save_output)
-
-    drop_smaller = Step(name='drop_smaller',
-                        transformer=Dropper(**config.dropper),
-                        input_steps=[watershed],
-                        adapter={'labels': ([('watershed', 'detached_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output)
-    return drop_smaller
 
 
 def watershed_centers(mask, center, config, save_output=True):

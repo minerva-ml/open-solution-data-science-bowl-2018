@@ -17,14 +17,14 @@ GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'num_classes': 2,
                  'img_H-W': (256, 256),
                  'batch_size_train': 32,
-                 'batch_size_inference': 32,
+                 'batch_size_inference': 32
                  }
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},
     'execution': GLOBAL_CONFIG,
     'xy_splitter': {'x_columns': X_COLUMNS,
-                    'y_columns': Y_COLUMNS
+                    'y_columns': Y_COLUMNS,
                     },
     'xy_splitter_multitask': {'x_columns': X_COLUMNS,
                               'y_columns': Y_COLUMNS_MULTITASK

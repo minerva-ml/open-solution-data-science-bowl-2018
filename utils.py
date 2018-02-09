@@ -200,3 +200,9 @@ def relabel_random_colors(img, max_colours=1000):
     for i, j in product(range(h), range(w)):
         img[i, j] = funky_dict[img[i, j]]
     return img
+
+def from_pil(*images):
+    return [np.array(image) for image in images]
+
+def to_pil(*images):
+    return [Image.fromarray((image).astype(np.uint8)) for image in images]

@@ -113,9 +113,9 @@ class Model(BaseTransformer):
                 X = data
 
             if torch.cuda.is_available():
-                X = Variable(X).cuda()
+                X = Variable(X, volatile=True).cuda()
             else:
-                X = Variable(X)
+                X = Variable(X, volatile=True)
 
             outputs_batch = self.model(X)
             if len(self.output_names) == 1:

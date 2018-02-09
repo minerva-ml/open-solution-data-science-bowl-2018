@@ -50,15 +50,15 @@ def score_model(model, loss_function, datagen):
         targets_tensors = data[1:]
 
         if torch.cuda.is_available():
-            X = Variable(X).cuda()
+            X = Variable(X, volatile=True).cuda()
             targets_var = []
             for target_tensor in targets_tensors:
-                targets_var.append(Variable(target_tensor).cuda())
+                targets_var.append(Variable(target_tensor, volatile=True).cuda())
         else:
-            X = Variable(X)
+            X = Variable(X, volatile=True)
             targets_var = []
             for target_tensor in targets_tensors:
-                targets_var.append(Variable(target_tensor))
+                targets_var.append(Variable(target_tensor, volatile=True))
 
         outputs = model(X)
         if len(loss_function) == 1:

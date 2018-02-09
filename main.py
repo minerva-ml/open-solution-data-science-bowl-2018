@@ -61,8 +61,8 @@ def _train_pipeline(pipeline_name, validation_size):
         shutil.rmtree(params.experiment_dir)
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
-    meta_train_split, meta_valid_split = train_valid_split(meta, validation_size,
-                                                           valid_category_ids=params.valid_category_ids)
+    valid_ids = eval(params.valid_category_ids)
+    meta_train_split, meta_valid_split = train_valid_split(meta, validation_size, valid_category_ids=valid_ids)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
@@ -86,7 +86,8 @@ def evaluate_pipeline(pipeline_name, validation_size):
 
 def _evaluate_pipeline(pipeline_name, validation_size):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
-    meta_train_split, meta_valid_split = train_valid_split(meta, validation_size)
+    valid_ids = eval(params.valid_category_ids)
+    meta_train_split, meta_valid_split = train_valid_split(meta, validation_size, valid_category_ids=valid_ids)
 
     data = {'input': {'meta': meta_valid_split,
                       'meta_valid': None,

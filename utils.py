@@ -1,7 +1,7 @@
+import logging
 import os
 import sys
 from itertools import product
-import logging
 
 import matplotlib.pyplot as plt
 import numpy as np

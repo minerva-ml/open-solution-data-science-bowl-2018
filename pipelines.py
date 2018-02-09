@@ -1,12 +1,11 @@
 from functools import partial
 
-from steps.base import Step, Dummy
-from steps.preprocessing import XYSplit, ImageReader
-from postprocessing import Resizer, Thresholder, Watershed, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, WatershedCombined
 from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
     MetadataImageSegmentationMultitaskLoaderInMemory, MetadataImageSegmentationLoaderInMemory
 from models import PyTorchUNet, PyTorchUNetMultitask
+from postprocessing import Resizer, Thresholder, Whatershed, NucleiLabeler, Dropper
+from steps.base import Step, Dummy
+from steps.preprocessing import XYSplit, ImageReader
 from utils import squeeze_inputs
 
 
@@ -71,7 +70,7 @@ def unet_multitask(config, train_mode):
     return output
 
 
-def prepro_train(config):
+def preprocessing_train(config):
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
                             transformer=ImageReader(**config.reader_single),
@@ -131,7 +130,7 @@ def prepro_train(config):
     return loader
 
 
-def prepro_inference(config):
+def preprocessing_inference(config):
     if config.execution.load_in_memory:
 
         reader_inference = Step(name='reader_inference',
@@ -172,7 +171,7 @@ def prepro_inference(config):
     return loader
 
 
-def prepro_multitask_train(config):
+def preprocessing_multitask_train(config):
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
                             transformer=ImageReader(**config.reader_multitask),
@@ -233,7 +232,7 @@ def prepro_multitask_train(config):
     return loader
 
 
-def prepro_multitask_inference(config):
+def preprocessing_multitask_inference(config):
     if config.execution.load_in_memory:
 
         reader_inference = Step(name='reader_inference',

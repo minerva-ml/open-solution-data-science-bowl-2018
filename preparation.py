@@ -1,19 +1,18 @@
-import os
 import glob
+import os
 
 import cv2
 import matplotlib.pyplot as plt
-import scipy.ndimage as ndi
-from tqdm import tqdm
 import numpy as np
+import scipy.ndimage as ndi
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 
 def train_valid_split(meta, validation_size):
     meta_train = meta[meta['is_train'] == 1]
     meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
     return meta_train_split, meta_valid_split
-
 
 def overlay_masks(images_dir, subdir_name, target_dir):
     train_dir = os.path.join(images_dir, subdir_name)

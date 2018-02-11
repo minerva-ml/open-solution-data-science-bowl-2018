@@ -11,11 +11,6 @@ from utils import squeeze_inputs
 
 
 def unet(config, train_mode):
-    """
-    U-Net architecture
-    :param config:
-    :return:
-    """
     if train_mode:
         save_output = True
         load_saved_output = True
@@ -45,12 +40,6 @@ def unet(config, train_mode):
 
 
 def unet_multitask(config, train_mode):
-    """
-    U-Net architecture
-    :param config:
-    :return:
-    """
-
     if train_mode:
         save_output = True
         load_saved_output = True
@@ -147,7 +136,6 @@ def preprocessing_train(config):
 
 def preprocessing_inference(config):
     if config.execution.load_in_memory:
-
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader_single),
                                 input_data=['input'],
@@ -251,7 +239,6 @@ def preprocessing_multitask_train(config):
 
 def preprocessing_multitask_inference(config):
     if config.execution.load_in_memory:
-
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader_multitask),
                                 input_data=['input'],

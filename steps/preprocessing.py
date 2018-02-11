@@ -1,6 +1,7 @@
 from PIL import Image
 from sklearn.externals import joblib
 from tqdm import tqdm
+import os
 
 from .base import BaseTransformer
 
@@ -63,6 +64,14 @@ class ImageReader(BaseTransformer):
         return X
 
     def load_image(self, img_filepath, grayscale):
+        con = '/public/dsb_2018_data/contours_overlayed/'
+        cen = '/public/dsb_2018_data/centers_overlayed/'
+        con_new = '/public/dsb_2018_data/contours_overlayed_dir/'
+        cen_new = '/public/dsb_2018_data/centers_overlayed_dir/'
+        if img_filepath[:41] == con:
+            img_filepath = os.path.join(con_new, img_filepath[41:])
+        if img_filepath[:40] == cen:
+            img_filepath = os.path.join(cen_new, img_filepath[40:])
         image = Image.open(img_filepath, 'r')
         if not grayscale:
             image = image.convert('RGB')

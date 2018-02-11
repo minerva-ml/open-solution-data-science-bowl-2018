@@ -11,11 +11,6 @@ from utils import squeeze_inputs
 
 
 def unet(config, train_mode):
-    """
-    U-Net architecture
-    :param config:
-    :return:
-    """
     if train_mode:
         save_output = True
         load_saved_output = True
@@ -45,12 +40,6 @@ def unet(config, train_mode):
 
 
 def unet_multitask(config, train_mode):
-    """
-    U-Net architecture
-    :param config:
-    :return:
-    """
-
     if train_mode:
         save_output = True
         load_saved_output = True

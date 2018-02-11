@@ -41,34 +41,34 @@ parameters:
   num_workers: 6
   load_in_memory: 1
 
-  # General Params
+# General Params
   image_h: 256
   image_w: 256
   image_channels: 3
 
-  # U-Net parameters
-  # see: https://arxiv.org/pdf/1505.04597.pdf
+# U-Net parameters
+# see: https://arxiv.org/pdf/1505.04597.pdf
   n_filters: 16
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
   repeat_blocks: 4
 
-  # Training schedule
-  epochs_nr: 10
+# Training schedule
+  epochs_nr: 1000
   batch_size_train: 8
   batch_size_inference: 8
   lr: 0.0005
   momentum: 0.9
   gamma: 0.9955
-  patience: 10
+  patience: 100
 
-  # Regularization
+# Regularization
   use_batch_norm: 1
   l2_reg_conv: 0.0001
   l2_reg_dense: 0.0
   dropout_conv: 0.1
   dropout_dense: 0.0
 
-  # Postprocessing
+# Postprocessing
   min_nuclei_size: 20

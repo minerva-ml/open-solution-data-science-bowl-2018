@@ -25,8 +25,8 @@ parameters:
   data_dir:               /public/dsb_2018_data/
   meta_dir:               /public/dsb_2018_data/
   masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
-  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
-  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
+  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed_dir/
+  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed_dir/
   experiment_dir:         /output/dsb/experiments/
 
 # Local Environment

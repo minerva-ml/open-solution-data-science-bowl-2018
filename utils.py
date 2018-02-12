@@ -1,10 +1,7 @@
 import os
 import sys
 from itertools import product
-<<<<<<< HEAD
 import logging
-=======
->>>>>>> master
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -37,32 +34,17 @@ def get_logger():
     logger.addHandler(ch_va)
 
     return logger
-<<<<<<< HEAD
-
-
-def decompose_pred(labeled):
-    nr_true = labeled.max()
-    return _decompose(labeled, nr_true)
-=======
 
 
 def decompose_pred(labeled):
     nr_true = labeled.max()
     return _decompose(labeled, nr_true)
 
->>>>>>> master
 
 def decompose_true(mask):
     labeled, nr_true = ndi.label(mask)
     return _decompose(labeled, nr_true)
 
-<<<<<<< HEAD
-def decompose_true(mask):
-    labeled, nr_true = ndi.label(mask)
-    return _decompose(labeled, nr_true)
-
-=======
->>>>>>> master
 
 def _decompose(labeled, nr_true):
     masks = []
@@ -219,8 +201,10 @@ def relabel_random_colors(img, max_colours=1000):
         img[i, j] = funky_dict[img[i, j]]
     return img
 
+
 def from_pil(*images):
     return [np.array(image) for image in images]
+
 
 def to_pil(*images):
     return [Image.fromarray((image).astype(np.uint8)) for image in images]

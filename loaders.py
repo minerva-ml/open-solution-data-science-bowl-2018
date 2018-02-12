@@ -62,7 +62,7 @@ class MetadataImageSegmentationDataset(Dataset):
             return Xi
 
 
-class MetadataImageSegmentationDatasetInMemory(Dataset):
+class ImageSegmentationDataset(Dataset):
     def __init__(self, X, y, train_mode,
                  image_transform, image_augment_with_target,
                  mask_transform, image_augment):
@@ -163,7 +163,7 @@ class MetadataImageSegmentationMultitaskDataset(Dataset):
             return Xi
 
 
-class MetadataImageSegmentationMultitaskDatasetInMemory(Dataset):
+class ImageSegmentationMultitaskDataset(Dataset):
     def __init__(self, X, y, train_mode,
                  image_transform, image_augment_with_target,
                  mask_transform, image_augment):
@@ -283,16 +283,16 @@ class MetadataImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
         self.dataset = MetadataImageSegmentationMultitaskDataset
 
 
-class MetadataImageSegmentationLoaderInMemory(MetadataImageSegmentationLoader):
+class ImageSegmentationLoader(MetadataImageSegmentationLoader):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
-        self.dataset = MetadataImageSegmentationDatasetInMemory
+        self.dataset = MetadataImageSegmentationDataset
 
 
-class MetadataImageSegmentationMultitaskLoaderInMemory(MetadataImageSegmentationLoader):
+class ImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
-        self.dataset = MetadataImageSegmentationMultitaskDatasetInMemory
+        self.dataset = ImageSegmentationMultitaskDataset
 
 
 def binarize(x):

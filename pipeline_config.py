@@ -51,7 +51,6 @@ SOLUTION_CONFIG = AttrDict({
                                  },
                },
     'unet': {
-
         'architecture_config': {'model_params': {'n_filters': params.n_filters,
                                                  'conv_kernel': params.conv_kernel,
                                                  'pool_kernel': params.pool_kernel,
@@ -79,9 +78,9 @@ SOLUTION_CONFIG = AttrDict({
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
-            'training_monitor': {'batch_every': 1,
+            'training_monitor': {'batch_every': 25,
                                  'epoch_every': 1},
-            'validation_monitor': {'epoch_every': 1},
+            'validation_monitor': {'epoch_every': 3},
             'neptune_monitor': {'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},

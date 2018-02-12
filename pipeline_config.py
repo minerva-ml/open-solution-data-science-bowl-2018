@@ -80,7 +80,7 @@ SOLUTION_CONFIG = AttrDict({
                              'epoch_every': 1},
             'training_monitor': {'batch_every': 25,
                                  'epoch_every': 1},
-            'validation_monitor': {'epoch_every': 3},
+            'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},

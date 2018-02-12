@@ -1,7 +1,7 @@
 import os
 import glob
-
 from tqdm import tqdm
+
 import cv2
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndi

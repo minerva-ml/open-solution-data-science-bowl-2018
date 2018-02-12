@@ -77,7 +77,7 @@ SOLUTION_CONFIG = AttrDict({
             'model_checkpoint': {
                 'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
                 'epoch_every': 1},
-            'lr_scheduler': {'gamma': 0.9955,
+            'lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
             'training_monitor': {'batch_every': 1,
                                  'epoch_every': 1},
@@ -87,8 +87,7 @@ SOLUTION_CONFIG = AttrDict({
             'early_stopping': {'patience': params.patience},
         },
     },
-    'thresholder': {'threshold': 0.5},
+    'thresholder': {'threshold': params.threshold},
     'watershed': {},
     'dropper': {'min_size': params.min_nuclei_size},
-
 })

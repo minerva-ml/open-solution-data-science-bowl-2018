@@ -5,8 +5,6 @@ from sklearn.externals import joblib
 from steps.base import BaseTransformer
 from steps.utils import get_logger
 
-from utils import multi_log_loss
-
 logger = get_logger()
 
 

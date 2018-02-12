@@ -1,12 +1,12 @@
 from itertools import product
 
-from tqdm import tqdm
 import numpy as np
+import skimage.morphology as morph
 from scipy import ndimage as ndi
 from scipy.stats import itemfreq
-from sklearn.externals import joblib
 from skimage.transform import resize
-import skimage.morphology as morph
+from sklearn.externals import joblib
+from tqdm import tqdm
 
 from steps.base import BaseTransformer
 from utils import relabel
@@ -174,5 +174,5 @@ def watershed_contour(image, contour):
     return relabel(correct_labeled)
 
 
-def watershed_combined(markers, boundary, center, area_threshold=0.05):
+def watershed_combined(markers, contour, center):
     return watershed_contour(markers,center)

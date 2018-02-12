@@ -1,7 +1,7 @@
-from tqdm import tqdm
+import os
 
+from tqdm import tqdm
 from PIL import Image
-import numpy as np
 from sklearn.externals import joblib
 from sklearn.feature_extraction import text
 

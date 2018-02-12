@@ -28,9 +28,9 @@ def split_on_column(meta, column, test_size, random_state=1, valid_category_ids=
         categories = meta[column].unique()
         np.random.seed(random_state)
         valid_category_ids = np.random.choice(categories,
-                                            int(test_size * len(categories)))
-    valid = meta[meta[column].isin(valid_category_ids)]
-    train = meta[~(meta[column].isin(valid_category_ids))]
+                                              int(test_size * len(categories)))
+    valid = meta[meta[column].isin(valid_category_ids)].sample(frac=1, random_state=random_state)
+    train = meta[~(meta[column].isin(valid_category_ids))].sample(frac=1, random_state=random_state)
     return train, valid
 
 

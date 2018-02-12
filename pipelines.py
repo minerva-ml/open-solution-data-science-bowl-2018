@@ -1,7 +1,7 @@
 from functools import partial
 
 from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
-    MetadataImageSegmentationMultitaskLoaderInMemory, MetadataImageSegmentationLoaderInMemory
+    ImageSegmentationMultitaskLoader, ImageSegmentationLoader
 from models import PyTorchUNet, PyTorchUNetMultitask
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
     WatershedCenter, WatershedContour, WatershedCombined
@@ -93,7 +93,7 @@ def preprocessing_train(config):
                                 cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoaderInMemory(**config.loader),
+                      transformer=ImageSegmentationLoader(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_train, reader_inference],
                       adapter={'X': ([('reader_train', 'X')]),
@@ -145,7 +145,7 @@ def preprocessing_inference(config):
                                 cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoaderInMemory(**config.loader),
+                      transformer=ImageSegmentationLoader(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_inference],
                       adapter={'X': ([('reader_inference', 'X')]),
@@ -195,7 +195,7 @@ def preprocessing_multitask_train(config):
                                 save_output=True, load_saved_output=True)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
+                      transformer=ImageSegmentationMultitaskLoader(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_train, reader_inference],
                       adapter={'X': ([('reader_train', 'X')]),
@@ -248,7 +248,7 @@ def preprocessing_multitask_inference(config):
                                 cache_dirpath=config.env.cache_dirpath)
 
         loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationMultitaskLoaderInMemory(**config.loader),
+                      transformer=ImageSegmentationMultitaskLoader(**config.loader),
                       input_data=['input'],
                       input_steps=[reader_inference],
                       adapter={'X': ([('reader_inference', 'X')]),

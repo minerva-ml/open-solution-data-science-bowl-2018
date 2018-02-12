@@ -171,7 +171,7 @@ def watershed_contour(image, contour):
     dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
     correct_labeled = dropped + labeled
 
-    return correct_labeled
+    return relabel(correct_labeled)
 
 
 def watershed_combined(image, contour, center):
@@ -185,4 +185,4 @@ def watershed_combined(image, contour, center):
     dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
     correct_labeled = dropped + labeled
 
-    return correct_labeled
+    return relabel(correct_labeled)

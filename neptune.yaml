@@ -54,6 +54,9 @@ parameters:
   pool_stride: 2
   repeat_blocks: 4
 
+# Post processing
+  threshold: 0.5
+
 # Training schedule
   epochs_nr: 1000
   batch_size_train: 8

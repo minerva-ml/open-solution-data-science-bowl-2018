@@ -1,7 +1,9 @@
+import os
+
+from tqdm import tqdm
 from PIL import Image
 from sklearn.externals import joblib
-from tqdm import tqdm
-import os
+from sklearn.feature_extraction import text
 
 from .base import BaseTransformer
 
@@ -64,14 +66,6 @@ class ImageReader(BaseTransformer):
         return X
 
     def load_image(self, img_filepath, grayscale):
-        con = '/public/dsb_2018_data/contours_overlayed/'
-        cen = '/public/dsb_2018_data/centers_overlayed/'
-        con_new = '/public/dsb_2018_data/contours_overlayed_dir/'
-        cen_new = '/public/dsb_2018_data/centers_overlayed_dir/'
-        if img_filepath[:41] == con:
-            img_filepath = os.path.join(con_new, img_filepath[41:])
-        if img_filepath[:40] == cen:
-            img_filepath = os.path.join(cen_new, img_filepath[40:])
         image = Image.open(img_filepath, 'r')
         if not grayscale:
             image = image.convert('RGB')
@@ -91,3 +85,22 @@ class ImageReader(BaseTransformer):
                   'y_columns': self.y_columns
                   }
         joblib.dump(params, filepath)
+
+
+class TfidfVectorizer(BaseTransformer):
+    def __init__(self, **kwargs):
+        self.vectorizer = text.TfidfVectorizer(**kwargs)
+
+    def fit(self, text):
+        self.vectorizer.fit(text)
+        return self
+
+    def transform(self, text):
+        return {'features': self.vectorizer.transform(text)}
+
+    def load(self, filepath):
+        self.vectorizer = joblib.load(filepath)
+        return self
+
+    def save(self, filepath):
+        joblib.dump(self.vectorizer, filepath)

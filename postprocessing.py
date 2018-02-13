@@ -156,7 +156,6 @@ def watershed_center(image, center):
     dropped, _ = ndi.label(image - (labeled > 0))
     dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
     correct_labeled = dropped + labeled
-
     return relabel(correct_labeled)
 
 
@@ -170,19 +169,12 @@ def watershed_contour(image, contour):
     dropped, _ = ndi.label(image - (labeled > 0))
     dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
     correct_labeled = dropped + labeled
-
     return relabel(correct_labeled)
 
 
 def watershed_combined(image, contour, center):
     mask = np.where(contour + image == 2, 0, image)
-
     distance = ndi.distance_transform_edt(mask)
     markers, nr_blobs = ndi.label(mask)
     labeled = morph.watershed(-distance, markers, mask=image)
-
-    dropped, _ = ndi.label(image - (labeled > 0))
-    dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
-    correct_labeled = dropped + labeled
-
     return relabel(correct_labeled)

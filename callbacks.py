@@ -1,8 +1,9 @@
+from PIL import Image
 import numpy as np
 import torch
-from PIL import Image
-from deepsense import neptune
 from torch.autograd import Variable
+from deepsense import neptune
+
 
 from steps.pytorch.callbacks import NeptuneMonitor
 from utils import sigmoid

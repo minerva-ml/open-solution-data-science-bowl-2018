@@ -1,18 +1,37 @@
-import glob
 import os
+import glob
+from tqdm import tqdm
 
 import cv2
 import matplotlib.pyplot as plt
-import numpy as np
 import scipy.ndimage as ndi
-from sklearn.model_selection import train_test_split
-from tqdm import tqdm
+from skimage.transform import resize
+import numpy as np
+from sklearn.cluster import KMeans
+import torch
+from torchvision import models
 
 
-def train_valid_split(meta, validation_size):
+def train_valid_split(meta, validation_size, valid_category_ids=None):
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
+    meta_train_split, meta_valid_split = split_on_column(meta_train,
+                                                         column='vgg_features_clusters',
+                                                         test_size=validation_size,
+                                                         random_state=1234,
+                                                         valid_category_ids=valid_category_ids
+                                                         )
     return meta_train_split, meta_valid_split
+
+
+def split_on_column(meta, column, test_size, random_state=1, valid_category_ids=None):
+    if valid_category_ids is None:
+        categories = meta[column].unique()
+        np.random.seed(random_state)
+        valid_category_ids = np.random.choice(categories,
+                                              int(test_size * len(categories)))
+    valid = meta[meta[column].isin(valid_category_ids)].sample(frac=1, random_state=random_state)
+    train = meta[~(meta[column].isin(valid_category_ids))].sample(frac=1, random_state=random_state)
+    return train, valid
 
 
 def overlay_masks(images_dir, subdir_name, target_dir):
@@ -66,3 +85,49 @@ def get_center(img):
     y, x = ndi.measurements.center_of_mass(img)
     cv2.circle(img_center, (int(x), int(y)), 4, (255, 255, 255), -1)
     return img_center
+
+
+def get_vgg_clusters(meta):
+    img_filepaths = meta['file_path_image'].values
+
+    extractor = vgg_extractor()
+
+    features = []
+    for filepath in tqdm(img_filepaths):
+        img = plt.imread(filepath)[:, :, :3]
+        x = preprocess_image(img)
+        feature = extractor(x)
+        feature = np.ndarray.flatten(feature.cpu().data.numpy())
+        features.append(feature)
+    features = np.stack(features, axis=0)
+
+    labels = cluster_features(features)
+
+    return labels
+
+
+def vgg_extractor():
+    model = models.vgg16(pretrained=True)
+    if torch.cuda.is_available():
+        model = model.cuda()
+    model.eval()
+    return torch.nn.Sequential(*list(model.features.children())[:-1])
+
+
+def preprocess_image(img, target_size=(128, 128)):
+    img = resize(img, target_size)
+    x = np.expand_dims(img, axis=0)
+    x = x.transpose(0, 3, 1, 2)
+    x = torch.FloatTensor(x)
+    if torch.cuda.is_available():
+        x = torch.autograd.Variable(x, volatile=True).cuda()
+    else:
+        x = torch.autograd.Variable(x, volatile=True)
+    return x
+
+
+def cluster_features(features, n_clusters=10):
+    kmeans = KMeans(n_clusters=n_clusters)
+    kmeans.fit(features)
+    labels = kmeans.labels_
+    return labels

@@ -1,7 +1,7 @@
-import logging
 import os
 import sys
 from itertools import product
+import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -201,8 +201,10 @@ def relabel_random_colors(img, max_colours=1000):
         img[i, j] = funky_dict[img[i, j]]
     return img
 
+
 def from_pil(*images):
     return [np.array(image) for image in images]
+
 
 def to_pil(*images):
     return [Image.fromarray((image).astype(np.uint8)) for image in images]

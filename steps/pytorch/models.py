@@ -1,11 +1,12 @@
-import shutil
 from functools import partial
+import shutil
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import init
+from tqdm import tqdm
 
 from steps.base import BaseTransformer
 from steps.utils import get_logger
@@ -106,9 +107,8 @@ class Model(BaseTransformer):
         batch_gen, steps = datagen
         outputs = {}
         for batch_id, data in enumerate(batch_gen):
-            if len(data) == len(self.output_names) + 1:
+            if isinstance(data,list):
                 X = data[0]
-                targets_tensors = data[1:]
             else:
                 X = data
 

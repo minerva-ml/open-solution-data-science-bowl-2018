@@ -13,11 +13,11 @@ Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_center
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'load_in_memory': params.load_in_memory,
-                 'num_workers': 6,
+                 'num_workers': params.num_workers,
                  'num_classes': 2,
-                 'img_H-W': (256, 256),
-                 'batch_size_train': 32,
-                 'batch_size_inference': 32
+                 'img_H-W': (params.image_h, params.image_w),
+                 'batch_size_train': params.batch_size_train,
+                 'batch_size_inference': params.batch_size_inference
                  }
 
 SOLUTION_CONFIG = AttrDict({
@@ -53,7 +53,6 @@ SOLUTION_CONFIG = AttrDict({
                                  },
                },
     'unet': {
-
         'architecture_config': {'model_params': {'n_filters': params.n_filters,
                                                  'conv_kernel': params.conv_kernel,
                                                  'pool_kernel': params.pool_kernel,
@@ -81,7 +80,7 @@ SOLUTION_CONFIG = AttrDict({
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
-            'training_monitor': {'batch_every': 1,
+            'training_monitor': {'batch_every': 25,
                                  'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {'image_nr': 4,

@@ -286,7 +286,7 @@ class MetadataImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
 class ImageSegmentationLoader(MetadataImageSegmentationLoader):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
-        self.dataset = MetadataImageSegmentationDataset
+        self.dataset = ImageSegmentationDataset
 
 
 class ImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):

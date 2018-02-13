@@ -44,8 +44,8 @@ parameters:
   pin_memory: 1
 
 # General Params
-  image_h: 32
-  image_w: 32
+  image_h: 256
+  image_w: 256
   image_channels: 3
 
 # U-Net parameters

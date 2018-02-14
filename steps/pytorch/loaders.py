@@ -1,8 +1,9 @@
 from math import ceil
 
-import matplotlib.pyplot as plt
+import numpy as np
 import torch
 import torchvision.transforms as transforms
+from PIL import Image
 from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
 
@@ -23,7 +24,7 @@ class MetadataImageDataset(Dataset):
         self.target_transform = target_transform
 
     def load_image(self, img_filepath):
-        image = plt.imread(img_filepath)
+        image = np.asarray(Image.open(img_filepath))
         return image[:, :, 0]
 
     def __len__(self):

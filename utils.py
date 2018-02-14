@@ -1,16 +1,16 @@
+import glob
+import logging
 import os
 import sys
 from itertools import product
-import logging
-import glob
 
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
 from PIL import Image
 from attrdict import AttrDict
+from tqdm import tqdm
 
 
 def read_yaml(filepath):
@@ -38,7 +38,6 @@ def get_logger():
 
 
 def decompose(labeled):
-
     nr_true = labeled.max()
     masks = []
     for i in range(1, nr_true + 1):

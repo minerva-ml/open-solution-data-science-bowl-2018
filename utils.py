@@ -3,7 +3,6 @@ import sys
 from itertools import product
 import logging
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
@@ -78,7 +77,7 @@ def create_submission(experiments_dir, meta, predictions, logger):
 def read_masks(mask_filepaths):
     masks = []
     for mask_filepath in mask_filepaths:
-        mask = plt.imread(mask_filepath[0])[:, :, 0]
+        mask = np.asarray(Image.open(mask_filepath[0]))[:, :, 0]
         mask_binarized = (mask > 0.5).astype(np.uint8)
         masks.append(mask_binarized)
     return masks

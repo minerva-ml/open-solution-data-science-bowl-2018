@@ -315,8 +315,16 @@ class NeptuneMonitor(Callback):
 
 
 class ExperimentTiming(Callback):
-    def __init__(self):
+    def __init__(self, epoch_every=None, batch_every=None):
         super().__init__()
+        if epoch_every == 0:
+            self.epoch_every = False
+        else:
+            self.epoch_every = epoch_every
+        if batch_every == 0:
+            self.batch_every = False
+        else:
+            self.batch_every = batch_every
         self.batch_start = None
         self.epoch_start = None
         self.current_sum = None

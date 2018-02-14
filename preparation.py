@@ -118,7 +118,7 @@ def vgg_extractor():
 
 
 def preprocess_image(img, target_size=(128, 128)):
-    img = resize(img, target_size)
+    img = resize(img, target_size, mode='constant')
     x = np.expand_dims(img, axis=0)
     x = x.transpose(0, 3, 1, 2)
     x = torch.FloatTensor(x)

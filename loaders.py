@@ -219,14 +219,14 @@ class MetadataImageSegmentationLoader(BaseTransformer):
         self.dataset_params = AttrDict(dataset_params)
 
         self.dataset = MetadataImageSegmentationDataset
-        self.image_transform = transforms.Compose([transforms.Scale((self.dataset_params.h,
-                                                                     self.dataset_params.w)),
+        self.image_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
+                                                                      self.dataset_params.w)),
                                                    transforms.ToTensor(),
                                                    transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                                                         std=[0.2, 0.2, 0.2]),
                                                    ])
-        self.mask_transform = transforms.Compose([transforms.Scale((self.dataset_params.h,
-                                                                    self.dataset_params.w)),
+        self.mask_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
+                                                                     self.dataset_params.w)),
                                                   transforms.Lambda(binarize),
                                                   transforms.Lambda(to_tensor),
                                                   ])

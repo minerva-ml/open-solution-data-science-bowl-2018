@@ -16,7 +16,7 @@ def unet(config, train_mode):
         load_saved_output = True
         preprocessing = preprocessing_train(config)
     else:
-        save_output = False
+        save_output = True
         load_saved_output = False
         preprocessing = preprocessing_inference(config)
 
@@ -66,7 +66,7 @@ def unet_multitask(config, train_mode):
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labels')]),
+                  adapter={'y_pred': ([(detached.name, 'filled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -349,22 +349,24 @@ def watershed_centers(mask, center, config, save_output=True):
                             cache_dirpath=config.env.cache_dirpath,
                             save_output=save_output)
 
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_center],
+                        adapter={'labels': ([('watershed_center', 'detached_images')]),
+                                 },
+
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+
     binary_fill = Step(name='binary_fill',
                        transformer=BinaryFillHoles(),
-                       input_steps=[watershed_center],
-                       adapter={'images': ([('watershed_centers', 'detached_images')]),
+                       input_steps=[drop_smaller],
+                       adapter={'images': ([('drop_smaller', 'labels')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath,
                        save_output=save_output)
 
-    drop_smaller = Step(name='drop_smaller',
-                        transformer=Dropper(**config.dropper),
-                        input_steps=[binary_fill],
-                        adapter={'labels': ([('binary_fill', 'filled_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output)
-    return drop_smaller
+    return binary_fill
 
 
 def watershed_contours(mask, contour, config, save_output=True):
@@ -377,22 +379,24 @@ def watershed_contours(mask, contour, config, save_output=True):
                              cache_dirpath=config.env.cache_dirpath,
                              save_output=save_output)
 
+    drop_smaller = Step(name='drop_smaller',
+                        transformer=Dropper(**config.dropper),
+                        input_steps=[watershed_contour],
+                        adapter={'labels': ([('watershed_contour', 'detached_images')]),
+                                 },
+
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+
     binary_fill = Step(name='binary_fill',
                        transformer=BinaryFillHoles(),
-                       input_steps=[watershed_contour],
-                       adapter={'images': ([('watershed_contour', 'detached_images')]),
+                       input_steps=[drop_smaller],
+                       adapter={'images': ([('drop_smaller', 'labels')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath,
                        save_output=save_output)
 
-    drop_smaller = Step(name='drop_smaller',
-                        transformer=Dropper(**config.dropper),
-                        input_steps=[binary_fill],
-                        adapter={'labels': ([('binary_fill', 'filled_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output)
-    return drop_smaller
+    return binary_fill
 
 
 def nuclei_labeler(postprocessed_mask, config, save_output=True):

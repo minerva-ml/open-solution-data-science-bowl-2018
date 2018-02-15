@@ -38,7 +38,6 @@ def get_logger():
 
 
 def decompose(labeled):
-
     nr_true = labeled.max()
     masks = []
     for i in range(1, nr_true + 1):

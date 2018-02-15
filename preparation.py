@@ -1,15 +1,15 @@
-import os
 import glob
-from tqdm import tqdm
+import os
 
 import cv2
-import matplotlib.pyplot as plt
-import scipy.ndimage as ndi
-from skimage.transform import resize
 import numpy as np
-from sklearn.cluster import KMeans
+import scipy.ndimage as ndi
 import torch
+from PIL import Image
+from skimage.transform import resize
+from sklearn.cluster import KMeans
 from torchvision import models
+from tqdm import tqdm
 
 
 def train_valid_split(meta, validation_size, valid_category_ids=None):
@@ -39,11 +39,12 @@ def overlay_masks(images_dir, subdir_name, target_dir):
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
-            masks.append(plt.imread(image_filepath))
+            masks.append(np.asarray(Image.open(image_filepath)))
         overlayed_masks = np.sum(masks, axis=0)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
-        plt.imsave(target_filepath, overlayed_masks)
+        overlayed_masks_ = Image.fromarray(overlayed_masks)
+        overlayed_masks_.save(target_filepath)
 
 
 def overlay_contours(images_dir, subdir_name, target_dir):
@@ -51,13 +52,14 @@ def overlay_contours(images_dir, subdir_name, target_dir):
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
-            image = plt.imread(image_filepath)
+            image = np.asarray(Image.open(image_filepath))
             masks.append(get_contour(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
 
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
-        plt.imsave(target_filepath, overlayed_masks)
+        overlayed_masks_ = Image.fromarray(overlayed_masks)
+        overlayed_masks_.save(target_filepath)
 
 
 def overlay_centers(images_dir, subdir_name, target_dir):
@@ -65,12 +67,13 @@ def overlay_centers(images_dir, subdir_name, target_dir):
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
-            image = plt.imread(image_filepath)
+            image = np.asarray(Image.open(image_filepath))
             masks.append(get_center(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
-        plt.imsave(target_filepath, overlayed_masks)
+        overlayed_masks_ = Image.fromarray(overlayed_masks)
+        overlayed_masks_.save(target_filepath)
 
 
 def get_contour(img):
@@ -94,7 +97,7 @@ def get_vgg_clusters(meta):
 
     features = []
     for filepath in tqdm(img_filepaths):
-        img = plt.imread(filepath)[:, :, :3]
+        img = np.asarray(Image.open(filepath))[:, :, :3]
         x = preprocess_image(img)
         feature = extractor(x)
         feature = np.ndarray.flatten(feature.cpu().data.numpy())
@@ -115,7 +118,7 @@ def vgg_extractor():
 
 
 def preprocess_image(img, target_size=(128, 128)):
-    img = resize(img, target_size)
+    img = resize(img, target_size, mode='constant')
     x = np.expand_dims(img, axis=0)
     x = x.transpose(0, 3, 1, 2)
     x = torch.FloatTensor(x)

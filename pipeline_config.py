@@ -10,6 +10,8 @@ SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
 Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
+Y_COLUMNS_SCORING = ['file_path_masks']
+
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'load_in_memory': params.load_in_memory,
@@ -83,8 +85,8 @@ SOLUTION_CONFIG = AttrDict({
             'training_monitor': {'batch_every': 25,
                                  'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'image_nr': 4,
-                                'image_resize': 0.2},
+            'neptune_monitor': {'image_nr': 2,
+                                'image_resize': 0.1},
             'early_stopping': {'patience': params.patience},
         },
     },

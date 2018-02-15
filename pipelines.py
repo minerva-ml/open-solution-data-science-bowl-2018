@@ -4,7 +4,7 @@ from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMu
     ImageSegmentationMultitaskLoader, ImageSegmentationLoader
 from models import PyTorchUNet, PyTorchUNetMultitask
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, WatershedCombined
+    WatershedCenter, WatershedContour, BinaryFillHoles
 from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit, ImageReader
 from utils import squeeze_inputs
@@ -13,10 +13,10 @@ from utils import squeeze_inputs
 def unet(config, train_mode):
     if train_mode:
         save_output = True
-        load_saved_output = True
+        load_saved_output = False
         preprocessing = preprocessing_train(config)
     else:
-        save_output = False
+        save_output = True
         load_saved_output = False
         preprocessing = preprocessing_inference(config)
 
@@ -42,10 +42,10 @@ def unet(config, train_mode):
 def unet_multitask(config, train_mode):
     if train_mode:
         save_output = True
-        load_saved_output = True
+        load_saved_output = False
         preprocessing = preprocessing_multitask_train(config)
     else:
-        save_output = False
+        save_output = True
         load_saved_output = False
         preprocessing = preprocessing_multitask_inference(config)
 
@@ -57,18 +57,16 @@ def unet_multitask(config, train_mode):
 
     mask_postprocessed = mask_postprocessing(unet_multitask, config, save_output=save_output)
     contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
-    center_postprocessed = center_postprocessing(unet_multitask, config, save_output=save_output)
 
-    detached = watershed_combined(mask_postprocessed,
+    detached = watershed_contours(mask_postprocessed,
                                   contour_postprocessed,
-                                  center_postprocessed,
                                   config,
                                   save_output=save_output)
 
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labels')]),
+                  adapter={'y_pred': ([(detached.name, 'filled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -342,11 +340,11 @@ def center_postprocessing(model, config, save_output=True):
 
 
 def watershed_centers(mask, center, config, save_output=True):
-    watershed_center = Step(name='watershed_center',
+    watershed_center = Step(name='watershed_centers',
                             transformer=WatershedCenter(),
                             input_steps=[mask, center],
                             adapter={'images': ([(mask.name, 'binarized_images')]),
-                                     'centers': ([(center.name, 'binarized_images')])
+                                     'contours': ([(center.name, 'binarized_images')]),
                                      },
                             cache_dirpath=config.env.cache_dirpath,
                             save_output=save_output)
@@ -356,9 +354,19 @@ def watershed_centers(mask, center, config, save_output=True):
                         input_steps=[watershed_center],
                         adapter={'labels': ([('watershed_center', 'detached_images')]),
                                  },
+
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output)
-    return drop_smaller
+
+    binary_fill = Step(name='binary_fill',
+                       transformer=BinaryFillHoles(),
+                       input_steps=[drop_smaller],
+                       adapter={'images': ([('drop_smaller', 'labels')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output)
+
+    return binary_fill
 
 
 def watershed_contours(mask, contour, config, save_output=True):
@@ -376,30 +384,19 @@ def watershed_contours(mask, contour, config, save_output=True):
                         input_steps=[watershed_contour],
                         adapter={'labels': ([('watershed_contour', 'detached_images')]),
                                  },
+
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output)
-    return drop_smaller
 
+    binary_fill = Step(name='binary_fill',
+                       transformer=BinaryFillHoles(),
+                       input_steps=[drop_smaller],
+                       adapter={'images': ([('drop_smaller', 'labels')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output)
 
-def watershed_combined(mask, contour, center, config, save_output=True):
-    watershed_combined = Step(name='watershed_combined',
-                              transformer=WatershedCombined(),
-                              input_steps=[mask, contour, center],
-                              adapter={'images': ([(mask.name, 'binarized_images')]),
-                                       'contours': ([(contour.name, 'binarized_images')]),
-                                       'centers': ([(center.name, 'binarized_images')]),
-                                       },
-                              cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
-
-    drop_smaller = Step(name='drop_smaller',
-                        transformer=Dropper(**config.dropper),
-                        input_steps=[watershed_combined],
-                        adapter={'labels': ([('watershed_combined', 'detached_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output)
-    return drop_smaller
+    return binary_fill
 
 
 def nuclei_labeler(postprocessed_mask, config, save_output=True):

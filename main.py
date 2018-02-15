@@ -6,7 +6,7 @@ import pandas as pd
 from deepsense import neptune
 
 from metrics import intersection_over_union, intersection_over_union_thresholds
-from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS, SIZE_COLUMNS
+from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
 from utils import get_logger, read_masks, read_params, create_submission, generate_metadata
@@ -61,8 +61,9 @@ def _train_pipeline(pipeline_name, validation_size):
         shutil.rmtree(params.experiment_dir)
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta, validation_size, valid_category_ids=valid_ids)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
@@ -86,8 +87,9 @@ def evaluate_pipeline(pipeline_name, validation_size):
 
 def _evaluate_pipeline(pipeline_name, validation_size):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta, validation_size, valid_category_ids=valid_ids)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
 
     data = {'input': {'meta': meta_valid_split,
                       'meta_valid': None,
@@ -96,7 +98,7 @@ def _evaluate_pipeline(pipeline_name, validation_size):
                       },
             }
 
-    y_true = read_masks(meta_valid_split[Y_COLUMNS].values)
+    y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
 
     pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
     pipeline.clean_cache()

@@ -68,7 +68,7 @@ def weight_regularization_unet(model, regularize, weight_decay_conv2d):
 
 
 def callbacks_unet(callbacks_config):
-    experiment_timing = ExperimentTiming()
+    experiment_timing = ExperimentTiming(**callbacks_config['experiment_timing'])
     model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
@@ -77,5 +77,5 @@ def callbacks_unet(callbacks_config):
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
 
     return CallbackList(
-        callbacks=[experiment_timing, model_checkpoints, lr_scheduler, training_monitor, validation_monitor,
-                   neptune_monitor, early_stopping])
+        callbacks=[experiment_timing, training_monitor, validation_monitor,
+                   model_checkpoints, lr_scheduler, neptune_monitor, early_stopping])

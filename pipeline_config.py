@@ -12,7 +12,6 @@ Y_COLUMNS = ['file_path_mask']
 Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
-
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'load_in_memory': params.load_in_memory,
                  'num_workers': params.num_workers,

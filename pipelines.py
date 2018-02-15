@@ -13,7 +13,7 @@ from utils import squeeze_inputs
 def unet(config, train_mode):
     if train_mode:
         save_output = True
-        load_saved_output = True
+        load_saved_output = False
         preprocessing = preprocessing_train(config)
     else:
         save_output = True
@@ -42,10 +42,10 @@ def unet(config, train_mode):
 def unet_multitask(config, train_mode):
     if train_mode:
         save_output = True
-        load_saved_output = True
+        load_saved_output = False
         preprocessing = preprocessing_multitask_train(config)
     else:
-        save_output = False
+        save_output = True
         load_saved_output = False
         preprocessing = preprocessing_multitask_inference(config)
 

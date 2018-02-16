@@ -1,15 +1,15 @@
-import os
 import glob
-from tqdm import tqdm
+import os
 
 import cv2
 import matplotlib.pyplot as plt
-import scipy.ndimage as ndi
-from skimage.transform import resize
 import numpy as np
-from sklearn.cluster import KMeans
+import scipy.ndimage as ndi
 import torch
+from skimage.transform import resize
+from sklearn.cluster import KMeans
 from torchvision import models
+from tqdm import tqdm
 
 
 def train_valid_split(meta, validation_size, valid_category_ids=None):
@@ -115,7 +115,7 @@ def vgg_extractor():
 
 
 def preprocess_image(img, target_size=(128, 128)):
-    img = resize(img, target_size)
+    img = resize(img, target_size, mode='constant')
     x = np.expand_dims(img, axis=0)
     x = x.transpose(0, 3, 1, 2)
     x = torch.FloatTensor(x)

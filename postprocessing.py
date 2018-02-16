@@ -125,6 +125,24 @@ class NucleiLabeler(BaseTransformer):
         joblib.dump({}, filepath)
 
 
+class Postprocessor(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, images, contours):
+        labeled_images = []
+        for image, contour in tqdm(zip(images, contours)):
+            labeled_image = postprocess(image, contour)
+            labeled_images.append(labeled_image)
+        return {'labeled_images': labeled_images}
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
 def cut(image, contour):
     image = np.where(contour + image == 2, 0, image)
     labeled, nr_true = ndi.label(image)
@@ -170,6 +188,27 @@ def watershed_contour(image, contour):
     dropped = np.where(dropped > 0, dropped + nr_blobs, 0)
     correct_labeled = dropped + labeled
     return relabel(correct_labeled)
+
+
+def postprocess(image, contour):
+    image_init = (image > 0.5).astype(np.uint8)
+    contour_init = (contour > 0.5).astype(np.uint8)
+
+    image_cleaned = ndi.morphology.binary_fill_holes(image_init)
+    # labels, _ = ndi.label(image_cleaned)
+    # mean_r = int(np.ceil(0.05 * (np.sqrt(itemfreq(labels)[1:, 1].mean()))))
+    #
+    # image_cleaned = ndi.morphology.binary_closing(image_cleaned, structure=morph.disk(mean_r), iterations=1)
+    # image_cleaned = ndi.morphology.binary_fill_holes(image_cleaned).astype(np.uint8)
+
+    image_cleaned = np.where((image_init == 0) & (contour_init == 1), 0, image_cleaned)
+    # if not in initial with threshold then drop
+
+    final_labels = watershed_contour(image_cleaned, contour_init)
+    final_labels = drop_small(final_labels, min_size=20)
+
+    final_labels = fill_holes_per_blob(final_labels)
+    return final_labels
 
 
 def watershed_combined(image, contour, center):

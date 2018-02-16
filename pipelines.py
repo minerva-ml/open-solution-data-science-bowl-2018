@@ -4,7 +4,7 @@ from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMu
     ImageSegmentationMultitaskLoader, ImageSegmentationLoader
 from models import PyTorchUNet, PyTorchUNetMultitask
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, BinaryFillHoles
+    WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor
 from steps.base import Step, Dummy
 from steps.preprocessing import XYSplit, ImageReader
 from utils import squeeze_inputs
@@ -16,7 +16,7 @@ def unet(config, train_mode):
         load_saved_output = True
         preprocessing = preprocessing_train(config)
     else:
-        save_output = True
+        save_output = False
         load_saved_output = False
         preprocessing = preprocessing_inference(config)
 
@@ -42,10 +42,10 @@ def unet(config, train_mode):
 def unet_multitask(config, train_mode):
     if train_mode:
         save_output = True
-        load_saved_output = True
+        load_saved_output = False
         preprocessing = preprocessing_multitask_train(config)
     else:
-        save_output = False
+        save_output = True
         load_saved_output = False
         preprocessing = preprocessing_multitask_inference(config)
 
@@ -55,18 +55,39 @@ def unet_multitask(config, train_mode):
                           cache_dirpath=config.env.cache_dirpath,
                           save_output=save_output, load_saved_output=load_saved_output)
 
-    mask_postprocessed = mask_postprocessing(unet_multitask, config, save_output=save_output)
-    contour_postprocessed = contour_postprocessing(unet_multitask, config, save_output=save_output)
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[unet_multitask],
+                       adapter={'images': ([(unet_multitask.name, 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output)
 
-    detached = watershed_contours(mask_postprocessed,
-                                  contour_postprocessed,
-                                  config,
-                                  save_output=save_output)
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[unet_multitask],
+                          adapter={'images': ([(unet_multitask.name, 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output)
+
+    detached = Step(name='detached',
+                    transformer=Postprocessor(),
+                    input_steps=[mask_resize, contour_resize],
+                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                             'contours': ([(contour_resize.name, 'resized_images')]),
+                             },
+                    cache_dirpath=config.env.cache_dirpath,
+                    save_output=save_output)
 
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'filled_images')]),
+                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output

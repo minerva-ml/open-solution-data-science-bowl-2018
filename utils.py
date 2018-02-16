@@ -2,14 +2,15 @@ import os
 import sys
 from itertools import product
 import logging
+import glob
 
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
 from PIL import Image
 from attrdict import AttrDict
-from scipy import ndimage as ndi
 
 
 def read_yaml(filepath):
@@ -36,17 +37,9 @@ def get_logger():
     return logger
 
 
-def decompose_pred(labeled):
+def decompose(labeled):
+
     nr_true = labeled.max()
-    return _decompose(labeled, nr_true)
-
-
-def decompose_true(mask):
-    labeled, nr_true = ndi.label(mask)
-    return _decompose(labeled, nr_true)
-
-
-def _decompose(labeled, nr_true):
     masks = []
     for i in range(1, nr_true + 1):
         msk = labeled.copy()
@@ -63,7 +56,7 @@ def _decompose(labeled, nr_true):
 def create_submission(experiments_dir, meta, predictions, logger):
     image_ids, encodings = [], []
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
-        for mask in decompose_pred(prediction):
+        for mask in decompose(prediction):
             image_ids.append(image_id)
             encodings.append(' '.join(str(rle) for rle in run_length_encoding(mask > 128.)))
 
@@ -75,12 +68,16 @@ def create_submission(experiments_dir, meta, predictions, logger):
     logger.info('submission head \n\n{}'.format(submission.head()))
 
 
-def read_masks(mask_filepaths):
+def read_masks(masks_filepaths):
     masks = []
-    for mask_filepath in mask_filepaths:
-        mask = plt.imread(mask_filepath[0])[:, :, 0]
-        mask_binarized = (mask > 0.5).astype(np.uint8)
-        masks.append(mask_binarized)
+    for mask_dir in tqdm(masks_filepaths):
+        mask = []
+        for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir[0]))):
+            blob = plt.imread(mask_filepath)
+            blob_binarized = (blob > 0.5).astype(np.uint8) * i
+            mask.append(blob_binarized)
+        mask = np.sum(np.stack(mask, axis=0), axis=0).astype(np.uint8)
+        masks.append(mask)
     return masks
 
 

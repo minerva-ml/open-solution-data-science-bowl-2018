@@ -75,13 +75,13 @@ class WatershedContour(BaseTransformer):
         joblib.dump({}, filepath)
 
 
-class WatershedCombined(BaseTransformer):
-    def transform(self, images, contours, centers):
-        detached_images = []
-        for image, contour, center in tqdm(zip(images, contours, centers)):
-            detached_image = watershed_combined(image, contour, center)
-            detached_images.append(detached_image)
-        return {'detached_images': detached_images}
+class BinaryFillHoles(BaseTransformer):
+    def transform(self, images):
+        filled_images = []
+        for image in tqdm(images):
+            filled_image = fill_holes_per_blob(image)
+            filled_images.append(filled_image)
+        return {'filled_images': filled_images}
 
     def load(self, filepath):
         return self
@@ -160,7 +160,7 @@ def watershed_center(image, center):
 
 
 def watershed_contour(image, contour):
-    mask = np.where(contour + image == 2, 0, image)
+    mask = np.where(contour == 1, 0, image)
 
     distance = ndi.distance_transform_edt(mask)
     markers, nr_blobs = ndi.label(mask)
@@ -173,8 +173,13 @@ def watershed_contour(image, contour):
 
 
 def watershed_combined(image, contour, center):
-    mask = np.where(contour + image == 2, 0, image)
-    distance = ndi.distance_transform_edt(mask)
-    markers, nr_blobs = ndi.label(mask)
-    labeled = morph.watershed(-distance, markers, mask=image)
-    return relabel(correct_labeled)
+    return NotImplementedError
+
+
+def fill_holes_per_blob(image):
+    image_cleaned = np.zeros_like(image)
+    for i in range(1, image.max() + 1):
+        mask = np.where(image == i, 1, 0)
+        mask = ndi.morphology.binary_fill_holes(mask)
+        image_cleaned = image_cleaned + mask * i
+    return image_cleaned

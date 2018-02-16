@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_2, unet-multitask]
+tags: [solution_3, unet-multitask, augmentations, validation]
 
 metric:
   channel: 'Final Validation Score'
@@ -37,15 +37,15 @@ parameters:
 #  centers_overlayed_dir:  /path/to/centers_overlayed
 #  experiment_dir:         /path/to/work/dir
 
-  valid_category_ids: "[1, 5, 8]"
+  valid_category_ids: "[0, 1]"
   overwrite: 1
-  num_workers: 6
+  num_workers: 4
   load_in_memory: 1
   pin_memory: 1
 
 # General Params
-  image_h: 256
-  image_w: 256
+  image_h: 512
+  image_w: 512
   image_channels: 3
 
 # U-Net parameters
@@ -56,16 +56,13 @@ parameters:
   pool_stride: 2
   repeat_blocks: 4
 
-# Post processing
-  threshold: 0.5
-
 # Training schedule
   epochs_nr: 1000
-  batch_size_train: 8
-  batch_size_inference: 8
-  lr: 0.0005
+  batch_size_train: 4
+  batch_size_inference: 4
+  lr: 0.0001
   momentum: 0.9
-  gamma: 0.9955
+  gamma: 0.99
   patience: 100
 
 # Regularization

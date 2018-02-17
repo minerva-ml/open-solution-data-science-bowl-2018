@@ -70,7 +70,9 @@ def read_masks(masks_filepaths):
     masks = []
     for mask_dir in tqdm(masks_filepaths):
         mask = []
-        for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir[0]))):
+        if len(mask_dir) == 1:
+            mask_dir = mask_dir[0]
+        for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir))):
             blob = np.asarray(Image.open(mask_filepath))
             blob = blob / blob.max(axis=None).astype(np.float32)
             blob_binarized = (blob > 0.5).astype(np.uint8) * i
@@ -104,6 +106,7 @@ def read_params():
 def generate_metadata(data_dir,
                       masks_overlayed_dir,
                       contours_overlayed_dir,
+                      contours_touching_overlayed_dir,
                       centers_overlayed_dir):
     def stage1_generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
@@ -126,6 +129,7 @@ def generate_metadata(data_dir,
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
                 file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
+                file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
                 file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
@@ -133,6 +137,7 @@ def generate_metadata(data_dir,
                 file_path_masks = None
                 file_path_mask = None
                 file_path_contours = None
+                file_path_contours_touching = None
                 file_path_centers = None
                 n_nuclei = None
 
@@ -147,6 +152,7 @@ def generate_metadata(data_dir,
                                               'file_path_masks': file_path_masks,
                                               'file_path_mask': file_path_mask,
                                               'file_path_contours': file_path_contours,
+                                              'file_path_contours_touching': file_path_contours_touching,
                                               'file_path_centers': file_path_centers,
                                               'is_train': is_train,
                                               'width': width,

@@ -16,7 +16,7 @@ class Resizer(BaseTransformer):
     def transform(self, images, target_sizes):
         resized_images = []
         for image, target_size in tqdm(zip(images, target_sizes)):
-            resized_image = resize(image, target_size)
+            resized_image = resize(image, target_size, mode='constant')
             resized_images.append(resized_image)
         return {'resized_images': resized_images}
 

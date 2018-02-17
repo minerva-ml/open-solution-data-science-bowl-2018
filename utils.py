@@ -1,16 +1,15 @@
+import glob
+import logging
 import os
 import sys
 from itertools import product
-import logging
-import glob
 
-from tqdm import tqdm
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
 from PIL import Image
 from attrdict import AttrDict
+from tqdm import tqdm
 
 
 def read_yaml(filepath):
@@ -38,7 +37,6 @@ def get_logger():
 
 
 def decompose(labeled):
-
     nr_true = labeled.max()
     masks = []
     for i in range(1, nr_true + 1):
@@ -73,7 +71,8 @@ def read_masks(masks_filepaths):
     for mask_dir in tqdm(masks_filepaths):
         mask = []
         for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir[0]))):
-            blob = plt.imread(mask_filepath)
+            blob = np.asarray(Image.open(mask_filepath))
+            blob = blob / blob.max(axis=None).astype(np.float32)
             blob_binarized = (blob > 0.5).astype(np.uint8) * i
             mask.append(blob_binarized)
         mask = np.sum(np.stack(mask, axis=0), axis=0).astype(np.uint8)

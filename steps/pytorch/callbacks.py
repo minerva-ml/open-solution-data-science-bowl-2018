@@ -336,12 +336,14 @@ class ExperimentTiming(Callback):
         logger.info('starting training...')
 
     def on_train_end(self, *args, **kwargs):
-        logger.info('training finished...')
+        logger.info('training finished')
 
     def on_epoch_begin(self, *args, **kwargs):
         if self.epoch_id > 0:
             epoch_time = datetime.now() - self.epoch_start
-            logger.info('epoch {0} time {1}'.format(self.epoch_id - 1, str(epoch_time)[:-7]))
+            if self.epoch_every:
+                if (self.epoch_id % self.epoch_every) == 0:
+                    logger.info('epoch {0} time {1}'.format(self.epoch_id - 1, str(epoch_time)[:-7]))
         self.epoch_start = datetime.now()
         self.current_sum = timedelta()
         self.current_mean = timedelta()
@@ -352,14 +354,16 @@ class ExperimentTiming(Callback):
             current_delta = datetime.now() - self.batch_start
             self.current_sum += current_delta
             self.current_mean = self.current_sum / self.batch_id
-        if self.batch_id > 0 and (((self.batch_id - 1) % 10) == 0):
-            logger.info('epoch {0} average batch time: {1}'.format(self.epoch_id, str(self.current_mean)[:-5]))
-        if self.batch_id == 0 or self.batch_id % 10 == 0:
-            logger.info('epoch {0} batch {1} ...'.format(self.epoch_id, self.batch_id))
+        if self.batch_every:
+            if self.batch_id > 0 and (((self.batch_id - 1) % self.batch_every) == 0):
+                logger.info('epoch {0} average batch time: {1}'.format(self.epoch_id, str(self.current_mean)[:-5]))
+        if self.batch_every:
+            if self.batch_id == 0 or self.batch_id % self.batch_every == 0:
+                logger.info('epoch {0} batch {1} ...'.format(self.epoch_id, self.batch_id))
         self.batch_start = datetime.now()
 
 
-class CallbackReduceLROnPlateau(Callback):  # thank you keras
+class ReduceLROnPlateau(Callback):  # thank you keras
     def __init__(self):
         super().__init__()
         pass

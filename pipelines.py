@@ -13,10 +13,10 @@ from utils import squeeze_inputs
 def unet(config, train_mode):
     if train_mode:
         save_output = True
-        load_saved_output = True
+        load_saved_output = False
         preprocessing = preprocessing_train(config)
     else:
-        save_output = False
+        save_output = True
         load_saved_output = False
         preprocessing = preprocessing_inference(config)
 
@@ -87,7 +87,7 @@ def unet_multitask(config, train_mode):
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                  adapter={'y_pred': ([(detached.name, 'labels')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -375,7 +375,6 @@ def watershed_centers(mask, center, config, save_output=True):
                         input_steps=[watershed_center],
                         adapter={'labels': ([('watershed_center', 'detached_images')]),
                                  },
-
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output)
 
@@ -408,6 +407,7 @@ def watershed_contours(mask, contour, config, save_output=True):
 
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output)
+    return drop_smaller
 
     binary_fill = Step(name='binary_fill',
                        transformer=BinaryFillHoles(),

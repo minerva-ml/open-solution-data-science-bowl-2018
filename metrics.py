@@ -1,10 +1,12 @@
+from functools import lru_cache
+
 import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
 from tqdm import tqdm
 
 from utils import decompose
 
-
+@lru_cache(maxsize=None)
 def iou(gt, pred):
     gt[gt > 0] = 1.
     pred[pred > 0] = 1.
@@ -17,7 +19,7 @@ def iou(gt, pred):
         union = 1e-09
     return intersection / union
 
-
+@lru_cache(maxsize=None)
 def compute_ious(gt, predictions):
     gt_ = decompose(gt)
     predictions_ = decompose(predictions)

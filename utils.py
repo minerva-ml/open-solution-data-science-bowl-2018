@@ -70,7 +70,9 @@ def read_masks(masks_filepaths):
     masks = []
     for mask_dir in tqdm(masks_filepaths):
         mask = []
-        for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir[0]))):
+        if len(mask_dir)==1:
+            mask_dir = mask_dir[0]
+        for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir))):
             blob = np.asarray(Image.open(mask_filepath))
             blob = blob / blob.max(axis=None).astype(np.float32)
             blob_binarized = (blob > 0.5).astype(np.uint8) * i

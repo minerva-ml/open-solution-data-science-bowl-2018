@@ -135,28 +135,27 @@ class MetadataImageSegmentationMultitaskDataset(Dataset):
 
         Xi = self.load_image(img_filepath)
         if self.y is not None:
-            mask_filepath = self.y[index, 0]
-            contour_filepath = self.y[index, 1]
-            center_filepath = self.y[index, 2]
-
-            Mi = self.load_image(mask_filepath)
-            CTi = self.load_image(contour_filepath)
-            CRi = self.load_image(center_filepath)
+            target_masks = []
+            for i in range(y.shape[1]):
+                filepath = self.y[index, i]
+                mask = self.load_image(filepath)
+                target_masks.append(mask)
+            target_masks = [target[index] for target in self.y]
+            data = [Xi] + target_masks
 
             if self.train_mode and self.image_augment_with_target is not None:
-                Xi, Mi, CTi, CRi = from_pil(Xi, Mi, CTi, CRi)
-                Xi, Mi, CTi, CRi = self.image_augment_with_target(Xi, Mi, CTi, CRi)
-                Xi = self.image_augment(Xi)
-                Xi, Mi, CTi, CRi = to_pil(Xi, Mi, CTi, CRi)
-
-            if self.image_transform is not None:
-                Xi = self.image_transform(Xi)
+                data = from_pil(*data)
+                data = self.image_augment_with_target(*data)
+                data[0] = self.image_augment(data[0])
+                data = to_pil(*data)
 
             if self.mask_transform is not None:
-                Mi = self.mask_transform(Mi)
-                CTi = self.mask_transform(CTi)
-                CRi = self.mask_transform(CRi)
-            return Xi, Mi, CTi, CRi
+                data[1:] = [self.mask_transform(mask) for mask in data[1:]]
+
+            if self.image_transform is not None:
+                data[0] = self.image_transform(data[0])
+
+            return data
         else:
             if self.image_transform is not None:
                 Xi = self.image_transform(Xi)
@@ -187,25 +186,22 @@ class ImageSegmentationMultitaskDataset(Dataset):
         Xi = self.X[0][index]
 
         if self.y is not None:
-            Mi = self.y[0][index]
-            CTi = self.y[1][index]
-            CRi = self.y[2][index]
+            target_masks = [target[index] for target in self.y]
+            data = [Xi] + target_masks
 
             if self.train_mode and self.image_augment_with_target is not None:
-                Xi, Mi, CTi, CRi = from_pil(Xi, Mi, CTi, CRi)
-                Xi, Mi, CTi, CRi = self.image_augment_with_target(Xi, Mi, CTi, CRi)
-                Xi = self.image_augment(Xi)
-                Xi, Mi, CTi, CRi = to_pil(Xi, Mi, CTi, CRi)
+                data = from_pil(*data)
+                data = self.image_augment_with_target(*data)
+                data[0] = self.image_augment(data[0])
+                data = to_pil(*data)
 
             if self.mask_transform is not None:
-                Mi = self.mask_transform(Mi)
-                CTi = self.mask_transform(CTi)
-                CRi = self.mask_transform(CRi)
+                data[1:] = [self.mask_transform(mask) for mask in data[1:]]
 
             if self.image_transform is not None:
-                Xi = self.image_transform(Xi)
+                data[0] = self.image_transform(data[0])
 
-            return Xi, Mi, CTi, CRi
+            return data
         else:
             if self.image_transform is not None:
                 Xi = self.image_transform(Xi)

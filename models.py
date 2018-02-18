@@ -35,9 +35,11 @@ class PyTorchUNetMultitask(Model):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, 3.0),
-                              ('contour', segmentation_loss, 6.0),
-                              ('center', segmentation_loss, 1.0)]
+        self.loss_function = [('mask', segmentation_loss, 0.3),
+                              ('contour', segmentation_loss, 0.4),
+                              ('contour_touching', segmentation_loss, 0.2),
+                              ('center', segmentation_loss, 0.1),
+                              ]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):

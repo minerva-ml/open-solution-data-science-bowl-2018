@@ -35,13 +35,12 @@ parameters:
   meta_dir:               /mnt/ml-team/dsb_2018/files
   masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-  contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed
   centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_2block_test
+  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev_touch
 
   valid_category_ids: "[0, 1]"
-  overwrite: 0
-  num_workers: 4
+  overwrite: 1
+  num_workers: 1
   load_in_memory: 1
   pin_memory: 1
 
@@ -59,7 +58,7 @@ parameters:
   repeat_blocks: 4
 
 # Training schedule
-  epochs_nr: 1000
+  epochs_nr: 10
   batch_size_train: 4
   batch_size_inference: 4
   lr: 0.0001

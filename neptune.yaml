@@ -37,7 +37,7 @@ parameters:
 #  centers_overlayed_dir:  /path/to/centers_overlayed
 #  experiment_dir:         /path/to/work/dir
 
-  valid_category_ids: "[0, 1]"
+  valid_category_ids: "[0, 4]"
   overwrite: 1
   num_workers: 4
   load_in_memory: 1

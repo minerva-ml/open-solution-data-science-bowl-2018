@@ -56,7 +56,8 @@ def create_submission(experiments_dir, meta, predictions, logger):
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
         for mask in decompose(prediction):
             image_ids.append(image_id)
-            encodings.append(' '.join(str(rle) for rle in run_length_encoding(mask > 128.)))
+            rle_encoded = ' '.join(str(rle) for rle in run_length_encoding(mask > 128.) if str(rle) != 'nan')
+            encodings.append(rle_encoded)
 
     submission = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encodings})
     submission_filepath = os.path.join(experiments_dir, 'submission.csv')
@@ -80,11 +81,7 @@ def read_masks(masks_filepaths):
 
 
 def run_length_encoding(x):
-    '''
-    x: numpy array of shape (height, width), 1 - mask, 0 - background
-    Returns run length as list
-    '''
-    dots = np.where(x.T.flatten() == 1)[0]  # .T sets Fortran order down-then-right
+    dots = np.where(x.T.flatten() == 1)[0]
     run_lengths = []
     prev = -2
     for b in dots:

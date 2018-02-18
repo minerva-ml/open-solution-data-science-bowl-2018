@@ -1,10 +1,9 @@
-from itertools import product
-
 import numpy as np
 import skimage.morphology as morph
 from scipy import ndimage as ndi
 from scipy.stats import itemfreq
 from skimage.transform import resize
+from skimage.filters import threshold_otsu
 from sklearn.externals import joblib
 from tqdm import tqdm
 
@@ -143,22 +142,6 @@ class Postprocessor(BaseTransformer):
         joblib.dump({}, filepath)
 
 
-def cut(image, contour):
-    image = np.where(contour + image == 2, 0, image)
-    labeled, nr_true = ndi.label(image)
-    return labeled
-
-
-def drop_small(img, min_size):
-    img = morph.remove_small_objects(img, min_size=min_size)
-    return relabel(img)
-
-
-def label(mask):
-    labeled, nr_true = ndi.label(mask)
-    return labeled
-
-
 def watershed_center(image, center):
     distance = ndi.distance_transform_edt(image)
     markers, nr_blobs = ndi.label(center)
@@ -184,22 +167,22 @@ def watershed_contour(image, contour):
 
 
 def postprocess(image, contour):
-    contour_binary = (contour > 0.5).astype(np.uint8)
-    mask_binary = (image > 0.5).astype(np.uint8)
+    cleaned_mask = clean_mask(image, contour)
+    good_markers = get_markers(cleaned_mask, contour)
+    good_distance = get_distance(cleaned_mask)
 
-    mask_cleaned = get_clean_mask(mask_binary, contour_binary)
+    labels = morph.watershed(-good_distance, good_markers, mask=cleaned_mask)
 
-    mask_distance = ndi.distance_transform_edt(mask_cleaned)
+    labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    markers, nr_markers = get_markers(mask_cleaned, contour_binary)
+    m_thresh = threshold_otsu(image)
+    initial_mask_binary = (image > m_thresh).astype(np.uint8)
+    labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels_water = morph.watershed(-mask_distance, markers, mask=mask_cleaned)
-    labels_water = add_dropped_blobs(labels_water, mask_cleaned, nr_markers)
+    labels = drop_small(labels, min_size=20)
+    labels = fill_holes_per_blob(labels)
 
-    labels_water = drop_artifacts_per_label(labels_water, mask_binary)
-    final_labels = drop_small(labels_water, min_size=20)
-    final_labels = fill_holes_per_blob(final_labels)
-    return final_labels
+    return labels
 
 
 def drop_artifacts_per_label(labels, initial_mask):
@@ -212,43 +195,73 @@ def drop_artifacts_per_label(labels, initial_mask):
     return labels_cleaned
 
 
-def get_clean_mask(mask_binary, contour_binary):
-    mask_cleaned = (mask_binary + contour_binary) > 0.5
-    mask_cleaned = ndi.morphology.binary_fill_holes(mask_cleaned)
-    mean_area, mean_radius = mean_blob_size(mask_cleaned)
-    structure_size = 4 * mean_radius
-    mask_cleaned_padded = pad_mask(mask_cleaned, structure_size)
-    mask_cleaned_padded = ndi.morphology.binary_closing(mask_cleaned_padded,
-                                                        structure=morph.disk(structure_size),
-                                                        iterations=1)
-    mask_cleaned = crop_mask(mask_cleaned_padded, structure_size)
+def clean_mask(m, c):
+    # threshold
+    m_thresh = threshold_otsu(m)
+    c_thresh = threshold_otsu(c)
+    m_b = m > m_thresh
+    c_b = c > c_thresh
 
-    mask_cleaned = ndi.morphology.binary_fill_holes(mask_cleaned).astype(np.uint8)
-    mask_cleaned = np.where((contour_binary == 1) & (mask_binary == 0), 0, mask_cleaned)
-    mask_cleaned = drop_artifacts(mask_cleaned, mask_binary)
-    return mask_cleaned
+    # combine contours and masks and fill the cells
+    m_ = np.where(m_b | c_b, 1, 0)
+    m_ = ndi.binary_fill_holes(m_)
+
+    # close what wasn't closed before
+    area, radius = mean_blob_size(m_b)
+    struct_size = int(6 * radius)
+    struct_el = morph.disk(struct_size)
+    m_padded = pad_mask(m_, pad=struct_size)
+    m_padded = morph.binary_closing(m_padded, selem=struct_el)
+    m_ = crop_mask(m_padded, crop=struct_size)
+
+    # open to cut the real cells from the artifacts
+    area, radius = mean_blob_size(m_b)
+    struct_size = int(4 * radius)
+    struct_el = morph.disk(struct_size)
+    m_ = np.where(c_b & (~m_b), 0, m_)
+    m_padded = pad_mask(m_, pad=struct_size)
+    m_padded = morph.binary_opening(m_padded, selem=struct_el)
+    m_ = crop_mask(m_padded, crop=struct_size)
+
+    # join the connected cells with what we had at the beginning
+    m_ = np.where(m_b | m_, 1, 0)
+    m_ = ndi.binary_fill_holes(m_)
+
+    # drop all the cells that weren't present at least in 25% of area in the initial mask
+    m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
+
+    return m_
 
 
-def get_markers(mask_cleaned, contour_binary):
-    _, mean_radius = mean_blob_size(mask_cleaned)
-    markers = np.where(contour_binary, 0, mask_cleaned)
-    markers = morph.erosion(markers, selem=morph.disk(mean_radius))
-    markers, nr_blobs = ndi.label(markers)
+def get_markers(m_b, c):
+    # threshold
+    c_thresh = threshold_otsu(c)
+    c_b = c > c_thresh
 
-    return markers, nr_blobs
+    mk_ = np.where(c_b, 0, m_b)
+
+    area, radius = mean_blob_size(m_b)
+    struct_size = int(radius)
+    struct_el = morph.disk(struct_size)
+    m_padded = pad_mask(mk_, pad=struct_size)
+    m_padded = morph.erosion(m_padded, selem=struct_el)
+    mk_ = crop_mask(m_padded, crop=struct_size)
+    mk_, _ = ndi.label(mk_)
+    return mk_
 
 
-def add_dropped_blobs(water, mask_cleaned, nr_blobs):
+def get_distance(m_b):
+    distance = ndi.distance_transform_edt(m_b)
+    return distance
+
+
+def add_dropped_water_blobs(water, mask_cleaned):
     water_mask = (water > 0).astype(np.uint8)
     dropped = mask_cleaned - water_mask
     dropped, _ = ndi.label(dropped)
-    dropped = np.where(dropped, dropped + nr_blobs, 0)
+    dropped = np.where(dropped, dropped + water.max(), 0)
     water = water + dropped
     return water
-
-
-def watershed_combined(image, contour, center):
-    return NotImplementedError
 
 
 def fill_holes_per_blob(image):
@@ -309,3 +322,13 @@ def crop_mask(mask, crop):
     h, w = mask.shape
     mask_cropped = mask[crop:h - crop, crop:w - crop]
     return mask_cropped
+
+
+def drop_small(img, min_size):
+    img = morph.remove_small_objects(img, min_size=min_size)
+    return relabel(img)
+
+
+def label(mask):
+    labeled, nr_true = ndi.label(mask)
+    return labeled

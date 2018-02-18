@@ -274,11 +274,11 @@ class UpConv(nn.Module):
                                     nn.BatchNorm2d(num_features=self.block_channels),
                                     nn.ReLU(),
 
-                                    nn.Conv2d(in_channels=self.block_channels, out_channels=self.block_channels,
-                                              kernel_size=(self.kernel_size, self.kernel_size),
-                                              stride=1, padding=1),
-                                    nn.BatchNorm2d(num_features=self.block_channels),
-                                    nn.ReLU(),
+                                    # nn.Conv2d(in_channels=self.block_channels, out_channels=self.block_channels,
+                                    #           kernel_size=(self.kernel_size, self.kernel_size),
+                                    #           stride=1, padding=1),
+                                    # nn.BatchNorm2d(num_features=self.block_channels),
+                                    # nn.ReLU(),
 
                                     nn.Dropout(self.dropout)
                                     )
@@ -293,10 +293,10 @@ class UpConv(nn.Module):
                                               stride=1, padding=1),
                                     nn.ReLU(),
 
-                                    nn.Conv2d(in_channels=self.block_channels, out_channels=self.block_channels,
-                                              kernel_size=(self.kernel_size, self.kernel_size),
-                                              stride=1, padding=1),
-                                    nn.ReLU(),
+                                    # nn.Conv2d(in_channels=self.block_channels, out_channels=self.block_channels,
+                                    #           kernel_size=(self.kernel_size, self.kernel_size),
+                                    #           stride=1, padding=1),
+                                    # nn.ReLU(),
 
                                     nn.Dropout(self.dropout)
                                     )

@@ -37,10 +37,10 @@ parameters:
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
   contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed
   centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev_edges
+  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_2block_test
 
   valid_category_ids: "[0, 1]"
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1

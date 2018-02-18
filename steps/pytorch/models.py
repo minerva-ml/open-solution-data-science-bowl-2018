@@ -29,7 +29,7 @@ class Model(BaseTransformer):
 
     @property
     def output_names(self):
-        return [name for (name, func) in self.loss_function]
+        return [name for (name, func, weight) in self.loss_function]
 
     def _initialize_model_weights(self):
         logger.info('initializing model weights...')
@@ -90,11 +90,11 @@ class Model(BaseTransformer):
         partial_batch_losses = {}
 
         if len(self.output_names) == 1:
-            for (name, loss_function), target in zip(self.loss_function, targets_var):
-                batch_loss = loss_function(outputs_batch, target)
+            for (name, loss_function, weight), target in zip(self.loss_function, targets_var):
+                batch_loss = loss_function(outputs_batch, target) * weight
         else:
-            for (name, loss_function), output, target in zip(self.loss_function, outputs_batch, targets_var):
-                partial_batch_losses[name] = loss_function(output, target)
+            for (name, loss_function, weight), output, target in zip(self.loss_function, outputs_batch, targets_var):
+                partial_batch_losses[name] = loss_function(output, target) * weight
             batch_loss = sum(partial_batch_losses.values())
         partial_batch_losses['sum'] = batch_loss
         batch_loss.backward()
@@ -107,7 +107,7 @@ class Model(BaseTransformer):
         batch_gen, steps = datagen
         outputs = {}
         for batch_id, data in enumerate(batch_gen):
-            if isinstance(data,list):
+            if isinstance(data, list):
                 X = data[0]
             else:
                 X = data

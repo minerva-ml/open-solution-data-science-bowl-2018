@@ -20,6 +20,7 @@ exclude:
   - .ipynb_checkpoints
   - devbook.ipynb
   - devbook_local.ipynb
+  - morphological_postprocessing.ipynb
 
 parameters:
 # Cloud Environment

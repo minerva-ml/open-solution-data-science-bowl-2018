@@ -7,7 +7,7 @@ class UNet(nn.Module):
                  pool_kernel, pool_stride,
                  repeat_blocks, n_filters,
                  batch_norm, dropout,
-                 in_channels):
+                 in_channels, **kwargs):
         super(UNet, self).__init__()
 
         self.conv_kernel = conv_kernel
@@ -164,16 +164,18 @@ class UNetMultitask(UNet):
                  pool_kernel, pool_stride,
                  repeat_blocks, n_filters,
                  batch_norm, dropout,
-                 in_channels):
+                 in_channels, nr_outputs):
         super(UNetMultitask, self).__init__(conv_kernel,
                                             pool_kernel, pool_stride,
                                             repeat_blocks, n_filters,
                                             batch_norm, dropout,
                                             in_channels)
 
-        self.mask_output = self._output_layer()
-        self.contour_output = self._output_layer()
-        self.center_output = self._output_layer()
+        self.nr_outputs = nr_outputs
+        output_legs = []
+        for i in range(self.nr_outputs):
+            output_legs.append(self._output_layer())
+        self.output_legs = nn.ModuleList(output_legs)
 
     def forward(self, x):
         x = self.input_block(x)
@@ -195,11 +197,8 @@ class UNetMultitask(UNet):
 
         x = self.classification_block(x)
 
-        x_mask = self.mask_output(x)
-        x_contour = self.contour_output(x)
-        x_center = self.center_output(x)
-
-        return x_mask, x_contour, x_center
+        outputs = [output_leg(x) for output_leg in self.output_legs]
+        return outputs
 
 
 class DownConv(nn.Module):
@@ -274,21 +273,10 @@ class UpConv(nn.Module):
                                     nn.BatchNorm2d(num_features=self.block_channels),
                                     nn.ReLU(),
 
-                                    nn.Conv2d(in_channels=self.block_channels, out_channels=self.block_channels,
-                                              kernel_size=(self.kernel_size, self.kernel_size),
-                                              stride=1, padding=1),
-                                    nn.BatchNorm2d(num_features=self.block_channels),
-                                    nn.ReLU(),
-
                                     nn.Dropout(self.dropout)
                                     )
         else:
             up_conv = nn.Sequential(nn.Conv2d(in_channels=self.in_channels, out_channels=self.block_channels,
-                                              kernel_size=(self.kernel_size, self.kernel_size),
-                                              stride=1, padding=1),
-                                    nn.ReLU(),
-
-                                    nn.Conv2d(in_channels=self.block_channels, out_channels=self.block_channels,
                                               kernel_size=(self.kernel_size, self.kernel_size),
                                               stride=1, padding=1),
                                     nn.ReLU(),

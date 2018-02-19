@@ -49,7 +49,7 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         imwrite(target_filepath, overlayed_masks)
 
 
-def overlay_contours(images_dir, subdir_name, target_dir):
+def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
         masks = []
@@ -57,7 +57,10 @@ def overlay_contours(images_dir, subdir_name, target_dir):
             image = np.asarray(Image.open(image_filepath))
             image = image / image.max(axis=None).astype(np.float32)
             masks.append(get_contour(image))
-        overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+        if touching_only:
+            overlayed_masks = np.where(np.sum(masks, axis=0) > 128. + 255., 255., 0.).astype(np.uint8)
+        else:
+            overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
@@ -132,7 +135,7 @@ def preprocess_image(img, target_size=(128, 128)):
 
 
 def cluster_features(features, n_clusters=10):
-    kmeans = KMeans(n_clusters=n_clusters)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=1111)
     kmeans.fit(features)
     labels = kmeans.labels_
     return labels

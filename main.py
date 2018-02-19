@@ -27,6 +27,7 @@ def prepare_metadata():
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
                              contours_overlayed_dir=params.contours_overlayed_dir,
+                             contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
                              centers_overlayed_dir=params.centers_overlayed_dir)
     logger.info('calculating clusters')
 
@@ -45,6 +46,8 @@ def prepare_masks():
     overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
     logger.info('overlaying contours')
     overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
+    overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',
+                     target_dir=params.contours_touching_overlayed_dir, touching_only=True)
     logger.info('overlaying centers')
     overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
 

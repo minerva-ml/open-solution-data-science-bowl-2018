@@ -9,7 +9,7 @@ params = read_params()
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
-Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
+Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_contours_touching', 'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
@@ -44,7 +44,7 @@ SOLUTION_CONFIG = AttrDict({
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
                                               'num_workers': params.num_workers,
-                                              'pin_memory':params.pin_memory
+                                              'pin_memory': params.pin_memory
                                               },
                                  'inference': {'batch_size': params.batch_size_inference,
                                                'shuffle': False,
@@ -62,6 +62,7 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
+                                                 'nr_outputs': params.nr_unet_outputs
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },

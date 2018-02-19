@@ -1,14 +1,14 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_3, unet-multitask, augmentations, validation]
+tags: [solution_4, unet-multitask, augmentations, validation, touching_edges]
 
 metric:
   channel: 'Final Validation Score'
   goal: maximize
 
 #Comment out if not in Cloud Environment
-pip-requirements-file: requirements.txt
+#pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -19,6 +19,7 @@ exclude:
   - .idea
   - .ipynb_checkpoints
   - devbook.ipynb
+  - devbook_local.ipynb
 
 parameters:
 # Cloud Environment
@@ -37,7 +38,7 @@ parameters:
 #  centers_overlayed_dir:  /path/to/centers_overlayed
 #  experiment_dir:         /path/to/work/dir
 
-  valid_category_ids: "[0, 1]"
+  valid_category_ids: "[0, 4]"
   overwrite: 1
   num_workers: 4
   load_in_memory: 1
@@ -50,6 +51,7 @@ parameters:
 
 # U-Net parameters
 # see: https://arxiv.org/pdf/1505.04597.pdf
+  nr_unet_outputs: 4
   n_filters: 16
   conv_kernel: 3
   pool_kernel: 3

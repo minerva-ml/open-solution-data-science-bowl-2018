@@ -18,6 +18,7 @@ neptune.log
 offline_job.log
 target/
 devbook.ipynb
+devbook_local.ipynb
 
 # Distribution / packaging
 .Python

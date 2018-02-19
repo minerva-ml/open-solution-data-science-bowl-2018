@@ -95,4 +95,5 @@ SOLUTION_CONFIG = AttrDict({
     'thresholder': {'threshold': params.threshold},
     'watershed': {},
     'dropper': {'min_size': params.min_nuclei_size},
+    'postprocessor':{}
 })

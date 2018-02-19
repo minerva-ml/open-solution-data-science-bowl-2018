@@ -132,7 +132,7 @@ def preprocess_image(img, target_size=(128, 128)):
 
 
 def cluster_features(features, n_clusters=10):
-    kmeans = KMeans(n_clusters=n_clusters)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=1111)
     kmeans.fit(features)
     labels = kmeans.labels_
     return labels

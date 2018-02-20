@@ -56,10 +56,11 @@ def create_submission(experiments_dir, meta, predictions, logger):
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
         for mask in decompose(prediction):
             image_ids.append(image_id)
-            rle_encoded = ' '.join(str(rle) for rle in run_length_encoding(mask > 128.) if str(rle) != 'nan')
+            rle_encoded = ' '.join(str(rle) for rle in run_length_encoding(mask > 128.))
             encodings.append(rle_encoded)
 
-    submission = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encodings})
+    submission = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encodings}).astype(str)
+    submission = submission[submission['EncodedPixels']!='nan']
     submission_filepath = os.path.join(experiments_dir, 'submission.csv')
     submission.to_csv(submission_filepath, index=None)
 

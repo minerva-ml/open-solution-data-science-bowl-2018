@@ -41,7 +41,7 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / image.max(axis=None).astype(np.float32)
+            image = image / 255.0
             masks.append(image)
         overlayed_masks = np.sum(masks, axis=0)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
@@ -55,7 +55,6 @@ def overlay_contours(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / image.max(axis=None).astype(np.float32)
             masks.append(get_contour(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
@@ -69,7 +68,7 @@ def overlay_centers(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / image.max(axis=None).astype(np.float32)
+            image = image / 255.0
             masks.append(get_center(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
@@ -99,7 +98,7 @@ def get_vgg_clusters(meta):
     features = []
     for filepath in tqdm(img_filepaths):
         img = np.asarray(Image.open(filepath))[:, :, :3]
-        img = img / img.max(axis=None).astype(np.float32)
+        img = img / 255.0
         x = preprocess_image(img)
         feature = extractor(x)
         feature = np.ndarray.flatten(feature.cpu().data.numpy())

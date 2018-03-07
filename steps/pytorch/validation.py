@@ -62,12 +62,12 @@ def score_model(model, loss_function, datagen):
 
         outputs = model(X)
         if len(loss_function) == 1:
-            for (name, loss_function_one), target in zip(loss_function, targets_var):
-                loss_sum = loss_function_one(outputs, target)
+            for (name, loss_function_one, weight), target in zip(loss_function, targets_var):
+                loss_sum = loss_function_one(outputs, target) * weight
         else:
             batch_losses = []
-            for (name, loss_function_one), output, target in zip(loss_function, outputs, targets_var):
-                loss = loss_function_one(output, target)
+            for (name, loss_function_one, weight), output, target in zip(loss_function, outputs, targets_var):
+                loss = loss_function_one(output, target) * weight
                 batch_losses.append(loss)
                 partial_batch_losses.setdefault(name, []).append(loss)
             loss_sum = sum(batch_losses)

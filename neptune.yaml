@@ -52,7 +52,6 @@ parameters:
   image_channels: 3
 
 # U-Net parameters
-# see: https://arxiv.org/pdf/1505.04597.pdf
   nr_unet_outputs: 4
   n_filters: 16
   conv_kernel: 3

@@ -55,6 +55,7 @@ def overlay_contours(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
+            image = image / 255.0
             masks.append(get_contour(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'

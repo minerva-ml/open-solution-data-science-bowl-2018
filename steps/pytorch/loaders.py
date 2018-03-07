@@ -25,7 +25,7 @@ class MetadataImageDataset(Dataset):
 
     def load_image(self, img_filepath):
         image = np.asarray(Image.open(img_filepath))[:, :, 0]
-        image = image / image.max(axis=None).astype(np.float32)
+        image = image / 255.0
         return image
 
     def __len__(self):

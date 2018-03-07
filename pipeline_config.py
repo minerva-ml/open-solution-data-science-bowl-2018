@@ -1,10 +1,12 @@
 import os
 
+from deepsense import neptune
 from attrdict import AttrDict
 
 from utils import read_params
 
-params = read_params()
+ctx = neptune.Context()
+params = read_params(ctx)
 
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']

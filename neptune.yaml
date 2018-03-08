@@ -59,6 +59,12 @@ parameters:
   pool_stride: 2
   repeat_blocks: 4
 
+# multi-output U-Net loss weights
+  mask: 0.3
+  contour: 0.5
+  contour_touching: 0.1
+  center: 0.1
+
 # Training schedule
   epochs_nr: 1000
   batch_size_train: 4

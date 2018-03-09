@@ -301,7 +301,7 @@ def mean_blob_size(mask):
 
 
 def pad_mask(mask, pad):
-    if pad == 1:
+    if pad <= 1:
         pad = 2
     h, w = mask.shape
     h_pad = h + 2 * pad

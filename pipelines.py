@@ -409,16 +409,6 @@ def watershed_contours(mask, contour, config, save_output=True):
                         save_output=save_output)
     return drop_smaller
 
-    binary_fill = Step(name='binary_fill',
-                       transformer=BinaryFillHoles(),
-                       input_steps=[drop_smaller],
-                       adapter={'images': ([('drop_smaller', 'labels')]),
-                                },
-                       cache_dirpath=config.env.cache_dirpath,
-                       save_output=save_output)
-
-    return binary_fill
-
 
 def nuclei_labeler(postprocessed_mask, config, save_output=True):
     labeler = Step(name='labeler',

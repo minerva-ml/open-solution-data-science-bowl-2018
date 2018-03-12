@@ -75,31 +75,6 @@ parameters:
   dropout_conv: 0.1
   dropout_dense: 0.0
 
-
-# U-Net parameters
-  nr_unet_outputs: 4
-  n_filters: 16
-  conv_kernel: 3
-  pool_kernel: 3
-  pool_stride: 2
-  repeat_blocks: 4
-
-# Training schedule
-  epochs_nr: 1000
-  batch_size_train: 4
-  batch_size_inference: 4
-  lr: 0.0001
-  momentum: 0.9
-  gamma: 0.99
-  patience: 100
-
-# Regularization
-  use_batch_norm: 1
-  l2_reg_conv: 0.0001
-  l2_reg_dense: 0.0
-  dropout_conv: 0.1
-  dropout_dense: 0.0
-
 # Postprocessing
   threshold: 0.5
   min_nuclei_size: 20

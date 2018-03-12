@@ -179,7 +179,7 @@ def postprocess(image, contour):
     initial_mask_binary = (image > m_thresh).astype(np.uint8)
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels = connect_or_drop_small(labels, min_size=20)
+    labels = connect_or_drop_small(labels, min_size=30)
     labels = fill_holes_per_blob(labels)
 
     return labels
@@ -328,7 +328,7 @@ def drop_small(img, min_size):
     img = morph.remove_small_objects(img, min_size=min_size)
     return relabel(img)
 
-def connect_or_drop_small(labels, min_size=30):
+def connect_or_drop_small(labels, min_size=30, min_length = 5):
     new_labels = np.zeros_like(labels)
     n_labels = labels.max()
     for i in range(1, n_labels+1):
@@ -340,7 +340,8 @@ def connect_or_drop_small(labels, min_size=30):
         dist = ndi.distance_transform_edt(mask)
         touching_labels = np.where(dist==1.0, labels, 0)
         for label in np.unique(touching_labels):
-            if label==0 or np.sum(labels==label)>min_size:
+            connection_length = np.sum(np.where(touching_labels==label, 1, 0))
+            if label==0 or np.sum(labels==label)>min_size or connection_length<min_length:
                 continue
             new_labels += np.where(labels==label, i, 0)
     return drop_small(new_labels, min_size)

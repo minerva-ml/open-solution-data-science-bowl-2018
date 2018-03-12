@@ -271,8 +271,9 @@ class ModelCheckpoint(Callback):
 
 
 class NeptuneMonitor(Callback):
-    def __init__(self):
+    def __init__(self, model_name):
         super().__init__()
+        self.model_name = model_name
         self.ctx = neptune.Context()
         self.epoch_loss_averager = Averager()
 
@@ -290,7 +291,7 @@ class NeptuneMonitor(Callback):
             else:
                 self.epoch_loss_averagers[name] = Averager()
 
-            self.ctx.channel_send('batch {} loss'.format(name), x=self.batch_id, y=loss)
+            self.ctx.channel_send('{} batch {} loss'.format(self.model_name, name), x=self.batch_id, y=loss)
 
         self.batch_id += 1
 
@@ -302,7 +303,7 @@ class NeptuneMonitor(Callback):
         for name, averager in self.epoch_loss_averagers.items():
             epoch_avg_loss = averager.value
             averager.reset()
-            self.ctx.channel_send('epoch {} loss'.format(name), x=self.epoch_id, y=epoch_avg_loss)
+            self.ctx.channel_send('{} epoch {} loss'.format(self.model_name, name), x=self.epoch_id, y=epoch_avg_loss)
 
         self.model.eval()
         val_loss = score_model(self.model,
@@ -311,7 +312,7 @@ class NeptuneMonitor(Callback):
         self.model.train()
         for name, loss in val_loss.items():
             loss = loss.data.cpu().numpy()[0]
-            self.ctx.channel_send('epoch_val {} loss'.format(name), x=self.epoch_id, y=loss)
+            self.ctx.channel_send('{} epoch_val {} loss'.format(self.model_name, name), x=self.epoch_id, y=loss)
 
 
 class ExperimentTiming(Callback):

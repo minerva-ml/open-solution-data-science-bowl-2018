@@ -89,7 +89,8 @@ SOLUTION_CONFIG = AttrDict({
             'experiment_timing': {'batch_every': 0,
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'image_nr': 4,
+            'neptune_monitor': {'model_name': 'unet',
+                                'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },
@@ -97,5 +98,5 @@ SOLUTION_CONFIG = AttrDict({
     'thresholder': {'threshold': params.threshold},
     'watershed': {},
     'dropper': {'min_size': params.min_nuclei_size},
-    'postprocessor':{}
+    'postprocessor': {}
 })

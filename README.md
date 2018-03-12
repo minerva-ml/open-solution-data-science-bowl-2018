@@ -1,23 +1,30 @@
-# Data Science Bowl 2018: open solution
+# Data Science Bowl 2018: mask-rcnn notebook
 
-This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018).
-
-## Goals
-1) Deliver open, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
-2) Encourage more Kagglers to start working on the Data Science Bowl, test their ideas and learn advanced data science.
+Idea behind this sub-project is to let you experiment with the state-of-the-art mask-rcnn in an easy-to-use environment.
+The notebook `main.ipynb` should get you to around 0.44 on the LB.
 
 ## Installation
-Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for instructions.
 
-#### Fast track:
-1. get repository, install [PyTorch](http://pytorch.org/) then remaining requirements
-2. register to [Neptune](https://neptune.ml/ 'machine learning lab')
-3. run experiment:
+1. Register and login to https://neptune.ml/
+2. install neptune-cli on your machine by running:
 ```bash
-$ neptune login
-$ neptune send main.py --worker gcp-gpu-large --environment pytorch-0.2.0-gpu-py3 -- train_evaluate_predict_pipeline --pipeline_name unet_multitask
+pip install neptune-cli
 ```
-4. collect submit from `/output/dsb/experiments/submission.csv` directory.
+3. run
+```bash
+neptune login
+```
+4. upload Mask-RCNN project that is just a fork of https://github.com/matterport/Mask_RCNN by running
+```bash
+neptune data upload Mask-RCNN
+```
+5. Go to https://neptune.ml/ and click `start notebook` button at the top right
+* select `python 3.5` 
+* select `tensorflow 1.4.0`
+* click browse files and upload the `main.ipynb` notebook
+* type Mask-RCNN in the `files` tab
+
+6. Click through the notebook and get 0.44 or tweatk parameters and get even more!
 
 ## User support
 There are several ways to seek help:

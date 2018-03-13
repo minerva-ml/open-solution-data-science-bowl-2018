@@ -1,7 +1,7 @@
 # Data Science Bowl 2018: mask-rcnn notebook
 
 Idea behind this sub-project is to let you experiment with the state-of-the-art mask-rcnn in an easy-to-use environment.
-The notebook `main.ipynb` should get you to around 0.44 on the LB.
+The notebook `main.ipynb` should get you to around **0.44** on the LB.
 
 ## Installation
 

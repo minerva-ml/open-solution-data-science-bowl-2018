@@ -1,7 +1,7 @@
 # Data Science Bowl 2018: mask-rcnn notebook
 
 Idea behind this sub-project is to let you experiment with the state-of-the-art mask-rcnn in an easy-to-use environment.
-The notebook `main.ipynb` should get you to around 0.44 on the LB.
+The notebook `main.ipynb` should get you to around **0.44** on the LB.
 
 ## Installation
 
@@ -22,10 +22,10 @@ neptune data upload Mask-RCNN
 * select `python 3.5` 
 * select `tensorflow 1.4.0`
 * click browse files and upload the `main.ipynb` notebook
-* type Mask-RCNN in the `files` tab
+* type Mask_RCNN in the `files` tab
 
-6. Click through the notebook and get 0.44 submission from `/output/submission.csv` or tweak parameters and get even more!
-
+6. Click through the notebook and get **0.44** submission from `/output/submission.csv` or tweak parameters and get even more!
+<img src="https://gist.githubusercontent.com/jakubczakon/10e5eb3d5024cc30cdb056d5acd3d92f/raw/577a2614cd1041f6251b6096029272f3547d78df/readme_neptune_rcnn.png" width="600" height="600" />
 
 ## User support
 There are several ways to seek help:

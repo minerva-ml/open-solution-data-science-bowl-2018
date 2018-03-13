@@ -38,8 +38,8 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
                 pill_image = pill_image.resize((int(self.image_resize * w_), int(self.image_resize * h_)),
                                                Image.ANTIALIAS)
 
-                self.ctx.channel_send(name, neptune.Image(
-                    name='{}epoch{}_batch{}_idx{}'.format(self.model_name, self.epoch_id, self.batch_id, i),
+                self.ctx.channel_send('{} {}'.format(self.model_name, name), neptune.Image(
+                    name='epoch{}_batch{}_idx{}'.format(self.epoch_id, self.batch_id, i),
                     description="true and prediction masks",
                     data=pill_image))
 

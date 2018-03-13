@@ -24,7 +24,8 @@ neptune data upload Mask-RCNN
 * click browse files and upload the `main.ipynb` notebook
 * type Mask-RCNN in the `files` tab
 
-6. Click through the notebook and get 0.44 or tweatk parameters and get even more!
+6. Click through the notebook and get 0.44 submission from `/output/submission.csv` or tweak parameters and get even more!
+
 
 ## User support
 There are several ways to seek help:

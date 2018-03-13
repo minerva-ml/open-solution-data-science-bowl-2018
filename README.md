@@ -22,7 +22,10 @@ neptune data upload Mask-RCNN
 * select `python 3.5` 
 * select `tensorflow 1.4.0`
 * click browse files and upload the `main.ipynb` notebook
-* type Mask-RCNN in the `files` tab
+* type Mask_RCNN in the `files` tab
+![](https://gist.githubusercontent.com/jakubczakon/10e5eb3d5024cc30cdb056d5acd3d92f/raw/577a2614cd1041f6251b6096029272f3547d78df/readme_neptune_rcnn.png | width=100)
+
+
 
 6. Click through the notebook and get 0.44 or tweatk parameters and get even more!
 

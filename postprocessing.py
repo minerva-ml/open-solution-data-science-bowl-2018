@@ -317,7 +317,7 @@ def pad_mask(mask, pad):
 
 
 def crop_mask(mask, crop):
-    if crop == 1:
+    if crop <= 1:
         crop = 2
     h, w = mask.shape
     mask_cropped = mask[crop:h - crop, crop:w - crop]

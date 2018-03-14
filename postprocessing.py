@@ -131,7 +131,7 @@ class Postprocessor(BaseTransformer):
     def transform(self, images, contours):
         labeled_images = []
         for image, contour in tqdm(zip(images, contours)):
-            labeled_ibug-fix in crop/padmage = postprocess(image, contour)
+            labeled_image = postprocess(image, contour)
             labeled_images.append(labeled_image)
         return {'labeled_images': labeled_images}
 

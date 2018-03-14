@@ -5,26 +5,27 @@ The notebook `main.ipynb` should get you to around **0.44** on the LB.
 
 ## Installation
 
-1. Register and login to https://neptune.ml/
-2. install neptune-cli on your machine by running:
+1. Register and login to https://neptune.ml/ 
+2. Create a project called Data Science Bowl so that you get project-key DSB
+3. install neptune-cli on your machine by running:
 ```bash
 pip install neptune-cli
 ```
-3. run
+4. run
 ```bash
 neptune login
 ```
-4. upload Mask-RCNN project that is just a fork of https://github.com/matterport/Mask_RCNN by running
+5. upload Mask-RCNN project that is just a fork of https://github.com/matterport/Mask_RCNN by running
 ```bash
-neptune data upload Mask-RCNN
+neptune data upload Mask-RCNN -r --project-key DSB
 ```
-5. Go to https://neptune.ml/ and click `start notebook` button at the top right
+6. Go to https://neptune.ml/ and click `start notebook` button at the top right
 * select `python 3.5` 
 * select `tensorflow 1.4.0`
 * click browse files and upload the `main.ipynb` notebook
 * type Mask_RCNN in the `files` tab
 
-6. Click through the notebook and get **0.44** submission from `/output/submission.csv` or tweak parameters and get even more!
+7. Click through the notebook and get **0.44** submission from `/output/submission.csv` or tweak parameters and get even more!
 <img src="https://gist.githubusercontent.com/jakubczakon/10e5eb3d5024cc30cdb056d5acd3d92f/raw/577a2614cd1041f6251b6096029272f3547d78df/readme_neptune_rcnn.png" width="600" height="600" />
 
 ## User support

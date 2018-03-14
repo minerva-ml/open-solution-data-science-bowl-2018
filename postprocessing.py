@@ -295,8 +295,8 @@ def mean_blob_size(mask):
         mean_area = 1
         mean_radius = 1
     else:
-        mean_area = int(np.sqrt(itemfreq(labels)[1:, 1].mean()))
-        mean_radius = int(np.round(np.sqrt(mean_area) / np.pi))
+        mean_area = int(itemfreq(labels)[1:, 1].mean())
+        mean_radius = int(np.round(np.sqrt(mean_area / np.pi)))
     return mean_area, mean_radius
 
 

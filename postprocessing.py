@@ -208,7 +208,7 @@ def clean_mask(m, c):
 
     # close what wasn't closed before
     area, radius = mean_blob_size(m_b)
-    struct_size = int(6 * radius)
+    struct_size = int(1.25 * radius)
     struct_el = morph.disk(struct_size)
     m_padded = pad_mask(m_, pad=struct_size)
     m_padded = morph.binary_closing(m_padded, selem=struct_el)
@@ -216,7 +216,7 @@ def clean_mask(m, c):
 
     # open to cut the real cells from the artifacts
     area, radius = mean_blob_size(m_b)
-    struct_size = int(4 * radius)
+    struct_size = int(0.75 * radius)
     struct_el = morph.disk(struct_size)
     m_ = np.where(c_b & (~m_b), 0, m_)
     m_padded = pad_mask(m_, pad=struct_size)
@@ -241,7 +241,7 @@ def get_markers(m_b, c):
     mk_ = np.where(c_b, 0, m_b)
 
     area, radius = mean_blob_size(m_b)
-    struct_size = int(radius)
+    struct_size = int(0.25*radius)
     struct_el = morph.disk(struct_size)
     m_padded = pad_mask(mk_, pad=struct_size)
     m_padded = morph.erosion(m_padded, selem=struct_el)

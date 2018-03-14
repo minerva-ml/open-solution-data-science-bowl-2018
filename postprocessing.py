@@ -241,7 +241,7 @@ def get_markers(m_b, c):
     mk_ = np.where(c_b, 0, m_b)
 
     area, radius = mean_blob_size(m_b)
-    struct_size = int(0.25*radius)
+    struct_size = int(0.25 * radius)
     struct_el = morph.disk(struct_size)
     m_padded = pad_mask(mk_, pad=struct_size)
     m_padded = morph.erosion(m_padded, selem=struct_el)

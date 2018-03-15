@@ -93,6 +93,65 @@ def unet_multitask(config, train_mode):
     return output
 
 
+def two_unets_specialists(config, train_mode):
+    if train_mode:
+        save_output = True
+        load_saved_output = False
+        preprocessing = preprocessing_multitask_train(config, is_specialist=True)
+    else:
+        save_output = True
+        load_saved_output = False
+        preprocessing = preprocessing_multitask_inference(config, is_specialist=True)
+
+    unet_mask = Step(name='unet_mask',
+                     transformer=PyTorchUNetMultitask(**config.unet_mask),
+                     input_steps=[preprocessing],
+                     cache_dirpath=config.env.cache_dirpath,
+                     save_output=save_output, load_saved_output=load_saved_output)
+    unet_contour = Step(name='unet_contour',
+                        transformer=PyTorchUNetMultitask(**config.unet_contour),
+                        input_steps=[preprocessing],
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output, load_saved_output=load_saved_output)
+
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[unet_mask],
+                       adapter={'images': ([(unet_mask.name, 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output)
+
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[unet_contour],
+                          adapter={'images': ([(unet_contour.name, 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output)
+
+    detached = Step(name='detached',
+                    transformer=Postprocessor(),
+                    input_steps=[mask_resize, contour_resize],
+                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                             'contours': ([(contour_resize.name, 'resized_images')]),
+                             },
+                    cache_dirpath=config.env.cache_dirpath,
+                    save_output=save_output)
+
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[detached],
+                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+
 def preprocessing_train(config):
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
@@ -193,10 +252,17 @@ def preprocessing_inference(config):
     return loader
 
 
-def preprocessing_multitask_train(config):
+def preprocessing_multitask_train(config, is_specialist=False):
+    if is_specialist:
+        reader_config = config.reader_specialist
+        splitter_config = config.xy_splitter_specialists
+    else:
+        reader_config = config.reader_multitask
+        splitter_config = config.xy_splitter_multitask
+
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
-                            transformer=ImageReader(**config.reader_multitask),
+                            transformer=ImageReader(**config.reader_config),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')]),
@@ -205,7 +271,7 @@ def preprocessing_multitask_train(config):
                             save_output=True, load_saved_output=True)
 
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_multitask),
+                                transformer=ImageReader(**config.reader_config),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta_valid')]),
                                          'train_mode': ([('input', 'train_mode')]),
@@ -226,7 +292,7 @@ def preprocessing_multitask_train(config):
                       cache_dirpath=config.env.cache_dirpath)
     else:
         xy_train = Step(name='xy_train',
-                        transformer=XYSplit(**config.xy_splitter_multitask),
+                        transformer=XYSplit(**config.splitter_config),
                         input_data=['input'],
                         adapter={'meta': ([('input', 'meta')]),
                                  'train_mode': ([('input', 'train_mode')])
@@ -234,7 +300,7 @@ def preprocessing_multitask_train(config):
                         cache_dirpath=config.env.cache_dirpath)
 
         xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter_multitask),
+                            transformer=XYSplit(**config.splitter_config),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta_valid')]),
                                      'train_mode': ([('input', 'train_mode')])
@@ -256,10 +322,17 @@ def preprocessing_multitask_train(config):
     return loader
 
 
-def preprocessing_multitask_inference(config):
+def preprocessing_multitask_inference(config, is_specialist=False):
+    if is_specialist:
+        reader_config = config.reader_specialist
+        splitter_config = config.xy_splitter_specialists
+    else:
+        reader_config = config.reader_multitask
+        splitter_config = config.xy_splitter_multitask
+
     if config.execution.load_in_memory:
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_multitask),
+                                transformer=ImageReader(**config.reader_config),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta')]),
                                          'train_mode': ([('input', 'train_mode')]),
@@ -277,7 +350,7 @@ def preprocessing_multitask_inference(config):
                       cache_dirpath=config.env.cache_dirpath)
     else:
         xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter),
+                            transformer=XYSplit(**config.splitter_config),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')])
@@ -426,5 +499,8 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       },
              'unet_multitask': {'train': partial(unet_multitask, train_mode=True),
                                 'inference': partial(unet_multitask, train_mode=False),
-                                }
+                                },
+             'two_unets_specialists': {'train': partial(two_unets_specialists, train_mode=True),
+                                       'inference': partial(two_unets_specialists, train_mode=False),
+                                       }
              }

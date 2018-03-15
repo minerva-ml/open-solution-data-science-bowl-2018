@@ -301,7 +301,7 @@ def mean_blob_size(mask):
 
 
 def pad_mask(mask, pad):
-    if pad == 1:
+    if pad <= 1:
         pad = 2
     h, w = mask.shape
     h_pad = h + 2 * pad
@@ -317,7 +317,7 @@ def pad_mask(mask, pad):
 
 
 def crop_mask(mask, crop):
-    if crop == 1:
+    if crop <= 1:
         crop = 2
     h, w = mask.shape
     mask_cropped = mask[crop:h - crop, crop:w - crop]

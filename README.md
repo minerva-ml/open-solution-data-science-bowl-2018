@@ -17,7 +17,7 @@ neptune login
 ```
 5. upload Mask-RCNN project that is just a fork of https://github.com/matterport/Mask_RCNN by running
 ```bash
-neptune data upload Mask-RCNN -r --project-key DSB
+neptune data upload Mask-RCNN --recursive --project-key DSB
 ```
 6. Go to https://neptune.ml/ and click `start notebook` button at the top right
 * select `python 3.5` 

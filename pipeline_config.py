@@ -11,7 +11,8 @@ params = read_params(ctx)
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
-Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours']
+Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_contours_touching', 'file_path_centers']
+Y_COLUMNS_SPECIALISTS = ['file_path_mask', 'file_path_contours']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
@@ -32,12 +33,19 @@ SOLUTION_CONFIG = AttrDict({
     'xy_splitter_multitask': {'x_columns': X_COLUMNS,
                               'y_columns': Y_COLUMNS_MULTITASK
                               },
+    'xy_splitter_specialists': {'x_columns': X_COLUMNS,
+                              'y_columns': Y_COLUMNS_SPECIALISTS
+                              },
     'reader_single': {'x_columns': X_COLUMNS,
                       'y_columns': Y_COLUMNS,
                       'target_shape': GLOBAL_CONFIG['img_H-W']
                       },
     'reader_multitask': {'x_columns': X_COLUMNS,
                          'y_columns': Y_COLUMNS_MULTITASK,
+                         'target_shape': GLOBAL_CONFIG['img_H-W']
+                         },
+    'reader_specialists': {'x_columns': X_COLUMNS,
+                         'y_columns': Y_COLUMNS_SPECIALISTS,
                          'target_shape': GLOBAL_CONFIG['img_H-W']
                          },
     'loader': {'dataset_params': {'h': params.image_h,

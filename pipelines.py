@@ -92,7 +92,7 @@ def unet_multitask(config, train_mode):
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
-def two_unets(config, train_mode):
+def two_unets_specialists(config, train_mode):
     if train_mode:
         save_output = True
         load_saved_output = False
@@ -486,7 +486,7 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
              'unet_multitask': {'train': partial(unet_multitask, train_mode=True),
                                 'inference': partial(unet_multitask, train_mode=False),
                                 },
-              'two_unets':  {'train': partial(two_unets, train_mode=True),
-                                'inference': partial(two_unets, train_mode=False),
+              'two_unets':  {'train': partial(two_unets_specialists, train_mode=True),
+                                'inference': partial(two_unets_specialists, train_mode=False),
                                 }
              }

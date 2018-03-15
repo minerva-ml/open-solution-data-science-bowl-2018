@@ -21,22 +21,15 @@ exclude:
   - devbook.ipynb
   - morphological_postprocessing.ipynb
 
-parameters:
-  data_dir:                        /mnt/ml-team/dsb_2018/data
-  meta_dir:                        /mnt/ml-team/dsb_2018/files
-  masks_overlayed_dir:             /mnt/ml-team/dsb_2018/files/masks_overlayed/
-  contours_overlayed_dir:          /mnt/ml-team/dsb_2018/files/contours_overlayed/
-  contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed/
-  centers_overlayed_dir:           /mnt/ml-team/dsb_2018/files/centers_overlayed/
-  experiment_dir:                  /mnt/ml-team/dsb_2018/files/two_unets/
-# Cloud Environment
-#  data_dir:                        /public/dsb_2018_data/
-#  meta_dir:                        /public/dsb_2018_data/
-#  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
-#  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
-#  contours_touching_overlayed_dir: /public/dsb_2018_data/contours_touching_overlayed/
-#  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
-#  experiment_dir:                  /output/dsb/experiments/
+
+Cloud Environment
+  data_dir:                        /public/dsb_2018_data/
+  meta_dir:                        /public/dsb_2018_data/
+  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
+  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
+  contours_touching_overlayed_dir: /public/dsb_2018_data/contours_touching_overlayed/
+  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
+  experiment_dir:                  /output/dsb/experiments/
 
 # Local Environment
 #  data_dir:                        /path/to/data
@@ -65,6 +58,22 @@ parameters:
   pool_kernel: 3
   pool_stride: 2
   repeat_blocks: 4
+
+# U-Net mask parameters
+  nr_unet_mask_outputs: 2
+  n_mask_filters: 16
+  conv_kernel_mask: 3
+  pool_kernel_mask: 3
+  pool_stride_mask: 2
+  repeat_blocks_mask: 4
+
+# U-Net contour parameters
+  nr_unet_contour_outputs: 2
+  n_contour_filters: 12
+  conv_kernel_contour: 3
+  pool_kernel_contour: 3
+  pool_stride_contour: 2
+  repeat_blocks_contour: 4
 
 # multi-output U-Net loss weights
   mask: 0.3

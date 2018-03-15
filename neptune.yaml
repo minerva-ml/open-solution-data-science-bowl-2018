@@ -21,8 +21,12 @@ exclude:
   - devbook.ipynb
   - morphological_postprocessing.ipynb
 
+<<<<<<< HEAD
 
 Cloud Environment
+=======
+parameters:
+# Cloud Environment
   data_dir:                        /public/dsb_2018_data/
   meta_dir:                        /public/dsb_2018_data/
   masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/

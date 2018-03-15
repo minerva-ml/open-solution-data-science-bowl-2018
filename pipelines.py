@@ -92,6 +92,65 @@ def unet_multitask(config, train_mode):
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
+def two_unets_specialists(config, train_mode):
+    if train_mode:
+        save_output = True
+        load_saved_output = False
+        preprocessing = preprocessing_multitask_train(config)
+    else:
+        save_output = True
+        load_saved_output = False
+        preprocessing = preprocessing_multitask_inference(config)
+
+    unet_mask = Step(name='unet_mask',
+                          transformer=PyTorchUNetMultitask(**config.unet_mask),
+                          input_steps=[preprocessing],
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output, load_saved_output=load_saved_output)
+    unet_contour = Step(name='unet_contour',
+                          transformer=PyTorchUNetMultitask(**config.unet_contour),
+                          input_steps=[preprocessing],
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output, load_saved_output=load_saved_output)
+
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[unet_mask],
+                       adapter={'images': ([(unet_mask.name, 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output)
+
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[unet_contour],
+                          adapter={'images': ([(unet_contour.name, 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output)
+
+    detached = Step(name='detached',
+                    transformer=Postprocessor(),
+                    input_steps=[mask_resize, contour_resize],
+                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                             'contours': ([(contour_resize.name, 'resized_images')]),
+                             },
+                    cache_dirpath=config.env.cache_dirpath,
+                    save_output=save_output)
+
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[detached],
+                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+
 
 def preprocessing_train(config):
     if config.execution.load_in_memory:
@@ -426,5 +485,8 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       },
              'unet_multitask': {'train': partial(unet_multitask, train_mode=True),
                                 'inference': partial(unet_multitask, train_mode=False),
+                                },
+              'two_unets_specialists':  {'train': partial(two_unets_specialists, train_mode=True),
+                                'inference': partial(two_unets_specialists, train_mode=False),
                                 }
              }

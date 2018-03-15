@@ -23,7 +23,8 @@ def compute_ious(gt, predictions):
     predictions_ = decompose(predictions)
     gt_ = np.asarray([el.flatten() for el in gt_])
     predictions_ = np.asarray([el.flatten() for el in predictions_])
-    ious = pairwise_distances(X=gt_, Y=predictions_, metric=iou)
+    #ious = pairwise_distances(X=gt_, Y=predictions_, metric=iou)
+    ious = calculate_iou_matrix(gt_, predictions_)
     return ious
 
 
@@ -57,4 +58,19 @@ def intersection_over_union_thresholds(y_true, y_pred):
     iouts = []
     for y_t, y_p in tqdm(list(zip(y_true, y_pred))):
         iouts.append(compute_eval_metric(y_t, y_p))
+    print(np.mean(iouts))
     return np.mean(iouts)
+
+def calculate_iou_matrix(ground_truth, proposals):
+    mat = np.zeros([len(ground_truth),len(proposals)])
+    used_proposals = []
+    for i, gt in enumerate(ground_truth):
+        for j,prop in enumerate(proposals):
+            if j in used_proposals:
+                continue
+            iou_ = iou(gt,prop)
+            mat[i,j]=iou_
+            if iou_>0.5:
+                used_proposals.append(j)
+                break
+    return mat

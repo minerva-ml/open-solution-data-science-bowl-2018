@@ -21,10 +21,6 @@ exclude:
   - devbook.ipynb
   - morphological_postprocessing.ipynb
 
-<<<<<<< HEAD
-
-Cloud Environment
-=======
 parameters:
 # Cloud Environment
   data_dir:                        /public/dsb_2018_data/

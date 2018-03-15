@@ -486,7 +486,7 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
              'unet_multitask': {'train': partial(unet_multitask, train_mode=True),
                                 'inference': partial(unet_multitask, train_mode=False),
                                 },
-              'two_unets':  {'train': partial(two_unets_specialists, train_mode=True),
+              'two_unets_specialists':  {'train': partial(two_unets_specialists, train_mode=True),
                                 'inference': partial(two_unets_specialists, train_mode=False),
                                 }
              }

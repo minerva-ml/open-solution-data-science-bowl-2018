@@ -104,15 +104,15 @@ SOLUTION_CONFIG = AttrDict({
     'postprocessor':{}
 },
  'unet_mask': {
-        'architecture_config': {'model_params': {'n_filters': params.n_mask_filters,
-                                                 'conv_kernel': params.conv_kernel_mask,
-                                                 'pool_kernel': params.pool_kernel_mask,
-                                                 'pool_stride': params.pool_stride_mask,
-                                                 'repeat_blocks': params.repeat_blocks_mask,
+        'architecture_config': {'model_params': {'n_filters': params.mask_n_filters,
+                                                 'conv_kernel': params.mask_conv_kernel,
+                                                 'pool_kernel': params.mask_pool_kernel,
+                                                 'pool_stride': params.mask_pool_stride,
+                                                 'repeat_blocks': params.mask_repeat_blocks,
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_mask_outputs
+                                                 'nr_outputs': params.mask_nr_unet_outputs
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },
@@ -149,15 +149,15 @@ SOLUTION_CONFIG = AttrDict({
         },
     },
     'unet_contour': {
-        'architecture_config': {'model_params': {'n_filters': 12,
-                                                 'conv_kernel': params.conv_kernel_contour,
-                                                 'pool_kernel': params.pool_kernel_contour,
-                                                 'pool_stride': params.pool_stride_contour,
-                                                 'repeat_blocks': params.repeat_blocks_contour,
+        'architecture_config': {'model_params': {'n_filters': params.contour_n_filters,
+                                                 'conv_kernel': params.contour_conv_kernel,
+                                                 'pool_kernel': params.contour_pool_kernel,
+                                                 'pool_stride': params.contour_pool_stride,
+                                                 'repeat_blocks': params.contour_repeat_blocks,
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_contour_outputs
+                                                 'nr_outputs': params.contour_nr_unet_outputs
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },

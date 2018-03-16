@@ -200,6 +200,79 @@ class UNetMultitask(UNet):
         outputs = [output_leg(x) for output_leg in self.output_legs]
         return outputs
 
+class DCAN(Unet):
+    def __init__(self, conv_kernel,
+                 pool_kernel, pool_stride,
+                 repeat_blocks, n_filters,
+                 batch_norm, dropout,
+                 in_channels, nr_outputs,
+                 n_classifiers, threshold=0.5):
+        super(DCAN, self).__init__(conv_kernel,
+                                            pool_kernel, pool_stride,
+                                            repeat_blocks, n_filters,
+                                            batch_norm, dropout,
+                                            in_channels)
+        self.threshold = threshold
+        self.n_classifiers = n_classifiers
+        self.down_convs_for_classifiers = self._down_convs_for_classifiers()
+        self.down_pools_for_classifiers = self._down_pools_for_classifiers()
+
+    def _down_pools_for_classifiers(self):
+        down_pools = []
+        for i in range(self.n_classifiers):
+            down_pools.append(nn.Sequential(nn.ConstantPad2d(1, 0),
+                                            nn.MaxPool2d(kernel_size=(self.pool_kernel, self.pool_kernel),
+                                                         stride=self.pool_stride)))
+        return
+
+    def _down_convs_for_classifiers(self):
+        down_convs = []
+        for i in range(self.n_classifiers):
+            in_channels = self.n_filters * 2 ** self.n_blocks
+            out_channels = in_channels
+            down_convs.append()
+        return
+
+    def _up_samples(self):
+        up_samples = []
+
+    def forward(self, x):
+        x = self.input_block(x)
+
+        down_convs_outputs = []
+        for block, down_pool in zip(self.down_convs, self.down_pools):
+            x = block(x)
+            down_convs_outputs.append(x)
+            x = down_pool(x)
+
+        down_convs_outputs_for_classifiers = []
+        for block, down_pool in zip(self.down_convs_for_classifiers, self.down_pools_for_classifier):
+            x = block(x)
+            down_convs_outputs_for_classifiers.append(x)
+            x = down_pool(x)
+
+        mask = self.mask_output_layer(x)
+        contour = self.contour_output_layer(x)
+
+        mask_classifier_inputs = []
+        for down_convs_output, up_conv in zip(down_convs_outputs_for_classifiers, self.up_convs_mask):
+            tmp = up_conv(down_convs_output)
+            mask_classifier_inputs.append(tmp)
+        mask_classifier_inputs.append(mask)
+
+        contour_classifier_inputs = []
+        for down_convs_output, up_conv in zip(down_convs_outputs_for_classifiers, self.up_convs_mask):
+            tmp = up_conv(down_convs_output)
+            contour_classifier_inputs.append(tmp)
+        contour_classifier_inputs.append(contour)
+
+        mask = self.sum_and_softmax(mask_classifier_inputs)
+        contour = self.sum_and_softmax(contour_classifier_inputs)
+
+        output = (mask>self.threshold)*(contour>self.threshold)
+
+        return output
+
 
 class DownConv(nn.Module):
     def __init__(self, in_channels, kernel_size, batch_norm, dropout):

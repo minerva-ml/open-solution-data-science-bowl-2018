@@ -259,10 +259,9 @@ def preprocessing_multitask_train(config, is_specialist=False):
     else:
         reader_config = config.reader_multitask
         splitter_config = config.xy_splitter_multitask
-
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
-                            transformer=ImageReader(**config.reader_config),
+                            transformer=ImageReader(**reader_config),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')]),
@@ -271,7 +270,7 @@ def preprocessing_multitask_train(config, is_specialist=False):
                             save_output=True, load_saved_output=True)
 
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_config),
+                                transformer=ImageReader(**reader_config),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta_valid')]),
                                          'train_mode': ([('input', 'train_mode')]),
@@ -292,7 +291,7 @@ def preprocessing_multitask_train(config, is_specialist=False):
                       cache_dirpath=config.env.cache_dirpath)
     else:
         xy_train = Step(name='xy_train',
-                        transformer=XYSplit(**config.splitter_config),
+                        transformer=XYSplit(**splitter_config),
                         input_data=['input'],
                         adapter={'meta': ([('input', 'meta')]),
                                  'train_mode': ([('input', 'train_mode')])
@@ -332,7 +331,7 @@ def preprocessing_multitask_inference(config, is_specialist=False):
 
     if config.execution.load_in_memory:
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_config),
+                                transformer=ImageReader(**reader_config),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta')]),
                                          'train_mode': ([('input', 'train_mode')]),
@@ -350,7 +349,7 @@ def preprocessing_multitask_inference(config, is_specialist=False):
                       cache_dirpath=config.env.cache_dirpath)
     else:
         xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.splitter_config),
+                            transformer=XYSplit(**splitter_config),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')])

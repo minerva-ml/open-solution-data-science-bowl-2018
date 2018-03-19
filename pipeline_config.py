@@ -107,10 +107,6 @@ SOLUTION_CONFIG = AttrDict({
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },
-        'thresholder': {'threshold': params.threshold},
-        'watershed': {},
-        'dropper': {'min_size': params.min_nuclei_size},
-        'postprocessor': {}
     },
     'unet_mask': {
         'architecture_config': {'model_params': {'n_filters': params.mask_n_filters,

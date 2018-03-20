@@ -160,17 +160,24 @@ class UNet(nn.Module):
 
 
 class UNetMultitask(UNet):
-    def __init__(self, conv_kernel,
-                 pool_kernel, pool_stride,
-                 repeat_blocks, n_filters,
-                 batch_norm, dropout,
-                 in_channels, nr_outputs):
+    def __init__(self,
+                 conv_kernel,
+                 pool_kernel,
+                 pool_stride,
+                 repeat_blocks,
+                 n_filters,
+                 batch_norm,
+                 dropout,
+                 in_channels,
+                 nr_outputs):
         super(UNetMultitask, self).__init__(conv_kernel,
-                                            pool_kernel, pool_stride,
-                                            repeat_blocks, n_filters,
-                                            batch_norm, dropout,
+                                            pool_kernel,
+                                            pool_stride,
+                                            repeat_blocks,
+                                            n_filters,
+                                            batch_norm,
+                                            dropout,
                                             in_channels)
-
         self.nr_outputs = nr_outputs
         output_legs = []
         for i in range(self.nr_outputs):

@@ -179,7 +179,8 @@ def postprocess(image, contour):
     initial_mask_binary = (image > m_thresh).astype(np.uint8)
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels = connect_or_drop_small(labels, min_size_percentile = 10)
+    labels = drop_small(labels, min_size=20)
+    #labels = connect_or_drop_small(labels, min_size_percentile = 10)
     labels = fill_holes_per_blob(labels)
 
     return labels

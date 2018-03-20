@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_4, unet-multitask, augmentations, validation, touching_edges]
+tags: [solution_4, unet-multitask, touching_edges]
 
 metric:
   channel: 'Final Validation Score'
@@ -40,7 +40,7 @@ parameters:
 #  centers_overlayed_dir:           /path/to/centers_overlayed
 #  experiment_dir:                  /path/to/work/dir
 
-  valid_category_ids: "[0, 4]"
+  valid_category_ids: '[0, 4]'
   overwrite: 1
   num_workers: 4
   load_in_memory: 1

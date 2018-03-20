@@ -68,6 +68,9 @@ def _train_pipeline(pipeline_name, validation_size):
     valid_ids = eval(params.valid_category_ids)
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
 
+    meta_train_split = meta_train_split.sample(32)
+    meta_valid_split = meta_train_split.sample(8)
+
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
                       'train_mode': True,

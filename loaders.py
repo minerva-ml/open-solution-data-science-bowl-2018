@@ -6,7 +6,7 @@ from attrdict import AttrDict
 from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
 
-from augmentation import affine_seq, color_seq
+from augmentation import affine_seq, color_seq, patching_seq
 from steps.base import BaseTransformer
 from steps.pytorch.utils import ImgAug
 from utils import from_pil, to_pil
@@ -195,6 +195,9 @@ class ImageSegmentationMultitaskDataset(Dataset):
                 data[0] = self.image_augment(data[0])
                 data = to_pil(*data)
 
+                joblib.dump(data, '/mnt/ml-team/minerva/debug/patched_imgs.pkl')
+                exit()
+
             if self.mask_transform is not None:
                 data[1:] = [self.mask_transform(mask) for mask in data[1:]]
 
@@ -208,13 +211,12 @@ class ImageSegmentationMultitaskDataset(Dataset):
             return Xi
 
 
-class MetadataImageSegmentationLoader(BaseTransformer):
+class ImageSegmentationLoaderBasic(BaseTransformer):
     def __init__(self, loader_params, dataset_params):
         super().__init__()
         self.loader_params = AttrDict(loader_params)
         self.dataset_params = AttrDict(dataset_params)
 
-        self.dataset = MetadataImageSegmentationDataset
         self.image_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
                                                                       self.dataset_params.w)),
                                                    transforms.ToTensor(),
@@ -228,6 +230,8 @@ class MetadataImageSegmentationLoader(BaseTransformer):
                                                   ])
         self.image_augment_with_target = ImgAug(affine_seq)
         self.image_augment = ImgAug(color_seq)
+
+        self.dataset = None
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode and y is not None:
@@ -273,23 +277,93 @@ class MetadataImageSegmentationLoader(BaseTransformer):
         joblib.dump(params, filepath)
 
 
-class MetadataImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
+class ImageSegmentationLoaderPatching(ImageSegmentationLoaderBasic):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+
+        self.image_augment_with_target = ImgAug(patching_seq(crop_size=(self.dataset_params.h,
+                                                                        self.dataset_params.w)))
+        self.image_augment = ImgAug(color_seq)
+
+        self.dataset = None
+
+    def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
+        if not train_mode:
+            X, y, patch_ids = self.get_patches(X, y)
+        else:
+            patch_ids = None
+        if train_mode and y is not None:
+            flow, steps = self.get_datagen(X, y, True, self.loader_params.training)
+        else:
+            flow, steps = self.get_datagen(X, None, False, self.loader_params.inference)
+
+        if X_valid is not None and y_valid is not None:
+            if not train_mode:
+                X_valid, y_valid, patch_ids_valid = self.get_patches(X_valid, y_valid)
+            valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, False, self.loader_params.inference)
+        else:
+            valid_flow = None
+            valid_steps = None
+        return {'datagen': (flow, steps),
+                'patch_ids': patch_ids,
+                'validation_datagen': (valid_flow, valid_steps)}
+
+    def get_datagen(self, X, y, train_mode, loader_params):
+        if train_mode:
+            dataset = self.dataset(X, y,
+                                   train_mode=True,
+                                   image_augment=self.image_augment,
+                                   image_augment_with_target=self.image_augment_with_target,
+                                   mask_transform=self.mask_transform,
+                                   image_transform=self.image_transform)
+        else:
+            dataset = self.dataset(X, y,
+                                   train_mode=False,
+                                   image_augment=None,
+                                   image_augment_with_target=None,
+                                   mask_transform=self.mask_transform,
+                                   image_transform=self.image_transform)
+
+        datagen = DataLoader(dataset, **loader_params)
+        steps = len(datagen)
+        return datagen, steps
+
+    def get_patches(self, X, y=None):
+        return X, y, None
+
+
+class MetadataImageSegmentationLoader(ImageSegmentationLoaderBasic):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+        self.dataset = MetadataImageSegmentationDataset
+
+
+class MetadataImageSegmentationMultitaskLoader(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
         self.dataset = MetadataImageSegmentationMultitaskDataset
 
 
-class ImageSegmentationLoader(MetadataImageSegmentationLoader):
+class ImageSegmentationLoader(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
         self.dataset = ImageSegmentationDataset
 
 
-class ImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
+class ImageSegmentationMultitaskLoader(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
         self.dataset = ImageSegmentationMultitaskDataset
 
+
+class ImageSegmentationMultitaskLoaderPatching(ImageSegmentationLoaderPatching):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+        self.dataset = ImageSegmentationMultitaskDataset
+
+
+class PatchCombiner(BaseTransformer):
+    pass
 
 def binarize(x):
     x_ = x.convert('L')  # convert image to monochrome

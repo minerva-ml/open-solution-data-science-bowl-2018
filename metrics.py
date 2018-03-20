@@ -2,7 +2,9 @@ import numpy as np
 from sklearn.metrics.pairwise import pairwise_distances
 from tqdm import tqdm
 
-from utils import decompose
+from utils import decompose, get_logger
+
+logger = get_logger()
 
 
 def iou(gt, pred):
@@ -23,7 +25,6 @@ def compute_ious(gt, predictions):
     predictions_ = decompose(predictions)
     gt_ = np.asarray([el.flatten() for el in gt_])
     predictions_ = np.asarray([el.flatten() for el in predictions_])
-    #ious = pairwise_distances(X=gt_, Y=predictions_, metric=iou)
     ious = calculate_iou_matrix(gt_, predictions_)
     return ious
 
@@ -50,7 +51,6 @@ def intersection_over_union(y_true, y_pred):
         iou = compute_ious(y_t, y_p)
         iou_mean = 1.0 * np.sum(iou) / iou.shape[0]
         ious.append(iou_mean)
-
     return np.mean(ious)
 
 
@@ -58,8 +58,8 @@ def intersection_over_union_thresholds(y_true, y_pred):
     iouts = []
     for y_t, y_p in tqdm(list(zip(y_true, y_pred))):
         iouts.append(compute_eval_metric(y_t, y_p))
-    print(np.mean(iouts))
     return np.mean(iouts)
+
 
 def calculate_iou_matrix(ground_truth, proposals):
     mat = np.zeros([len(ground_truth),len(proposals)])

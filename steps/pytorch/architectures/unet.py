@@ -218,11 +218,10 @@ class DCAN(UNet):
         self.threshold = threshold
         self.convs_for_classifiers = self._convs_for_classifiers()
         self.down_pools_for_classifiers = self._down_pools_for_classifiers()
-        self.up_samples = self._up_samples()
         self.mask_output_layer = self._mask_output_layer()
         self.contour_output_layer = self._contour_output_layer()
-        self.up_convs_mask = self._up_convs_mask()
-        self.up_convs_contour = self._up_convs_contour()
+        self.up_convs_mask = self._up_samples()
+        self.up_convs_contour = self._up_samples()
         self.last_block = self._last_block()
         self.last_up_conv_mask = self._last_up_conv()
         self.last_up_conv_contour = self._last_up_conv()
@@ -365,12 +364,6 @@ class DCAN(UNet):
                                                  ))
         return nn.ModuleList(up_samples)
 
-    def _up_convs_mask(self):
-        return self.up_samples
-
-    def _up_convs_contour(self):
-        return self.up_samples
-
     def forward(self, x):
         x = self.input_block(x)
 
@@ -416,19 +409,26 @@ class DCAN(UNet):
         contour_classifier_inputs = tmp
 
         mask_sum = torch.cat(mask_classifier_inputs, dim=1)
+        mask_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
+        mask_sum = torch.cat([mask_sum[:, c_i, :, :].contiguous().view_as(mask_classifier_inputs[0])*d_i
+                              for c_i,d_i in zip(range(self.n_classifiers), mask_weights)], dim=1)
         mask_sum = torch.sum(mask_sum, 1)
+
         contour_sum = torch.cat(contour_classifier_inputs, dim=1)
+        contour_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
+        contour_sum = torch.cat([contour_sum[:,c_i, :, :].contiguous().view_as(contour_classifier_inputs[0])*d_i
+                                 for c_i,d_i in zip(range(self.n_classifiers), contour_weights)], dim=1)
         contour_sum = torch.sum(contour_sum, 1)
 
-        mask = self.softmax(mask)
-        contour = self.softmax(contour)
-
-        output=contour_classifier_inputs
+        mask = self.softmax(mask_sum)
+        contour = self.softmax(contour_sum)
         import pdb;pdb.set_trace()
-        '''
 
-        output = (mask>self.threshold)*(contour>self.threshold)
-        '''
+        output = (mask>self.threshold)+(contour>self.threshold)
+        output[output>0]=1
+
+        output=[output, mask, contour, mask_classifier_inputs, contour_classifier_inputs]
+
         return output
 
 

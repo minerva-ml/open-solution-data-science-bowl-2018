@@ -20,10 +20,11 @@ neptune login
 neptune data upload Mask_RCNN --recursive --project-key DSB
 ```
 6. Go to https://neptune.ml/ and click `start notebook` button at the top right
+* select `gcp-gpu-medium`
 * select `python 3.5` 
-* select `tensorflow 1.4.0`
+* select `tensorflow 1.4`
 * click browse files and upload the `main.ipynb` notebook
-* type Mask_RCNN in the `files` tab
+* type `Mask_RCNN` in the table at the bottom (_files_ tab)
 
 7. Click through the notebook and get **0.44** submission from `/output/submission.csv` or tweak parameters and get even more!
 <img src="https://gist.githubusercontent.com/jakubczakon/10e5eb3d5024cc30cdb056d5acd3d92f/raw/577a2614cd1041f6251b6096029272f3547d78df/readme_neptune_rcnn.png" width="600" height="600" />

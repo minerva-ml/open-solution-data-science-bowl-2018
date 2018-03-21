@@ -37,8 +37,11 @@ color_seq = iaa.Sequential([
 
 def patching_seq(crop_size):
     h, w = crop_size
+    neg_h = int(-1.0 * h)
     seq = iaa.Sequential([
         iaa.Affine(rotate=(0, 360)),
-        iaa.CropAndPad(px=h, pad_cval=0, keep_size=False)
-    ], random_order=True)
+        iaa.CropAndPad(px=neg_h,
+                       pad_cval=0,
+                       keep_size=False)
+    ], random_order=False)
     return seq

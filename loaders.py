@@ -195,8 +195,8 @@ class ImageSegmentationMultitaskDataset(Dataset):
                 data[0] = self.image_augment(data[0])
                 data = to_pil(*data)
 
-                joblib.dump(data, '/mnt/ml-team/minerva/debug/patched_imgs.pkl')
-                exit()
+                # joblib.dump(data, '/mnt/ml-team/minerva/debug/patched_imgs.pkl')
+                # exit()
 
             if self.mask_transform is not None:
                 data[1:] = [self.mask_transform(mask) for mask in data[1:]]
@@ -288,18 +288,15 @@ class ImageSegmentationLoaderPatching(ImageSegmentationLoaderBasic):
         self.dataset = None
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
-        if not train_mode:
-            X, y, patch_ids = self.get_patches(X, y)
-        else:
-            patch_ids = None
+        X, y, patch_ids = self.get_patches(X, y, train_mode)
+
         if train_mode and y is not None:
             flow, steps = self.get_datagen(X, y, True, self.loader_params.training)
         else:
             flow, steps = self.get_datagen(X, None, False, self.loader_params.inference)
 
         if X_valid is not None and y_valid is not None:
-            if not train_mode:
-                X_valid, y_valid, patch_ids_valid = self.get_patches(X_valid, y_valid)
+            X_valid, y_valid, patch_ids_valid = self.get_patches(X_valid, y_valid, train_mode)
             valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, False, self.loader_params.inference)
         else:
             valid_flow = None
@@ -328,7 +325,8 @@ class ImageSegmentationLoaderPatching(ImageSegmentationLoaderBasic):
         steps = len(datagen)
         return datagen, steps
 
-    def get_patches(self, X, y=None):
+    def get_patches(self, X, y=None, train_mode=True):
+
         return X, y, None
 
 

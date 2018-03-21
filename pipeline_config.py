@@ -48,8 +48,8 @@ SOLUTION_CONFIG = AttrDict({
                            'y_columns': Y_COLUMNS_SPECIALISTS,
                            'target_shape': GLOBAL_CONFIG['img_H-W']
                            },
-    'loader': {'dataset_params': {'h': params.image_h,
-                                  'w': params.image_w,
+    'loader': {'dataset_params': {'h': params.crop_h,
+                                  'w': params.crop_w,
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,

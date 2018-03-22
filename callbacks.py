@@ -10,10 +10,11 @@ from utils import sigmoid
 
 
 class NeptuneMonitorSegmentation(NeptuneMonitor):
-    def __init__(self, image_nr, image_resize, model_name):
+    def __init__(self, image_nr, image_resize, model_name, outputs_to_plot):
         super().__init__(model_name)
         self.image_nr = image_nr
         self.image_resize = image_resize
+        self.outputs_to_plot = outputs_to_plot
 
     def on_epoch_end(self, *args, **kwargs):
         self._send_numeric_channels()
@@ -56,18 +57,22 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
             targets_tensors = data[1:]
 
             if torch.cuda.is_available():
-                X = Variable(X).cuda()
+                X = Variable(X, volatile=True).cuda()
             else:
-                X = Variable(X)
+                X = Variable(X, volatile=True)
 
             outputs_batch = self.model(X)
             if len(outputs_batch) == len(self.output_names):
                 for name, output, target in zip(self.output_names, outputs_batch, targets_tensors):
+                    if name not in self.outputs_to_plot:
+                        continue
                     prediction = sigmoid(np.squeeze(output.data.cpu().numpy(), axis=1))
                     ground_truth = np.squeeze(target.cpu().numpy(), axis=1)
                     prediction_masks[name] = np.stack([prediction, ground_truth], axis=1)
             else:
                 for name, target in zip(self.output_names, targets_tensors):
+                    if name not in self.outputs_to_plot:
+                        continue
                     prediction = sigmoid(np.squeeze(outputs_batch.data.cpu().numpy(), axis=1))
                     ground_truth = np.squeeze(target.cpu().numpy(), axis=1)
                     prediction_masks[name] = np.stack([prediction, ground_truth], axis=1)

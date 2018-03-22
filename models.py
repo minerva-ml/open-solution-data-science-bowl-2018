@@ -4,7 +4,7 @@ import torch
 
 from steps.pytorch.architectures.unet import UNet, UNetMultitask, DCAN
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
-    ExperimentTiming, ExponentialLRScheduler, EarlyStopping
+    ExperimentTiming, ExponentialLRScheduler, EarlyStopping, LossWeightsScheduler
 from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss, list_segmentation_loss
 from utils import sigmoid
@@ -80,7 +80,7 @@ class PyTorchDCAN(Model):
         batch_gen, steps = datagen
         outputs = {}
         for batch_id, data in enumerate(batch_gen):
-            X = data
+            X = data[0]
 
             if torch.cuda.is_available():
                 X = torch.autograd.Variable(X, volatile=True).cuda()
@@ -126,7 +126,10 @@ def callbacks_unet(callbacks_config):
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
+    lw_scheduler = LossWeightsScheduler(**callbacks_config['loss_weights_scheduler'])
 
     return CallbackList(
         callbacks=[experiment_timing, training_monitor, validation_monitor,
-                   model_checkpoints, lr_scheduler, neptune_monitor, early_stopping])
+                   model_checkpoints, lr_scheduler, neptune_monitor,
+                   early_stopping, #lw_scheduler
+                   ])

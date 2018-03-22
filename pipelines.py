@@ -163,10 +163,11 @@ def dcan(config, train_mode):
         preprocessing = preprocessing_multitask_inference(config)
 
     dcan = Step(name='dcan',
-                          transformer=PyTorchDCAN(**config.dcan),
-                          input_steps=[preprocessing],
-                          cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output, load_saved_output=load_saved_output)
+                transformer=PyTorchDCAN(**config.dcan),
+                input_steps=[preprocessing],
+                cache_dirpath=config.env.cache_dirpath,
+                save_output=save_output, load_saved_output=load_saved_output,
+                force_fitting=True)
 
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),

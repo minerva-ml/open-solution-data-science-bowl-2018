@@ -206,8 +206,7 @@ class DCAN(UNet):
                  pool_kernel, pool_stride,
                  repeat_blocks, n_filters,
                  batch_norm, dropout,
-                 in_channels, nr_outputs,
-                 n_classifiers, threshold=0.5):
+                 in_channels, n_classifiers):
         assert conv_kernel%2==1
         self.n_classifiers = n_classifiers
         super(DCAN, self).__init__(conv_kernel,
@@ -215,7 +214,7 @@ class DCAN(UNet):
                                             repeat_blocks, n_filters,
                                             batch_norm, dropout,
                                             in_channels)
-        self.threshold = threshold
+
         self.convs_for_classifiers = self._convs_for_classifiers()
         self.down_pools_for_classifiers = self._down_pools_for_classifiers()
         self.mask_output_layer = self._mask_output_layer()
@@ -228,22 +227,10 @@ class DCAN(UNet):
         self.mask_to_single_channel = self._to_single_channel()
         self.contour_to_single_channel = self._to_single_channel()
 
-    def softmax2d(self, x):
-        e_x = torch.exp(x - torch.max(x))
-        return e_x / torch.sum(e_x)
-
-    def softmax(self, input):
-        softmax = []
-        for i in range(input.size()[0]):
-            tmp = self.softmax2d(input[i,:,:])
-            softmax.append(tmp)
-        softmax = torch.stack(softmax,dim=0)
-        return softmax
-
     def _to_single_channel(self):
         in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
         out_channels = 1
-        return [Conv(in_channels, out_channels, self.conv_kernel, self.batch_norm, self.dropout) for i in range(self.n_classifiers)]
+        return nn.ModuleList([Conv(in_channels, out_channels, self.conv_kernel, self.batch_norm, self.dropout) for i in range(self.n_classifiers)])
 
     def _last_up_conv(self):
         in_channels = int(self.n_filters * 2 ** (self.repeat_blocks + 1))
@@ -410,24 +397,21 @@ class DCAN(UNet):
 
         mask_sum = torch.cat(mask_classifier_inputs, dim=1)
         mask_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
+        if torch.cuda.is_available():
+            mask_weights = mask_weights.cuda()
         mask_sum = torch.cat([mask_sum[:, c_i, :, :].contiguous().view_as(mask_classifier_inputs[0])*d_i
                               for c_i,d_i in zip(range(self.n_classifiers), mask_weights)], dim=1)
-        mask_sum = torch.sum(mask_sum, 1)
+        mask_sum = torch.sum(mask_sum, 1).view_as(mask_classifier_inputs[0])
 
         contour_sum = torch.cat(contour_classifier_inputs, dim=1)
         contour_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
+        if torch.cuda.is_available():
+            contour_weights = contour_weights.cuda()
         contour_sum = torch.cat([contour_sum[:,c_i, :, :].contiguous().view_as(contour_classifier_inputs[0])*d_i
                                  for c_i,d_i in zip(range(self.n_classifiers), contour_weights)], dim=1)
-        contour_sum = torch.sum(contour_sum, 1)
+        contour_sum = torch.sum(contour_sum, 1).view_as(contour_classifier_inputs[0])
 
-        mask = self.softmax(mask_sum)
-        contour = self.softmax(contour_sum)
-        import pdb;pdb.set_trace()
-
-        output = (mask>self.threshold)+(contour>self.threshold)
-        output[output>0]=1
-
-        output=[output, mask, contour, mask_classifier_inputs, contour_classifier_inputs]
+        output = [mask_sum, contour_sum, mask_classifier_inputs, contour_classifier_inputs]
 
         return output
 
@@ -570,25 +554,6 @@ class Conv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-
-class SumAndSoftmaxFunc(torch.autograd.Function):
-    def __init__(self, n_classifiers):
-        self.n_classifiers = n_classifiers
-
-    def forward(self, x):
-        return
-
-    def backward(self, x):
-        return
-
-
-class SumAndSoftmax(nn.Module):
-    def __init__(self, n_classifiers):
-        super(SumAndSoftmax, self).__init__()
-        self.n_classifiers = n_classifiers
-
-    def forward(self, x):
-        return SumAndSoftmaxFunc.apply(x)
 
 if __name__=="__main__":
     x = torch.randn([2,4,512,512])

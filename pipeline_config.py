@@ -11,7 +11,10 @@ params = read_params(ctx)
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
-Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
+
+Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_contours_touching', 'file_path_centers']
+Y_COLUMNS_SPECIALISTS = ['file_path_mask', 'file_path_contours']
+
 Y_COLUMNS_SCORING = ['file_path_masks']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
@@ -32,6 +35,9 @@ SOLUTION_CONFIG = AttrDict({
     'xy_splitter_multitask': {'x_columns': X_COLUMNS,
                               'y_columns': Y_COLUMNS_MULTITASK
                               },
+    'xy_splitter_specialists': {'x_columns': X_COLUMNS,
+                                'y_columns': Y_COLUMNS_SPECIALISTS
+                                },
     'reader_single': {'x_columns': X_COLUMNS,
                       'y_columns': Y_COLUMNS,
                       'target_shape': GLOBAL_CONFIG['img_H-W']
@@ -40,6 +46,10 @@ SOLUTION_CONFIG = AttrDict({
                          'y_columns': Y_COLUMNS_MULTITASK,
                          'target_shape': GLOBAL_CONFIG['img_H-W']
                          },
+    'reader_specialists': {'x_columns': X_COLUMNS,
+                           'y_columns': Y_COLUMNS_SPECIALISTS,
+                           'target_shape': GLOBAL_CONFIG['img_H-W']
+                           },
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,
                                   },
@@ -100,16 +110,13 @@ SOLUTION_CONFIG = AttrDict({
             'experiment_timing': {'batch_every': 0,
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'image_nr': 4,
+            'neptune_monitor': {'model_name': 'unet',
+                                'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },
-    'thresholder': {'threshold': params.threshold},
-    'watershed': {},
-    'dropper': {'min_size': params.min_nuclei_size},
-    'postprocessor':{}
-},
- 'unet_mask': {
+    },
+    'unet_mask': {
         'architecture_config': {'model_params': {'n_filters': params.mask_n_filters,
                                                  'conv_kernel': params.mask_conv_kernel,
                                                  'pool_kernel': params.mask_pool_kernel,
@@ -154,8 +161,8 @@ SOLUTION_CONFIG = AttrDict({
             'experiment_timing': {'batch_every': 0,
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {    'model_name': 'unet_mask',
-                                    'image_nr': 4,
+            'neptune_monitor': {'model_name': 'unet_mask',
+                                'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },
@@ -214,5 +221,5 @@ SOLUTION_CONFIG = AttrDict({
     'thresholder': {'threshold': params.threshold},
     'watershed': {},
     'dropper': {'min_size': params.min_nuclei_size},
-    'postprocessor':{}
-} )
+    'postprocessor': {}
+})

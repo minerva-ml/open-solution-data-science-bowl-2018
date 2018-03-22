@@ -1,3 +1,5 @@
+from functools import partial
+
 import numpy as np
 import torch.optim as optim
 
@@ -35,11 +37,12 @@ class PyTorchUNetMultitask(Model):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, architecture_config['loss_weights']['mask']),
-                              ('contour', segmentation_loss, architecture_config['loss_weights']['contour']),
-                              ('contour_touching', segmentation_loss,
-                               architecture_config['loss_weights']['contour_touching']),
-                              ('center', segmentation_loss, architecture_config['loss_weights']['center'])]
+        mask_loss = partial(segmentation_loss, w1=architecture_config['loss_weights']['bce_mask'], w2=architecture_config['loss_weights']['dice_mask'])
+        contour_loss = partial(segmentation_loss, w1=architecture_config['loss_weights']['bce_contour'], w2=architecture_config['loss_weights']['dice_contour'])
+        center_loss = partial(segmentation_loss, w1=architecture_config['loss_weights']['bce_center'], w2=architecture_config['loss_weights']['dice_center'])
+        self.loss_function = [('mask', mask_loss, architecture_config['loss_weights']['mask']),
+                              ('contour', contour_loss, architecture_config['loss_weights']['contour']),
+                              ('center', center_loss, architecture_config['loss_weights']['center'])]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):

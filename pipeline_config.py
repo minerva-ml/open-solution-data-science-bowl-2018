@@ -11,7 +11,7 @@ params = read_params(ctx)
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
-Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours']
+Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
@@ -73,7 +73,13 @@ SOLUTION_CONFIG = AttrDict({
                                                        },
                                 'weights_init': {'function': 'xavier',
                                                  },
-                                'loss_weights': {'mask': params.mask,
+                                'loss_weights': {  'bce_mask': params.bce_mask,
+                                                'dice_mask': params.dice_mask,
+                                                'bce_contour': params.bce_contour,
+                                                'dice_contour': params.dice_contour,
+                                                'bce_center': params.bce_center,
+                                                'dice_center': params.dice_center,
+                                                  'mask': params.mask,
                                                  'contour': params.contour,
                                                  'contour_touching': params.contour_touching,
                                                  'center': params.center,
@@ -121,7 +127,13 @@ SOLUTION_CONFIG = AttrDict({
                                                        },
                                 'weights_init': {'function': 'xavier',
                                                  },
-                                'loss_weights': {'mask': params.mask_mask,
+                                'loss_weights': { 'bce_mask': params.mask_bce_mask,
+                                                'dice_mask': params.mask_dice_mask,
+                                                'bce_contour': params.mask_bce_contour,
+                                                'dice_contour': params.mask_dice_contour,
+                                                'bce_center': params.mask_bce_center,
+                                                'dice_center': params.mask_dice_center,
+                                                 'mask': params.mask_mask,
                                                  'contour': params.mask_contour,
                                                  'contour_touching': params.mask_contour_touching,
                                                  'center': params.mask_center,
@@ -166,7 +178,13 @@ SOLUTION_CONFIG = AttrDict({
                                                        },
                                 'weights_init': {'function': 'xavier',
                                                  },
-                                'loss_weights': {'mask': params.contour_mask,
+                                'loss_weights': { 'bce_mask': params.contour_bce_mask,
+                                                'dice_mask': params.contour_dice_mask,
+                                                'bce_contour': params.contour_bce_contour,
+                                                'dice_contour': params.contour_dice_contour,
+                                                'bce_center': params.contour_bce_center,
+                                                'dice_center': params.contour_dice_center,
+                                                 'mask': params.contour_mask,
                                                  'contour': params.contour_contour,
                                                  'contour_touching': params.contour_contour_touching,
                                                  'center': params.contour_center,

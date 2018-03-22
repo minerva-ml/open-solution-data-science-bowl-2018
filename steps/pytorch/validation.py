@@ -16,10 +16,10 @@ class DiceLoss(nn.Module):
         return 1 - 2 * torch.sum(prediction * target) / (torch.sum(prediction) + torch.sum(target) + 1e-7)
 
 
-def segmentation_loss(output, target):
+def segmentation_loss(output, target, w1=1., w2=1.):
     bce = nn.BCEWithLogitsLoss()
     dice = DiceLoss()
-    return bce(output, target) + dice(output, target)
+    return w1*bce(output, target) + w2*dice(output, target)
 
 
 def cross_entropy(output, target, squeeze=False):

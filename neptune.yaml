@@ -23,13 +23,13 @@ exclude:
 
 parameters:
 # Cloud Environment
-  data_dir:                        /public/dsb_2018_data/
-  meta_dir:                        /public/dsb_2018_data/
-  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
-  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
-  contours_touching_overlayed_dir: /public/dsb_2018_data/contours_touching_overlayed/
-  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
-  experiment_dir:                  /output/dsb/experiments/
+  data_dir:                        /mnt/ml-team/dsb_2018/data
+  meta_dir:                        /mnt/ml-team/dsb_2018/files
+  masks_overlayed_dir:             /mnt/ml-team/dsb_2018/files/masks_overlayed/
+  contours_overlayed_dir:          /mnt/ml-team/dsb_2018/files/contours_overlayed/
+  contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed/
+  centers_overlayed_dir:           /mnt/ml-team/dsb_2018/files/centers_overlayed/
+  experiment_dir:                  /mnt/ml-team/dsb_2018/files/two_unets/
 
 # Local Environment
 #  data_dir:                        /path/to/data
@@ -40,7 +40,7 @@ parameters:
 #  centers_overlayed_dir:           /path/to/centers_overlayed
 #  experiment_dir:                  /path/to/work/dir
 
-  valid_category_ids: "[0, 4]"
+  valid_category_ids: "[0, 1]"
   overwrite: 1
   num_workers: 4
   load_in_memory: 1
@@ -60,7 +60,7 @@ parameters:
   repeat_blocks: 4
 
 # U-Net mask parameters
-  mask_nr_unet_outputs: 2
+  mask_nr_unet_outputs: 3
   mask_n_filters: 16
   mask_conv_kernel: 3
   mask_pool_kernel: 3
@@ -68,7 +68,7 @@ parameters:
   mask_repeat_blocks: 4
 
 # U-Net contour parameters
-  contour_nr_unet_outputs: 2
+  contour_nr_unet_outputs: 3
   contour_n_filters: 12
   contour_conv_kernel: 3
   contour_pool_kernel: 3
@@ -76,20 +76,39 @@ parameters:
   contour_repeat_blocks: 4
 
 # multi-output U-Net loss weights
+  bce_mask: 1.0
+  dice_mask: 1.0
+  bce_contour: 1.0
+  dice_contour: 1.0
+  bce_center: 1.0
+  dice_center: 1.0
   mask: 0.3
   contour: 0.5
   contour_touching: 0.1
   center: 0.1
 
-  mask_mask: 0.85
-  mask_contour: 0.15
+  mask_bce_mask: 1.0
+  mask_dice_mask: 1.0
+  mask_bce_contour: 1.0
+  mask_dice_contour: 1.0
+  mask_bce_center: 1.0
+  mask_dice_center: 1.0
+  mask_mask: 0.8
+  mask_contour: 0.1
   mask_contour_touching: 0.0
-  mask_center: 0.0
+  mask_center: 0.1
 
+  
+  contour_bce_mask: 1.0
+  contour_dice_mask: 1.0
+  contour_bce_contour: 1.0
+  contour_dice_contour: 1.0
+  contour_bce_center: 1.0
+  contour_dice_center: 1.0
   contour_mask: 0.2
-  contour_contour: 0.8
+  contour_contour: 0.7
   contour_contour_touching: 0.
-  contour_center: 0.
+  contour_center: 0.1
 
 # Training schedule
   epochs_nr: 1000

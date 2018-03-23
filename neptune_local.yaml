@@ -36,10 +36,10 @@ parameters:
   masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
   centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev_patching
+  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev_patching_network_train
 
   valid_category_ids: '[0, 1]'
-  overwrite: 0
+  overwrite: 1
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
@@ -53,7 +53,7 @@ parameters:
 
 # U-Net parameters (multi-output)
   nr_unet_outputs: 4
-  n_filters: 16
+  n_filters: 32
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
@@ -95,7 +95,7 @@ parameters:
 
 # Training schedule
   epochs_nr: 1000
-  batch_size_train: 16
+  batch_size_train: 32
   batch_size_inference: 128
   lr: 0.001
   momentum: 0.9

@@ -199,9 +199,6 @@ class ImageSegmentationMultitaskDataset(Dataset):
                 data[0] = self.image_augment(data[0])
                 data = to_pil(*data)
 
-                # joblib.dump(data, '/mnt/ml-team/minerva/debug/patched_imgs.pkl')
-                # exit()
-
             if self.mask_transform is not None:
                 data[1:] = [self.mask_transform(mask) for mask in data[1:]]
 

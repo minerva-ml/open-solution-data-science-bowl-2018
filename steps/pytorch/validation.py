@@ -8,7 +8,6 @@ import torch.nn as nn
 class DiceLoss(nn.Module):
     def __init__(self):
         super(DiceLoss, self).__init__()
-
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, output, target):
@@ -16,7 +15,7 @@ class DiceLoss(nn.Module):
         return 1 - 2 * torch.sum(prediction * target) / (torch.sum(prediction) + torch.sum(target) + 1e-7)
 
 
-def segmentation_loss(output, target, w1=1., w2=1.):
+def segmentation_loss(output, target, w1=1.0, w2=1.0):
     bce = nn.BCEWithLogitsLoss()
     dice = DiceLoss()
     return w1*bce(output, target) + w2*dice(output, target)
@@ -74,7 +73,6 @@ def score_model(model, loss_function, datagen):
         partial_batch_losses.setdefault('sum', []).append(loss_sum)
         if batch_id == steps:
             break
-
     average_losses = {name: sum(losses) / steps for name, losses in partial_batch_losses.items()}
     return average_losses
 
@@ -83,7 +81,6 @@ def torch_acc_score(output, target):
     output = output.data.cpu().numpy()
     y_true = target.numpy()
     y_pred = output.argmax(axis=1)
-
     return accuracy_score(y_true, y_pred)
 
 

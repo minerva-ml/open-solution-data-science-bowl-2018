@@ -1,7 +1,7 @@
-from functools import partial
-
 import numpy as np
-import torch.optim as optim
+
+from functools import partial
+from torch import optim
 
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \

@@ -21,7 +21,6 @@ exclude:
   - devbook.ipynb
   - morphological_postprocessing.ipynb
 
-# Cloud Environment
 parameters:
 # Cloud environment
   data_dir:                        /public/dsb_2018_data/
@@ -76,7 +75,7 @@ parameters:
   contour_pool_stride: 2
   contour_repeat_blocks: 4
 
-# # U-Net loss weights (multi-output)
+# U-Net loss weights (multi-output)
   bce_mask: 1.0
   dice_mask: 1.0
   bce_contour: 1.0
@@ -97,7 +96,7 @@ parameters:
   mask_contour_touching: 0.0
   mask_center: 0.1
 
- # U-Net loss weights (contour)
+# U-Net loss weights (contour)
   contour_bce_mask: 1.0
   contour_dice_mask: 1.0
   contour_bce_contour: 1.0

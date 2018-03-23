@@ -35,11 +35,18 @@ class PyTorchUNetMultitask(Model):
         super().__init__(architecture_config, training_config, callbacks_config)
         self.model = UNetMultitask(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization_unet
-        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
+        self.optimizer = optim.Adam(self.weight_regularization(self.model,
+                                                               **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        mask_loss = partial(segmentation_loss, w1=architecture_config['loss_weights']['bce_mask'], w2=architecture_config['loss_weights']['dice_mask'])
-        contour_loss = partial(segmentation_loss, w1=architecture_config['loss_weights']['bce_contour'], w2=architecture_config['loss_weights']['dice_contour'])
-        center_loss = partial(segmentation_loss, w1=architecture_config['loss_weights']['bce_center'], w2=architecture_config['loss_weights']['dice_center'])
+        mask_loss = partial(segmentation_loss,
+                            w1=architecture_config['loss_weights']['bce_mask'],
+                            w2=architecture_config['loss_weights']['dice_mask'])
+        contour_loss = partial(segmentation_loss,
+                               w1=architecture_config['loss_weights']['bce_contour'],
+                               w2=architecture_config['loss_weights']['dice_contour'])
+        center_loss = partial(segmentation_loss,
+                              w1=architecture_config['loss_weights']['bce_center'],
+                              w2=architecture_config['loss_weights']['dice_center'])
         self.loss_function = [('mask', mask_loss, architecture_config['loss_weights']['mask']),
                               ('contour', contour_loss, architecture_config['loss_weights']['contour']),
                               ('center', center_loss, architecture_config['loss_weights']['center'])]

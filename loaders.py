@@ -325,21 +325,24 @@ class ImageSegmentationLoaderPatchingInference(ImageSegmentationLoaderBasic):
         return datagen, steps
 
     def get_patches(self, X):
-        patches, patch_ids, patch_y_coords, patch_x_coords, image_h, image_w = [], [], [], [], [], []
-        for i, image in enumerate(X[0]):
+        patches, patch_ids, tta_angles, patch_y_coords, patch_x_coords, image_h, image_w = [], [], [], [], [], [], []
+        for i, image in enumerate((X[0])):
             image = from_pil(image)
             h, w = image.shape[:2]
             for y_coord, x_coord, image_patch in generate_patches(image, self.dataset_params.h,
                                                                   self.dataset_params.patching_stride):
-                image_patch = to_pil(image_patch)
-                patches.append(image_patch)
-                patch_ids.append(i)
-                patch_y_coords.append(y_coord)
-                patch_x_coords.append(x_coord)
-                image_h.append(h)
-                image_w.append(w)
+                for tta_rotation_angle, image_patch_tta in test_time_augmentation(image_patch):
+                    image_patch_tta = to_pil(image_patch_tta)
+                    patches.append(image_patch_tta)
+                    patch_ids.append(i)
+                    tta_angles.append(tta_rotation_angle)
+                    patch_y_coords.append(y_coord)
+                    patch_x_coords.append(x_coord)
+                    image_h.append(h)
+                    image_w.append(w)
 
         patch_ids = pd.DataFrame({'patch_ids': patch_ids,
+                                  'tta_angles': tta_angles,
                                   'y_coordinates': patch_y_coords,
                                   'x_coordinates': patch_x_coords,
                                   'image_h': image_h,
@@ -404,11 +407,12 @@ class PatchCombiner(BaseTransformer):
         prediction_image = np.zeros((image_h, image_w))
         prediction_image_padded = get_padded_image(prediction_image, self.patching_size)
 
-        for (y_coordinate, x_coordinate), image_patch in zip(
-                patch_meta[['y_coordinates', 'x_coordinates']].values.tolist(), image_patches):
+        for (y_coordinate, x_coordinate, tta_angle), image_patch in zip(
+                patch_meta[['y_coordinates', 'x_coordinates', 'tta_angles']].values.tolist(), image_patches):
+            image_patch = np.rot90(image_patch, -1 * tta_angle / 90.)
             prediction_image_padded[
             y_coordinate * self.patching_stride:y_coordinate * self.patching_stride + self.patching_size,
-            x_coordinate * self.patching_stride:x_coordinate * self.patching_stride + self.patching_size] = image_patch
+            x_coordinate * self.patching_stride:x_coordinate * self.patching_stride + self.patching_size] += image_patch
 
         prediction_image = prediction_image_padded[self.patching_size:image_h + self.patching_size,
                            self.patching_size:image_w + self.patching_size]
@@ -426,6 +430,11 @@ def to_tensor(x):
     x_ = np.expand_dims(x, axis=0)
     x_ = torch.from_numpy(x_)
     return x_
+
+
+def test_time_augmentation(img):
+    for i in range(4):
+        yield i*90, np.rot90(img, i)
 
 
 def generate_patches(img, patch_size, overlap):

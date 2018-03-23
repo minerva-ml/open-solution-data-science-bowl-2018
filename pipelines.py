@@ -73,7 +73,9 @@ def unet_multitask(config, train_mode):
                                                'validation_datagen': ([(loader.name, 'validation_datagen')]),
                                                },
                                       cache_dirpath=config.env.cache_dirpath,
-                                      save_output=save_output, load_saved_output=load_saved_output)
+                                      cache_output=False,
+                                      save_output=False,
+                                      load_saved_output=False)
 
         unet_multitask = Step(name='patch_joiner',
                               transformer=loaders.PatchCombiner(**config.patch_combiner),
@@ -83,8 +85,8 @@ def unet_multitask(config, train_mode):
                                                     (unet_multitask_patches.name, 'contour_prediction'),
                                                     (unet_multitask_patches.name, 'center_prediction')],
                                                    partial(to_dict_inputs, keys=['mask_prediction',
-                                                                                  'contour_prediction',
-                                                                                  'center_prediction'])),
+                                                                                 'contour_prediction',
+                                                                                 'center_prediction'])),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
                               save_output=True, load_saved_output=load_saved_output)
@@ -93,7 +95,9 @@ def unet_multitask(config, train_mode):
                               transformer=PyTorchUNetMultitask(**config.unet),
                               input_steps=[loader],
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output, load_saved_output=load_saved_output)
+                              cache_output=False,
+                              save_output=False,
+                              load_saved_output=False)
 
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
@@ -131,77 +135,6 @@ def unet_multitask(config, train_mode):
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
-
-
-# def unet_multitask(config, train_mode):
-#     use_patching = True
-#     if train_mode:
-#         save_output = False
-#         load_saved_output = False
-#     else:
-#         save_output = False
-#         load_saved_output = False
-#
-#     loader = preprocessing(config, model_type='multitask', is_train=train_mode, use_patching=use_patching)
-#
-#     if use_patching:
-#         unet_multitask_patches = Step(name='unet_multitask',
-#                                       transformer=PyTorchUNetMultitask(**config.unet),
-#                                       input_steps=[loader],
-#                                       adapter={'datagen': ([(loader.name, 'datagen')]),
-#                                                'validation_datagen': ([(loader.name, 'validation_datagen')]),
-#                                                },
-#                                       cache_dirpath=config.env.cache_dirpath,
-#                                       save_output=save_output, load_saved_output=load_saved_output)
-#
-#         unet_multitask = Step(name='patch_joiner',
-#                               transformer=PatchCombiner(),
-#                               input_steps=[unet_multitask_patches, loader],
-#                               cache_dirpath=config.env.cache_dirpath,
-#                               save_output=save_output, load_saved_output=load_saved_output)
-#     else:
-#         unet_multitask = Step(name='unet_multitask',
-#                               transformer=PyTorchUNetMultitask(**config.unet),
-#                               input_steps=[loader],
-#                               cache_dirpath=config.env.cache_dirpath,
-#                               save_output=save_output, load_saved_output=load_saved_output)
-#
-#     mask_resize = Step(name='mask_resize',
-#                        transformer=Resizer(),
-#                        input_data=['input'],
-#                        input_steps=[unet_multitask],
-#                        adapter={'images': ([(unet_multitask.name, 'mask_prediction')]),
-#                                 'target_sizes': ([('input', 'target_sizes')]),
-#                                 },
-#                        cache_dirpath=config.env.cache_dirpath,
-#                        save_output=save_output)
-#
-#     contour_resize = Step(name='contour_resize',
-#                           transformer=Resizer(),
-#                           input_data=['input'],
-#                           input_steps=[unet_multitask],
-#                           adapter={'images': ([(unet_multitask.name, 'contour_prediction')]),
-#                                    'target_sizes': ([('input', 'target_sizes')]),
-#                                    },
-#                           cache_dirpath=config.env.cache_dirpath,
-#                           save_output=save_output)
-#
-#     detached = Step(name='detached',
-#                     transformer=Postprocessor(),
-#                     input_steps=[mask_resize, contour_resize],
-#                     adapter={'images': ([(mask_resize.name, 'resized_images')]),
-#                              'contours': ([(contour_resize.name, 'resized_images')]),
-#                              },
-#                     cache_dirpath=config.env.cache_dirpath,
-#                     save_output=save_output)
-#
-#     output = Step(name='output',
-#                   transformer=Dummy(),
-#                   input_steps=[detached],
-#                   adapter={'y_pred': ([(detached.name, 'labeled_images')]),
-#                            },
-#                   cache_dirpath=config.env.cache_dirpath)
-#     return output
 
 
 def two_unet_specialists(config, train_mode):
@@ -636,7 +569,6 @@ def _preprocessing_multitask_generator(config, is_train, use_patching, is_specia
                                    },
                           cache_dirpath=config.env.cache_dirpath)
     return loader
-
 
 
 PIPELINES = {'unet': {'train': partial(unet, train_mode=True),

@@ -167,7 +167,7 @@ def dcan(config, train_mode):
                 input_steps=[preprocessing],
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output,
-                force_fitting=True)
+                force_fitting=False)
 
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),

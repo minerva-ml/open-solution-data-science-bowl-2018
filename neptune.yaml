@@ -40,74 +40,17 @@ parameters:
 #  centers_overlayed_dir:           /path/to/centers_overlayed
 #  experiment_dir:                  /path/to/work/dir
 
+# General parameters
   valid_category_ids: '[0, 1]'
   overwrite: 1
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
 
-# General parameters
+# Images parameters
   image_h: 512
   image_w: 512
   image_channels: 3
-
-# U-Net parameters (multi-output)
-  nr_unet_outputs: 4
-  n_filters: 16
-  conv_kernel: 3
-  pool_kernel: 3
-  pool_stride: 2
-  repeat_blocks: 4
-  
-# U-Net parameters (mask)
-  mask_nr_unet_outputs: 2
-  mask_n_filters: 16
-  mask_conv_kernel: 3
-  mask_pool_kernel: 3
-  mask_pool_stride: 2
-  mask_repeat_blocks: 4
-
-# U-Net parameters (contour)
-  contour_nr_unet_outputs: 2
-  contour_n_filters: 12
-  contour_conv_kernel: 3
-  contour_pool_kernel: 3
-  contour_pool_stride: 2
-  contour_repeat_blocks: 4
-
-# U-Net loss weights (multi-output)
-  bce_mask: 1.0
-  dice_mask: 1.0
-  bce_contour: 1.0
-  dice_contour: 1.0
-  bce_center: 1.0
-  dice_center: 1.0
-
-
-# U-Net loss weights (mask)
-  mask_bce_mask: 1.0
-  mask_dice_mask: 1.0
-  mask_bce_contour: 1.0
-  mask_dice_contour: 1.0
-  mask_bce_center: 1.0
-  mask_dice_center: 1.0
-  mask_mask: 0.8
-  mask_contour: 0.1
-  mask_contour_touching: 0.0
-  mask_center: 0.1
-
-# U-Net loss weights (contour)
-  contour_bce_mask: 1.0
-  contour_dice_mask: 1.0
-  contour_bce_contour: 1.0
-  contour_dice_contour: 1.0
-  contour_bce_center: 1.0
-  contour_dice_center: 1.0
-  contour_mask: 0.2
-  contour_contour: 0.7
-  contour_contour_touching: 0.
-  contour_center: 0.1
-
 
 # Training schedule
   epochs_nr: 1000
@@ -128,3 +71,78 @@ parameters:
 # Postprocessing
   threshold: 0.5
   min_nuclei_size: 20
+
+
+### U-Net parameters ###
+
+# Multi-output U-Net parameters
+  nr_unet_outputs: 4
+  n_filters: 16
+  conv_kernel: 3
+  pool_kernel: 3
+  pool_stride: 2
+  repeat_blocks: 4
+
+# Multi-output U-Net loss weights
+  # weights per target
+  mask: 0.3
+  contour: 0.5
+  contour_touching: 0.1
+  center: 0.1
+  # weights for bce and dice
+  bce_mask: 1.0
+  dice_mask: 1.0
+  bce_contour: 1.0
+  dice_contour: 1.0
+  bce_contour_touching: 1.0
+  dice_contour_touching: 1.0
+  bce_center: 1.0
+  dice_center: 1.0
+
+# U-Net specialist - masks - parameters
+  mask_nr_unet_outputs: 4
+  mask_n_filters: 16
+  mask_conv_kernel: 3
+  mask_pool_kernel: 3
+  mask_pool_stride: 2
+  mask_repeat_blocks: 4
+
+# U-Net specialist - masks - loss weights
+  # weights per target
+  mask_mask: 0.8
+  mask_contour: 0.1
+  mask_contour_touching: 0.0
+  mask_center: 0.1
+  # weights for bce and dice
+  mask_bce_mask: 1.0
+  mask_dice_mask: 1.0
+  mask_bce_contour: 1.0
+  mask_dice_contour: 1.0
+  mask_bce_contour_touching: 1.0
+  mask_dice_contour_touching: 1.0
+  mask_bce_center: 1.0
+  mask_dice_center: 1.0
+
+# U-Net specialist - contour - parameters
+  contour_nr_unet_outputs: 4
+  contour_n_filters: 12
+  contour_conv_kernel: 3
+  contour_pool_kernel: 3
+  contour_pool_stride: 2
+  contour_repeat_blocks: 4
+
+# U-Net specialist - contour - loss weights
+  # weights per target
+  contour_mask: 0.2
+  contour_contour: 0.7
+  contour_contour_touching: 0.0
+  contour_center: 0.1
+  # weights for bce and dice
+  contour_bce_mask: 1.0
+  contour_dice_mask: 1.0
+  contour_bce_contour: 1.0
+  contour_dice_contour: 1.0
+  contour_bce_contour_touching: 1.0
+  contour_dice_contour_touching: 1.0
+  contour_bce_center: 1.0
+  contour_dice_center: 1.0

@@ -269,13 +269,10 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         return datagen, steps
 
     def load(self, filepath):
-        params = joblib.load(filepath)
-        self.loader_params = params['loader_params']
         return self
 
     def save(self, filepath):
-        params = {'loader_params': self.loader_params}
-        joblib.dump(params, filepath)
+        joblib.dump({}, filepath)
 
 
 class ImageSegmentationLoaderPatchingTrain(ImageSegmentationLoaderBasic):

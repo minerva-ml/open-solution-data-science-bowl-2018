@@ -58,7 +58,6 @@ class Model(BaseTransformer):
         batch_gen, steps = datagen
         for epoch_id in range(self.training_config['epochs']):
             self.callbacks.on_epoch_begin()
-            print("LR: ", self.optimizer.state_dict()['param_groups'][0]['lr'])
             for batch_id, data in enumerate(batch_gen):
                 self.callbacks.on_batch_begin()
                 metrics = self._fit_loop(data)

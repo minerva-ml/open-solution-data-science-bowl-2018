@@ -388,14 +388,15 @@ class LossWeightsScheduler(Callback):
             self.batch_every = batch_every
 
     def change_lw(self):
-        tmp = self.loss_function[:]
+        self.step_id += 1
+        tmp = self.transformer.loss_function[:]
         for i, loss in enumerate(self.loss_function):
             if loss[0] in self.weight_transfers.keys():
                 tmp[i] = (loss[0], loss[1], tmp[i][2] - self.steps[loss[0]])
             else:
                 for source, dest in self.weight_transfers.items():
                     if loss[0] in dest:
-                        tmp[i] = (loss[0], loss[1], tmp[i][2] + float(self.steps[loss[0]]/len(dest)))
+                        tmp[i] = (loss[0], loss[1], tmp[i][2] + float(self.steps[source]/len(dest)))
         self.transformer.loss_function = tmp
 
     def set_params(self, transformer, validation_datagen):
@@ -406,12 +407,13 @@ class LossWeightsScheduler(Callback):
     def on_train_begin(self, *args, **kwargs):
         self.epoch_id = 0
         self.batch_id = 0
+        self.step_id = 0
         if self.verbose:
             for name,_,loss in self.loss_function:
                 logger.info('initial weight for {0}: {1}'.format(name, loss))
 
     def on_epoch_end(self, *args, **kwargs):
-        if self.epoch_every and (((self.epoch_id + 1) % self.epoch_every) == 0):
+        if self.epoch_every and (((self.epoch_id + 1) % self.epoch_every) == 0) and self.step_id<self.n_steps:
             self.change_lw()
             if self.verbose:
                 for name,_,loss in self.loss_function:
@@ -420,10 +422,10 @@ class LossWeightsScheduler(Callback):
         self.epoch_id += 1
 
     def on_batch_end(self, *args, **kwargs):
-        if self.batch_every and ((self.batch_id % self.batch_every) == 0):
+        if self.batch_every and ((self.batch_id % self.batch_every) == 0) and self.step_id<self.n_steps:
             self.change_lw()
             if self.verbose:
-                for name,_,loss in self.loss_function:
+                for name,_,loss in self.transformer.loss_function:
                     logger.info('epoch {0} batch {1} current weight for {2}: {3}'.format(
                         self.epoch_id + 1, self.batch_id + 1, name, loss))
         self.batch_id += 1

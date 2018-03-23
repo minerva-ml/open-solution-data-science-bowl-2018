@@ -46,15 +46,16 @@ parameters:
   load_in_memory: 1
   pin_memory: 1
   use_patching: 1
+  patching_stride: 64
 
 # General parameters
-  image_h: 512
-  image_w: 512
+  image_h: 128
+  image_w: 128
   image_channels: 3
 
 # U-Net parameters (multi-output)
   nr_unet_outputs: 4
-  n_filters: 16
+  n_filters: 32
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
@@ -96,12 +97,12 @@ parameters:
 
 # Training schedule
   epochs_nr: 1000
-  batch_size_train: 4
-  batch_size_inference: 4
-  lr: 0.0001
+  batch_size_train: 32
+  batch_size_inference: 128
+  lr: 0.001
   momentum: 0.9
   gamma: 0.99
-  patience: 100
+  patience: 20
 
 # Regularization
   use_batch_norm: 1

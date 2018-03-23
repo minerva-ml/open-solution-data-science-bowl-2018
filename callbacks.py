@@ -4,7 +4,6 @@ import torch
 from torch.autograd import Variable
 from deepsense import neptune
 
-
 from steps.pytorch.callbacks import NeptuneMonitor
 from utils import sigmoid
 
@@ -56,9 +55,9 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
             targets_tensors = data[1:]
 
             if torch.cuda.is_available():
-                X = Variable(X).cuda()
+                X = Variable(X, volatile=True).cuda()
             else:
-                X = Variable(X)
+                X = Variable(X, volatile=True)
 
             outputs_batch = self.model(X)
             if len(outputs_batch) == len(self.output_names):

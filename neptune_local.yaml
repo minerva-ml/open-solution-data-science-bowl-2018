@@ -11,14 +11,15 @@ metric:
 #pip-requirements-file: requirements.txt
 
 exclude:
+  - .git
+  - .idea
+  - .ipynb_checkpoints
   - output
   - imgs
   - neptune.log
   - offline_job.log
-  - .git
-  - .idea
-  - .ipynb_checkpoints
   - devbook.ipynb
+  - kaggle_morphological_postprocessing.ipynb
 
 parameters:
 # Cloud Environment
@@ -38,25 +39,25 @@ parameters:
   experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/dev_patching
 
   valid_category_ids: '[0, 1]'
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
+  use_patching: 1
+  patching_stride: 64
 
 # General parameters
-  image_h: 512
-  image_w: 512
+  image_h: 128
+  image_w: 128
   image_channels: 3
-  crop_h: 192
-  crop_w: 192
 
 # U-Net parameters (multi-output)
   nr_unet_outputs: 4
-  n_filters: 8
+  n_filters: 16
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
-  repeat_blocks: 2
+  repeat_blocks: 4
 
 # U-Net parameters (mask)
   mask_nr_unet_outputs: 2
@@ -75,8 +76,8 @@ parameters:
   contour_repeat_blocks: 4
 
 # U-Net loss weights (multi-output)
-  mask: 0.3
-  contour: 0.5
+  mask: 0.5
+  contour: 0.3
   contour_touching: 0.1
   center: 0.1
 
@@ -93,10 +94,10 @@ parameters:
   contour_center: 0.0
 
 # Training schedule
-  epochs_nr: 2
-  batch_size_train: 4
-  batch_size_inference: 4
-  lr: 0.0001
+  epochs_nr: 1000
+  batch_size_train: 16
+  batch_size_inference: 128
+  lr: 0.001
   momentum: 0.9
   gamma: 0.99
   patience: 100

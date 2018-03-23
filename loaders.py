@@ -1,9 +1,13 @@
+from itertools import product
+import math
+
+from attrdict import AttrDict
 import numpy as np
+import pandas as pd
+from PIL import Image
+from sklearn.externals import joblib
 import torch
 import torchvision.transforms as transforms
-from PIL import Image
-from attrdict import AttrDict
-from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
 
 from augmentation import affine_seq, color_seq, patching_seq
@@ -277,7 +281,18 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         joblib.dump(params, filepath)
 
 
-class ImageSegmentationLoaderPatching(ImageSegmentationLoaderBasic):
+class ImageSegmentationLoaderPatchingTrain(ImageSegmentationLoaderBasic):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+
+        self.image_augment_with_target = ImgAug(patching_seq(crop_size=(self.dataset_params.h,
+                                                                        self.dataset_params.w)))
+        self.image_augment = ImgAug(color_seq)
+
+        self.dataset = None
+
+
+class ImageSegmentationLoaderPatchingInference(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
 
@@ -288,46 +303,48 @@ class ImageSegmentationLoaderPatching(ImageSegmentationLoaderBasic):
         self.dataset = None
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
-        X, y, patch_ids = self.get_patches(X, y, train_mode)
+        X, patch_ids = self.get_patches(X)
 
-        if train_mode and y is not None:
-            flow, steps = self.get_datagen(X, y, True, self.loader_params.training)
-        else:
-            flow, steps = self.get_datagen(X, None, False, self.loader_params.inference)
-
-        if X_valid is not None and y_valid is not None:
-            X_valid, y_valid, patch_ids_valid = self.get_patches(X_valid, y_valid, train_mode)
-            valid_flow, valid_steps = self.get_datagen(X_valid, y_valid, False, self.loader_params.inference)
-        else:
-            valid_flow = None
-            valid_steps = None
+        flow, steps = self.get_datagen(X, None, False, self.loader_params.inference)
+        valid_flow = None
+        valid_steps = None
         return {'datagen': (flow, steps),
                 'patch_ids': patch_ids,
                 'validation_datagen': (valid_flow, valid_steps)}
 
     def get_datagen(self, X, y, train_mode, loader_params):
-        if train_mode:
-            dataset = self.dataset(X, y,
-                                   train_mode=True,
-                                   image_augment=self.image_augment,
-                                   image_augment_with_target=self.image_augment_with_target,
-                                   mask_transform=self.mask_transform,
-                                   image_transform=self.image_transform)
-        else:
-            dataset = self.dataset(X, y,
-                                   train_mode=False,
-                                   image_augment=None,
-                                   image_augment_with_target=None,
-                                   mask_transform=self.mask_transform,
-                                   image_transform=self.image_transform)
+        dataset = self.dataset(X, None,
+                               train_mode=False,
+                               image_augment=None,
+                               image_augment_with_target=None,
+                               mask_transform=self.mask_transform,
+                               image_transform=self.image_transform)
 
         datagen = DataLoader(dataset, **loader_params)
         steps = len(datagen)
         return datagen, steps
 
-    def get_patches(self, X, y=None, train_mode=True):
+    def get_patches(self, X):
+        patches, patch_ids, patch_y_coords, patch_x_coords, image_h, image_w = [], [], [], [], [], []
+        for i, image in enumerate(X[0]):
+            image = from_pil(image)
+            h, w = image.shape[:2]
+            for y_coord, x_coord, image_patch in generate_patches(image, self.dataset_params.h,
+                                                                  self.dataset_params.patching_stride):
+                image_patch = to_pil(image_patch)
+                patches.append(image_patch)
+                patch_ids.append(i)
+                patch_y_coords.append(y_coord)
+                patch_x_coords.append(x_coord)
+                image_h.append(h)
+                image_w.append(w)
 
-        return X, y, None
+        patch_ids = pd.DataFrame({'patch_ids': patch_ids,
+                                  'y_coordinates': patch_y_coords,
+                                  'x_coordinates': patch_x_coords,
+                                  'image_h': image_h,
+                                  'image_w': image_w})
+        return [patches], patch_ids
 
 
 class MetadataImageSegmentationLoader(ImageSegmentationLoaderBasic):
@@ -354,14 +371,49 @@ class ImageSegmentationMultitaskLoader(ImageSegmentationLoaderBasic):
         self.dataset = ImageSegmentationMultitaskDataset
 
 
-class ImageSegmentationMultitaskLoaderPatching(ImageSegmentationLoaderPatching):
+class ImageSegmentationMultitaskLoaderPatchingTrain(ImageSegmentationLoaderPatchingTrain):
+    def __init__(self, loader_params, dataset_params):
+        super().__init__(loader_params, dataset_params)
+        self.dataset = ImageSegmentationMultitaskDataset
+
+
+class ImageSegmentationMultitaskLoaderPatchingInference(ImageSegmentationLoaderPatchingInference):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
         self.dataset = ImageSegmentationMultitaskDataset
 
 
 class PatchCombiner(BaseTransformer):
-    pass
+    def __init__(self, patching_size, patching_stride):
+        super().__init__()
+        self.patching_size = patching_size
+        self.patching_stride = patching_stride
+
+    def transform(self, outputs, patch_ids):
+        combined_outputs = {}
+        for name, output in outputs.items():
+            for patch_id in patch_ids['patch_ids'].unique():
+                patch_meta = patch_ids[patch_ids['patch_ids'] == patch_id]
+                image_patches = output[patch_meta.index]
+                combined_outputs.setdefault(name, []).append(self._join_output(patch_meta, image_patches))
+        return combined_outputs
+
+    def _join_output(self, patch_meta, image_patches):
+        image_h = patch_meta['image_h'].unique()[0]
+        image_w = patch_meta['image_w'].unique()[0]
+        prediction_image = np.zeros((image_h, image_w))
+        prediction_image_padded = get_padded_image(prediction_image, self.patching_size)
+
+        for (y_coordinate, x_coordinate), image_patch in zip(
+                patch_meta[['y_coordinates', 'x_coordinates']].values.tolist(), image_patches):
+            prediction_image_padded[
+            y_coordinate * self.patching_stride:y_coordinate * self.patching_stride + self.patching_size,
+            x_coordinate * self.patching_stride:x_coordinate * self.patching_stride + self.patching_size] = image_patch
+
+        prediction_image = prediction_image_padded[self.patching_size:image_h + self.patching_size,
+                           self.patching_size:image_w + self.patching_size]
+        return prediction_image
+
 
 def binarize(x):
     x_ = x.convert('L')  # convert image to monochrome
@@ -374,3 +426,36 @@ def to_tensor(x):
     x_ = np.expand_dims(x, axis=0)
     x_ = torch.from_numpy(x_)
     return x_
+
+
+def generate_patches(img, patch_size, overlap):
+    img_padded = get_padded_image(img, patch_size)
+    h_pad, w_pad = img_padded.shape[:2]
+    h_patch_nr = int(h_pad / overlap)
+    w_patch_nr = int(w_pad / overlap)
+
+    for y_coordinate, x_coordinate in product(range(h_patch_nr - 1), range(w_patch_nr - 1)):
+        img_patch = img_padded[y_coordinate * overlap:y_coordinate * overlap + patch_size,
+                    x_coordinate * overlap:x_coordinate * overlap + patch_size, :]
+        yield y_coordinate, x_coordinate, img_patch
+
+
+def get_padded_image(img, patch_size):
+    if len(img.shape) == 2:
+        h, w = img.shape
+
+        h_pad = math.ceil((h + 2 * patch_size) / patch_size) * patch_size
+        w_pad = math.ceil((w + 2 * patch_size) / patch_size) * patch_size
+
+        img_padded = np.zeros((h_pad, w_pad))
+        img_padded[patch_size:h + patch_size, patch_size:w + patch_size] = img
+        return img_padded
+    else:
+        h, w, c = img.shape
+
+        h_pad = math.ceil((h + 2 * patch_size) / patch_size) * patch_size
+        w_pad = math.ceil((w + 2 * patch_size) / patch_size) * patch_size
+
+        img_padded = np.zeros((h_pad, w_pad, c))
+        img_padded[patch_size:h + patch_size, patch_size:w + patch_size, :] = img
+        return img_padded

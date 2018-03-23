@@ -38,18 +38,20 @@ SOLUTION_CONFIG = AttrDict({
                                 },
     'reader_single': {'x_columns': X_COLUMNS,
                       'y_columns': Y_COLUMNS,
-                      'target_shape': GLOBAL_CONFIG['img_H-W']
+                      # 'target_shape': GLOBAL_CONFIG['img_H-W']
                       },
     'reader_multitask': {'x_columns': X_COLUMNS,
                          'y_columns': Y_COLUMNS_MULTITASK,
-                         'target_shape': GLOBAL_CONFIG['img_H-W']
+                         # 'target_shape': GLOBAL_CONFIG['img_H-W']
                          },
     'reader_specialists': {'x_columns': X_COLUMNS,
                            'y_columns': Y_COLUMNS_SPECIALISTS,
-                           'target_shape': GLOBAL_CONFIG['img_H-W']
+                           # 'target_shape': GLOBAL_CONFIG['img_H-W']
                            },
-    'loader': {'dataset_params': {'h': params.crop_h,
-                                  'w': params.crop_w,
+    'loader': {'dataset_params': {'h': params.image_h,
+                                  'w': params.image_w,
+                                  'use_patching': params.use_patching,
+                                  'patching_stride': params.patching_stride
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
@@ -63,6 +65,8 @@ SOLUTION_CONFIG = AttrDict({
                                                },
                                  },
                },
+    'patch_combiner': {'patching_size': params.image_h,
+                       'patching_stride': params.patching_stride},
     'unet': {
         'architecture_config': {'model_params': {'n_filters': params.n_filters,
                                                  'conv_kernel': params.conv_kernel,

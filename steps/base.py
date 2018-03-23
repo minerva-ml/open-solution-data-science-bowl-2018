@@ -277,6 +277,10 @@ class Dummy(BaseTransformer):
         joblib.dump({}, filepath)
 
 
+def to_dict_inputs(inputs, keys):
+    return {key: input for key, input in zip(keys, inputs)}
+
+
 def to_tuple_inputs(inputs):
     return tuple(inputs)
 

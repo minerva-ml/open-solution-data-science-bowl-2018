@@ -37,10 +37,9 @@ class XYSplit(BaseTransformer):
 
 
 class ImageReader(BaseTransformer):
-    def __init__(self, x_columns, y_columns, target_shape):
+    def __init__(self, x_columns, y_columns):
         self.x_columns = x_columns
         self.y_columns = y_columns
-        self.target_shape = target_shape
 
     def transform(self, meta, train_mode):
         X_ = meta[self.x_columns].values
@@ -71,7 +70,6 @@ class ImageReader(BaseTransformer):
             image = image.convert('RGB')
         else:
             image = image.convert('L')
-        image = image.resize(self.target_shape)
         return image
 
     def load(self, filepath):

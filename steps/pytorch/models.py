@@ -1,5 +1,6 @@
 from functools import partial
 import shutil
+import os
 
 import numpy as np
 import torch
@@ -148,8 +149,10 @@ class Model(BaseTransformer):
         checkpoint_callback = self.callbacks_config.get('model_checkpoint')
         if checkpoint_callback:
             checkpoint_filepath = checkpoint_callback['filepath']
-            shutil.copyfile(checkpoint_filepath, filepath)
-
+            if os.path.exists(checkpoint_filepath):
+                shutil.copyfile(checkpoint_filepath, filepath)
+            else:
+                save_model(self.model, filepath)
         else:
             save_model(self.model, filepath)
 

@@ -45,6 +45,7 @@ parameters:
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
+  use_patching: 1
 
 # General parameters
   image_h: 512

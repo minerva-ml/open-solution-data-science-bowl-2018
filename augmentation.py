@@ -57,14 +57,7 @@ class CropFixed(iaa.Augmenter):
         seeds = random_state.randint(0, 10 ** 6, (len(images),))
         for i, image in enumerate(images):
             seed = seeds[i]
-            height, width = image.shape[:2]
-            crop_top, crop_right, crop_bottom, crop_left = self._draw_sample_crops(seed, height, width)
-
-            if len(image.shape) == 2:
-                image_cr = image[crop_top:crop_bottom, crop_left:crop_right]
-            else:
-                image_cr = image[crop_top:crop_bottom, crop_left:crop_right, :]
-
+            image_cr = self._random_crop_or_pad(seed, image)
             result.append(image_cr)
         return result
 
@@ -72,16 +65,54 @@ class CropFixed(iaa.Augmenter):
         result = []
         return result
 
-    def _draw_sample_crops(self, seed, height, width):
-        np.random.seed(seed)
-        crop_top = np.random.randint(height - self.px)
-        crop_bottom = crop_top + self.px
+    def _random_crop_or_pad(self, seed, image):
+        height, width = image.shape[:2]
 
-        np.random.seed(seed + 1)
-        crop_left = np.random.randint(width - self.px)
-        crop_right = crop_left + self.px
+        if height <= self.px and width > self.px:
+            image_processed = self._random_crop(seed, image, crop_h=False, crop_w=True)
+            image_processed = self._pad(image_processed)
+        elif height > self.px and width <= self.px:
+            image_processed = self._random_crop(seed, image, crop_h=True, crop_w=False)
+            image_processed = self._pad(image_processed)
+        elif height <= self.px and width <= self.px:
+            image_processed = self._pad(image)
+        else:
+            image_processed = self._random_crop(seed, image, crop_h=True, crop_w=True)
+        return image_processed
 
-        return crop_top, crop_right, crop_bottom, crop_left
+    def _random_crop(self, seed, image, crop_h=True, crop_w=True):
+        height, width = image.shape[:2]
+
+        if crop_h:
+            np.random.seed(seed)
+            crop_top = np.random.randint(height - self.px)
+            crop_bottom = crop_top + self.px
+        else:
+            crop_top, crop_bottom = (0, height)
+
+        if crop_w:
+            np.random.seed(seed + 1)
+            crop_left = np.random.randint(width - self.px)
+            crop_right = crop_left + self.px
+        else:
+            crop_left, crop_right = (0, width)
+
+        if len(image.shape) == 2:
+            image_cropped = image[crop_top:crop_bottom, crop_left:crop_right]
+        else:
+            image_cropped = image[crop_top:crop_bottom, crop_left:crop_right, :]
+        return image_cropped
+
+    def _pad(self, image):
+        if len(image.shape) == 2:
+            height, width = image.shape
+            image_padded = np.zeros((max(height, self.px), max(width, self.px))).astype(np.uint8)
+            image_padded[:height, :width] = image
+        else:
+            height, width, channels = image.shape
+            image_padded = np.zeros((max(height, self.px), max(width, self.px), channels)).astype(np.uint8)
+            image_padded[:height, :width, :] = image
+        return image_padded
 
     def get_parameters(self):
         return []

@@ -410,6 +410,9 @@ class PatchCombiner(BaseTransformer):
 
         prediction_image = prediction_image_padded[self.patching_size:image_h + self.patching_size,
                            self.patching_size:image_w + self.patching_size]
+
+        prediction_image /= prediction_image.max()
+
         return prediction_image
 
 
@@ -428,7 +431,7 @@ def to_tensor(x):
 
 def test_time_augmentation(img):
     for i in range(4):
-        yield i*90, np.rot90(img, i)
+        yield i * 90, np.rot90(img, i)
 
 
 def generate_patches(img, patch_size, overlap):

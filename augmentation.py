@@ -39,9 +39,13 @@ color_seq = iaa.Sequential([
 
 def patching_seq(crop_size):
     h, w = crop_size
+
     seq = iaa.Sequential([
         iaa.Affine(rotate=(0, 360)),
-        CropFixed(px=h)
+        CropFixed(px=h),
+        iaa.Fliplr(0.5),
+        iaa.Flipud(0.5),
+        iaa.PiecewiseAffine(scale=(0.00, 0.06))
     ], random_order=False)
     return seq
 

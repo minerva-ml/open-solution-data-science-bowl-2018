@@ -89,7 +89,9 @@ def unet_multitask(config, train_mode):
                                                                                  'center_prediction'])),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=True, load_saved_output=load_saved_output)
+                              cache_output=True,
+                              save_output=True,
+                              load_saved_output=load_saved_output)
     else:
         unet_multitask = Step(name='unet_multitask',
                               transformer=PyTorchUNetMultitask(**config.unet),
@@ -133,6 +135,7 @@ def unet_multitask(config, train_mode):
                   input_steps=[detached],
                   adapter={'y_pred': ([(detached.name, 'labeled_images')]),
                            },
+                  save_output=True,
                   cache_dirpath=config.env.cache_dirpath)
     return output
 

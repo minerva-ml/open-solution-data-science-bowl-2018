@@ -73,7 +73,6 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode):
     if dev_mode:
         meta_train_split = meta_train_split.sample(64)
         meta_valid_split = meta_valid_split.sample(8)
-        meta_train_split.to_csv('/mnt/ml-team/dsb_2018/kuba/train_debug.csv', index=None)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,

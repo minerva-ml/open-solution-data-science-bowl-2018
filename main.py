@@ -27,7 +27,7 @@ def prepare_metadata():
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
                              contours_overlayed_dir=params.contours_overlayed_dir,
-                             contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
+                             contours_touching_overlayed_dir=params.contours_touching_overlayed_dir,
                              centers_overlayed_dir=params.centers_overlayed_dir)
     logger.info('calculating clusters')
 
@@ -55,11 +55,13 @@ def prepare_masks():
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
-def train_pipeline(pipeline_name, validation_size):
-    _train_pipeline(pipeline_name, validation_size)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
+              required=False)
+def train_pipeline(pipeline_name, validation_size, dev_mode):
+    _train_pipeline(pipeline_name, validation_size, dev_mode)
 
 
-def _train_pipeline(pipeline_name, validation_size):
+def _train_pipeline(pipeline_name, validation_size, dev_mode):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
@@ -67,6 +69,10 @@ def _train_pipeline(pipeline_name, validation_size):
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(64)
+        meta_valid_split = meta_valid_split.sample(8)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,

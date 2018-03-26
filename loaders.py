@@ -449,35 +449,25 @@ def generate_patches(img, patch_size, overlap):
 def get_mosaic_padded_image(img, patch_size):
     if len(img.shape) == 2:
         h_, w_ = img.shape
-        h,w = (max(h_, patch_size), max(w_, patch_size))
-        img_ = np.zeros((h,w))
-        img_[:h_, :w_] = img
-        img = img_
-
-        h_pad = math.ceil((h + 2 * patch_size) / patch_size) * patch_size
-        w_pad = math.ceil((w + 2 * patch_size) / patch_size) * patch_size
-        
-        img_padded = np.zeros((h_pad, w_pad))
-        img_padded[patch_size:h + patch_size, patch_size:w + patch_size] = img
-        img_padded[patch_size:h + patch_size,:patch_size] = np.fliplr(img[:, :patch_size])
-        img_padded[patch_size:h + patch_size,patch_size+w:2*patch_size+w] = np.fliplr(img[:, -patch_size:])
-        img_padded[:patch_size,patch_size:w + patch_size] = np.flipud(img[:patch_size,:])
-        img_padded[patch_size+h:2*patch_size+h,patch_size:w + patch_size] = np.flipud(img[-patch_size:,:])
+        c = 1
     else:
-        h_,w_,c = img.shape
-        
-        h,w = (max(h_, patch_size), max(w_, patch_size))
-        img_ = np.zeros((h,w,c))
-        img_[:h_, :w_,:] = img
-        img = img_
+        h_, w_, c = img.shape
 
-        h_pad = math.ceil((h + 2 * patch_size) / patch_size) * patch_size
-        w_pad = math.ceil((w + 2 * patch_size) / patch_size) * patch_size
-        
-        img_padded = np.zeros((h_pad, w_pad, c))
-        img_padded[patch_size:h + patch_size, patch_size:w + patch_size, :] = img
-        img_padded[patch_size:h + patch_size,:patch_size,:] = np.fliplr(img[:, :patch_size,:])
-        img_padded[patch_size:h + patch_size,patch_size+w:2*patch_size+w,:] = np.fliplr(img[:, -patch_size:,:])
-        img_padded[:patch_size,patch_size:w + patch_size,:] = np.flipud(img[:patch_size,:,:])
-        img_padded[patch_size+h:2*patch_size+h,patch_size:w + patch_size,:] = np.flipud(img[-patch_size:,:,:])
+    h, w = (max(h_, patch_size), max(w_, patch_size))
+    img_ = np.zeros((h, w, c))
+    img_[:h_, :w_, :] = img
+    img = img_
+
+    h_pad = math.ceil((h + 2 * patch_size) / patch_size) * patch_size
+    w_pad = math.ceil((w + 2 * patch_size) / patch_size) * patch_size
+
+    img_padded = np.zeros((h_pad, w_pad, c))
+    img_padded[patch_size:h + patch_size, patch_size:w + patch_size, :] = img
+    img_padded[patch_size:h + patch_size, :patch_size, :] = np.fliplr(img[:, :patch_size, :])
+    img_padded[patch_size:h + patch_size, patch_size + w:2 * patch_size + w, :] = np.fliplr(img[:, -patch_size:, :])
+    img_padded[:patch_size, patch_size:w + patch_size, :] = np.flipud(img[:patch_size, :, :])
+    img_padded[patch_size + h:2 * patch_size + h, patch_size:w + patch_size, :] = np.flipud(img[-patch_size:, :, :])
+
+    if len(img.shape) == 2:
+        img_padded = np.squeeze(img_padded)
     return img_padded

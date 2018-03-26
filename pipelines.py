@@ -109,7 +109,7 @@ def unet_multitask(config, train_mode):
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
                        cache_dirpath=config.env.cache_dirpath,
-                       save_output=save_output)
+                       save_output=True)
 
     contour_resize = Step(name='contour_resize',
                           transformer=Resizer(),
@@ -119,7 +119,7 @@ def unet_multitask(config, train_mode):
                                    'target_sizes': ([('input', 'target_sizes')]),
                                    },
                           cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output)
+                          save_output=True)
 
     detached = Step(name='detached',
                     transformer=Postprocessor(),
@@ -127,15 +127,14 @@ def unet_multitask(config, train_mode):
                     adapter={'images': ([(mask_resize.name, 'resized_images')]),
                              'contours': ([(contour_resize.name, 'resized_images')]),
                              },
-                    cache_dirpath=config.env.cache_dirpath,
-                    save_output=save_output)
+                    save_output=True,
+                    cache_dirpath=config.env.cache_dirpath)
 
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[detached],
                   adapter={'y_pred': ([(detached.name, 'labeled_images')]),
                            },
-                  save_output=True,
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
@@ -150,36 +149,85 @@ def two_unet_specialists(config, train_mode):
 
     loader = preprocessing(config, model_type='specialists', is_train=train_mode, loader_mode='patching_inference')
 
-    unet_mask = Step(name='unet_mask',
-                     transformer=PyTorchUNetMultitask(**config.unet_mask),
-                     input_steps=[loader],
-                     cache_dirpath=config.env.cache_dirpath,
-                     save_output=save_output, load_saved_output=load_saved_output)
-    unet_contour = Step(name='unet_contour',
-                        transformer=PyTorchUNetMultitask(**config.unet_contour),
-                        input_steps=[loader],
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output, load_saved_output=load_saved_output)
+    if config.loader.dataset_params.use_patching:
+        unet_mask_patches = Step(name='unet_mask',
+                                 transformer=PyTorchUNetMultitask(**config.unet_mask),
+                                 input_steps=[loader],
+                                 cache_dirpath=config.env.cache_dirpath,
+                                 save_output=save_output, load_saved_output=load_saved_output)
 
-    mask_resize = Step(name='mask_resize',
-                       transformer=Resizer(),
-                       input_data=['input'],
-                       input_steps=[unet_mask],
-                       adapter={'images': ([(unet_mask.name, 'mask_prediction')]),
-                                'target_sizes': ([('input', 'target_sizes')]),
-                                },
-                       cache_dirpath=config.env.cache_dirpath,
-                       save_output=save_output)
+        unet_contour_patches = Step(name='unet_contour',
+                                    transformer=PyTorchUNetMultitask(**config.unet_contour),
+                                    input_steps=[loader],
+                                    cache_dirpath=config.env.cache_dirpath,
+                                    save_output=save_output, load_saved_output=load_saved_output)
 
-    contour_resize = Step(name='contour_resize',
-                          transformer=Resizer(),
-                          input_data=['input'],
-                          input_steps=[unet_contour],
-                          adapter={'images': ([(unet_contour.name, 'contour_prediction')]),
-                                   'target_sizes': ([('input', 'target_sizes')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output)
+        unet_specialists = Step(name='patch_joiner',
+                                transformer=loaders.PatchCombiner(**config.patch_combiner),
+                                input_steps=[unet_mask_patches, unet_contour_patches, loader],
+                                adapter={'patch_ids': ([(loader.name, 'patch_ids')]),
+                                         'outputs': ([(unet_mask_patches.name, 'mask_prediction'),
+                                                      (unet_contour_patches.name, 'contour_prediction'),
+                                                      ],
+                                                     partial(to_dict_inputs, keys=['mask_prediction',
+                                                                                   'contour_prediction'])),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath,
+                                cache_output=True,
+                                save_output=True,
+                                load_saved_output=load_saved_output)
+
+        mask_resize = Step(name='mask_resize',
+                           transformer=Resizer(),
+                           input_data=['input'],
+                           input_steps=[unet_specialists],
+                           adapter={'images': ([(unet_specialists.name, 'mask_prediction')]),
+                                    'target_sizes': ([('input', 'target_sizes')]),
+                                    },
+                           cache_dirpath=config.env.cache_dirpath,
+                           save_output=save_output)
+
+        contour_resize = Step(name='contour_resize',
+                              transformer=Resizer(),
+                              input_data=['input'],
+                              input_steps=[unet_specialists],
+                              adapter={'images': ([(unet_specialists.name, 'contour_prediction')]),
+                                       'target_sizes': ([('input', 'target_sizes')]),
+                                       },
+                              cache_dirpath=config.env.cache_dirpath,
+                              save_output=save_output)
+
+    else:
+        unet_mask = Step(name='unet_mask',
+                         transformer=PyTorchUNetMultitask(**config.unet_mask),
+                         input_steps=[loader],
+                         cache_dirpath=config.env.cache_dirpath,
+                         save_output=save_output, load_saved_output=load_saved_output)
+        unet_contour = Step(name='unet_contour',
+                            transformer=PyTorchUNetMultitask(**config.unet_contour),
+                            input_steps=[loader],
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=save_output, load_saved_output=load_saved_output)
+
+        mask_resize = Step(name='mask_resize',
+                           transformer=Resizer(),
+                           input_data=['input'],
+                           input_steps=[unet_mask],
+                           adapter={'images': ([(unet_mask.name, 'mask_prediction')]),
+                                    'target_sizes': ([('input', 'target_sizes')]),
+                                    },
+                           cache_dirpath=config.env.cache_dirpath,
+                           save_output=save_output)
+
+        contour_resize = Step(name='contour_resize',
+                              transformer=Resizer(),
+                              input_data=['input'],
+                              input_steps=[unet_contour],
+                              adapter={'images': ([(unet_contour.name, 'contour_prediction')]),
+                                       'target_sizes': ([('input', 'target_sizes')]),
+                                       },
+                              cache_dirpath=config.env.cache_dirpath,
+                              save_output=save_output)
 
     detached = Step(name='detached',
                     transformer=Postprocessor(),

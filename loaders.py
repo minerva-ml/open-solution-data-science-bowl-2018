@@ -450,8 +450,11 @@ def get_mosaic_padded_image(img, patch_size):
     if len(img.shape) == 2:
         h_, w_ = img.shape
         c = 1
+        img = np.expand_dims(img, axis=2)
+        squeeze_output = True
     else:
         h_, w_, c = img.shape
+        squeeze_output = False
 
     h, w = (max(h_, patch_size), max(w_, patch_size))
     img_ = np.zeros((h, w, c))
@@ -468,6 +471,7 @@ def get_mosaic_padded_image(img, patch_size):
     img_padded[:patch_size, patch_size:w + patch_size, :] = np.flipud(img[:patch_size, :, :])
     img_padded[patch_size + h:2 * patch_size + h, patch_size:w + patch_size, :] = np.flipud(img[-patch_size:, :, :])
 
-    if len(img.shape) == 2:
+    if squeeze_output:
         img_padded = np.squeeze(img_padded)
+
     return img_padded

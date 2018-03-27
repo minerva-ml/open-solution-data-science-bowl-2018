@@ -131,6 +131,7 @@ class TrainingMonitor(Callback):
                 self.epoch_loss_averagers[name].send(loss)
             else:
                 self.epoch_loss_averagers[name] = Averager()
+                self.epoch_loss_averagers[name].send(loss)
 
             if self.batch_every and ((self.batch_id % self.batch_every) == 0):
                 logger.info('epoch {0} batch {1} {2}:     {3:.5f}'.format(self.epoch_id, self.batch_id, name, loss))
@@ -290,6 +291,7 @@ class NeptuneMonitor(Callback):
                 self.epoch_loss_averagers[name].send(loss)
             else:
                 self.epoch_loss_averagers[name] = Averager()
+                self.epoch_loss_averagers[name].send(loss)
 
             self.ctx.channel_send('{} batch {} loss'.format(self.model_name, name), x=self.batch_id, y=loss)
 

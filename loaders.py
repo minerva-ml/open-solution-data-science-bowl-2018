@@ -399,18 +399,18 @@ class PatchCombiner(BaseTransformer):
         image_h = patch_meta['image_h'].unique()[0]
         image_w = patch_meta['image_w'].unique()[0]
         prediction_image = np.zeros((image_h, image_w))
-        prediction_image_padded = get_mosaic_padded_image(prediction_image, self.patching_size)
+        prediction_image_padded = get_mosaic_padded_image(prediction_image, self.patching_size, self.patching_stride)
 
         for (y_coordinate, x_coordinate, tta_angle), image_patch in zip(
                 patch_meta[['y_coordinates', 'x_coordinates', 'tta_angles']].values.tolist(), image_patches):
             image_patch = np.rot90(image_patch, -1 * tta_angle / 90.)
-            prediction_image_padded[
-            y_coordinate * self.patching_stride:y_coordinate * self.patching_stride + self.patching_size,
-            x_coordinate * self.patching_stride:x_coordinate * self.patching_stride + self.patching_size] += image_patch
+            window_y, window_x = y_coordinate * self.patching_stride, x_coordinate * self.patching_stride
+            prediction_image_padded[window_y:self.patching_size + window_y,
+            window_x:self.patching_size + window_x] += image_patch
 
-        prediction_image = prediction_image_padded[self.patching_size:image_h + self.patching_size,
-                           self.patching_size:image_w + self.patching_size]
-
+        _, h_top, h_bottom = get_padded_size(image_h, self.patching_size, self.patching_stride)
+        _, w_left, w_right = get_padded_size(image_w, self.patching_size, self.patching_stride)
+        prediction_image = prediction_image_padded[h_top:image_h + h_top, w_left:image_w + w_left]
         prediction_image /= prediction_image.max()
 
         return prediction_image
@@ -434,19 +434,20 @@ def test_time_augmentation(img):
         yield i * 90, np.rot90(img, i)
 
 
-def generate_patches(img, patch_size, overlap):
-    img_padded = get_mosaic_padded_image(img, patch_size)
+def generate_patches(img, patch_size, patch_stride):
+    img_padded = get_mosaic_padded_image(img, patch_size, patch_stride)
     h_pad, w_pad = img_padded.shape[:2]
-    h_patch_nr = int(h_pad / overlap)
-    w_patch_nr = int(w_pad / overlap)
 
-    for y_coordinate, x_coordinate in product(range(h_patch_nr - 1), range(w_patch_nr - 1)):
-        img_patch = img_padded[y_coordinate * overlap:y_coordinate * overlap + patch_size,
-                    x_coordinate * overlap:x_coordinate * overlap + patch_size, :]
+    h_patch_nr = math.ceil(h_pad / patch_stride) - math.floor(patch_size / patch_stride)
+    w_patch_nr = math.ceil(w_pad / patch_stride) - math.floor(patch_size / patch_stride)
+
+    for y_coordinate, x_coordinate in product(range(h_patch_nr), range(w_patch_nr)):
+        img_patch = img_padded[y_coordinate * patch_stride:y_coordinate * patch_stride + patch_size,
+                    x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size, :]
         yield y_coordinate, x_coordinate, img_patch
 
 
-def get_mosaic_padded_image(img, patch_size):
+def get_mosaic_padded_image(img, patch_size, patch_stride):
     if len(img.shape) == 2:
         h_, w_ = img.shape
         c = 1
@@ -461,17 +462,27 @@ def get_mosaic_padded_image(img, patch_size):
     img_[:h_, :w_, :] = img
     img = img_
 
-    h_pad = math.ceil((h + 2 * patch_size) / patch_size) * patch_size
-    w_pad = math.ceil((w + 2 * patch_size) / patch_size) * patch_size
+    h_pad, h_pad_top, h_pad_bottom = get_padded_size(h, patch_size, patch_stride)
+    w_pad, w_pad_left, w_pad_right = get_padded_size(w, patch_size, patch_stride)
 
     img_padded = np.zeros((h_pad, w_pad, c))
-    img_padded[patch_size:h + patch_size, patch_size:w + patch_size, :] = img
-    img_padded[patch_size:h + patch_size, :patch_size, :] = np.fliplr(img[:, :patch_size, :])
-    img_padded[patch_size:h + patch_size, patch_size + w:2 * patch_size + w, :] = np.fliplr(img[:, -patch_size:, :])
-    img_padded[:patch_size, patch_size:w + patch_size, :] = np.flipud(img[:patch_size, :, :])
-    img_padded[patch_size + h:2 * patch_size + h, patch_size:w + patch_size, :] = np.flipud(img[-patch_size:, :, :])
+    img_padded[h_pad_top:h + h_pad_top, w_pad_left:w + w_pad_left, :] = img
+    img_padded[h_pad_top:h + h_pad_top, :w_pad_left, :] = np.fliplr(img[:, :w_pad_left, :])
+    img_padded[h_pad_top:h + h_pad_top, w_pad_left + w:, :] = np.fliplr(img[:, -w_pad_right:, :])
+    img_padded[:h_pad_top, w_pad_left:w + w_pad_left, :] = np.flipud(img[:h_pad_top, :, :])
+    img_padded[h_pad_top + h:, w_pad_left:w + w_pad_left, :] = np.flipud(img[-h_pad_bottom:, :, :])
 
     if squeeze_output:
         img_padded = np.squeeze(img_padded)
 
     return img_padded
+
+
+def get_padded_size(img_size, patch_size, patch_stride):
+    for img_size_padded in range(img_size, 3 * img_size, 1):
+        if (img_size_padded - patch_size) % patch_stride == 0 and img_size_padded > 2 * patch_size:
+            break
+
+    diff = img_size_padded - img_size
+    pad_down, pad_up = math.floor(diff / 2.), math.ceil(diff / 2.)
+    return img_size_padded, pad_down, pad_up

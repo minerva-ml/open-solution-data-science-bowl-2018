@@ -175,7 +175,7 @@ def postprocess(image, contour):
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    m_thresh = threshold_otsu(image)
+    m_thresh = 0.05  # threshold_otsu(image)
     initial_mask_binary = (image > m_thresh).astype(np.uint8)
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
@@ -197,10 +197,8 @@ def drop_artifacts_per_label(labels, initial_mask):
 
 def clean_mask(m, c):
     # threshold
-    m_thresh = threshold_otsu(m)
-    c_thresh = threshold_otsu(c)
-    m_b = m > m_thresh
-    c_b = c > c_thresh
+    m_b = m > 0.05  # threshold_otsu(m)
+    c_b = c > 0.05  # threshold_otsu(c)
 
     # combine contours and masks and fill the cells
     m_ = np.where(m_b | c_b, 1, 0)
@@ -208,15 +206,16 @@ def clean_mask(m, c):
 
     # close what wasn't closed before
     area, radius = mean_blob_size(m_b)
-    struct_size = int(1.25 * radius)
+    struct_size = int(.5 * radius)
     struct_el = morph.disk(struct_size)
     m_padded = pad_mask(m_, pad=struct_size)
     m_padded = morph.binary_closing(m_padded, selem=struct_el)
+    m_padded = ndi.binary_fill_holes(m_padded)
     m_ = crop_mask(m_padded, crop=struct_size)
 
     # open to cut the real cells from the artifacts
     area, radius = mean_blob_size(m_b)
-    struct_size = int(0.75 * radius)
+    struct_size = int(1.25 * radius)
     struct_el = morph.disk(struct_size)
     m_ = np.where(c_b & (~m_b), 0, m_)
     m_padded = pad_mask(m_, pad=struct_size)
@@ -308,9 +307,9 @@ def pad_mask(mask, pad):
     w_pad = w + 2 * pad
     mask_padded = np.zeros((h_pad, w_pad))
     mask_padded[pad:pad + h, pad:pad + w] = mask
-    mask_padded[pad - 1, :] = 1
+    mask_padded[pad, :] = 1
     mask_padded[pad + h + 1, :] = 1
-    mask_padded[:, pad - 1] = 1
+    mask_padded[:, pad] = 1
     mask_padded[:, pad + w + 1] = 1
 
     return mask_padded

@@ -89,6 +89,12 @@ class Model(BaseTransformer):
         outputs_batch = self.model(X)
         partial_batch_losses = {}
 
+        assert len(targets_tensors) == len(self.loss_function) == len(outputs_batch),\
+            'Number of targets, model outputs and elements of loss function must equal. '\
+            'You have n_targets=' + str(len(targets_tensors)) + ', n_model_outputs=' + str(len(outputs_batch)) + \
+            ', n_loss_function_elements=' + str(len(self.loss_function)) + '. ' + \
+            'The order of elements must also be preserved.'
+
         if len(self.output_names) == 1:
             for (name, loss_function, weight), target in zip(self.loss_function, targets_var):
                 batch_loss = loss_function(outputs_batch, target) * weight

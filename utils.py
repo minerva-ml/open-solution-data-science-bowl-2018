@@ -53,17 +53,22 @@ def decompose(labeled):
 
 def create_submission(experiments_dir, meta, predictions, logger):
     image_ids, encodings = [], []
+    output = []
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
         for mask in decompose(prediction):
-            image_ids.append(image_id)
             rle_encoded = ' '.join(str(rle) for rle in run_length_encoding(mask > 128.))
-            encodings.append(rle_encoded)
+            if len(rle_encoded) != 0:
+                image_ids.append(image_id)
+                encodings.append(rle_encoded)
+                output.append([image_id, rle_encoded])
+            else:
+                logger.info('*** image_id {}'.format(image_id))
+                logger.info('*** rle_encoded {} is empty'.format(rle_encoded))
 
-    submission = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encodings}).astype(str)
-    submission = submission[submission['EncodedPixels']!='nan']
+    submission = pd.DataFrame(output, columns=['ImageId', 'EncodedPixels']).astype(str)
+    submission = submission[submission['EncodedPixels'] != 'nan']
     submission_filepath = os.path.join(experiments_dir, 'submission.csv')
-    submission.to_csv(submission_filepath, index=None)
-
+    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
     logger.info('submission saved to {}'.format(submission_filepath))
     logger.info('submission head \n\n{}'.format(submission.head()))
 
@@ -84,14 +89,20 @@ def read_masks(masks_filepaths):
 
 
 def run_length_encoding(x):
-    dots = np.where(x.T.flatten() == 1)[0]
-    run_lengths = []
+    # https://www.kaggle.com/c/data-science-bowl-2018/discussion/48561#
+    bs = np.where(x.T.flatten())[0]
+
+    rle = []
     prev = -2
-    for b in dots:
-        if (b > prev + 1): run_lengths.extend((b + 1, 0))
-        run_lengths[-1] += 1
+    for b in bs:
+        if (b > prev + 1): rle.extend((b + 1, 0))
+        rle[-1] += 1
         prev = b
-    return run_lengths
+
+    if len(rle) != 0 and rle[-1] + rle[-2] == x.size:
+        rle[-2] = rle[-2] - 1
+
+    return rle
 
 
 def read_params(ctx):

@@ -64,7 +64,7 @@ class PyTorchDCAN(Model):
                                architecture_config['loss_weights']['mask_auxiliary_classifiers']),
                               ('contour_auxiliary_classifiers', list_segmentation_loss,
                                architecture_config['loss_weights']['contour_auxiliary_classifiers'])]
-        self.callbacks = callbacks_unet(self.callbacks_config)
+        self.callbacks = callbacks_dcan(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         outputs = self._transform(datagen, validation_datagen)
@@ -98,6 +98,35 @@ class PyTorchDCAN(Model):
         outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items() if "auxiliary" not in name}
         return outputs
 
+    def _fit_loop(self, data):
+        X = data[0]
+        targets_tensors = data[1:]
+
+        if torch.cuda.is_available():
+            X = torch.autograd.Variable(X).cuda()
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(torch.autograd.Variable(target_tensor).cuda())
+        else:
+            X = torch.autograd.Variable(X)
+            targets_var = []
+            for target_tensor in targets_tensors:
+                targets_var.append(torch.autograd.Variable(target_tensor))
+
+        self.optimizer.zero_grad()
+        outputs_batch = self.model(X)
+        partial_batch_losses = {}
+
+        for (name, loss_function, weight), output, target in zip(self.loss_function, outputs_batch, 2*targets_var[:2]):
+            partial_batch_losses[name] = loss_function(output, target) * weight
+
+        batch_loss = sum(partial_batch_losses.values())
+        partial_batch_losses['sum'] = batch_loss
+        batch_loss.backward()
+        self.optimizer.step()
+
+        return partial_batch_losses
+
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):
     if regularize:
@@ -121,7 +150,22 @@ def weight_regularization_unet(model, regularize, weight_decay_conv2d):
 def callbacks_unet(callbacks_config):
     experiment_timing = ExperimentTiming(**callbacks_config['experiment_timing'])
     model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
-    lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
+    lr_scheduler = ExponentialLRScheduler(**callbacks_config['exp_lr_scheduler'])
+    training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
+    validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
+    neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
+    early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
+
+    return CallbackList(
+        callbacks=[experiment_timing, training_monitor, validation_monitor,
+                   model_checkpoints, lr_scheduler, neptune_monitor, early_stopping
+                   ])
+
+
+def callbacks_dcan(callbacks_config):
+    experiment_timing = ExperimentTiming(**callbacks_config['experiment_timing'])
+    model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
+    lr_scheduler = ExponentialLRScheduler(**callbacks_config['exp_lr_scheduler'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
@@ -131,5 +175,5 @@ def callbacks_unet(callbacks_config):
     return CallbackList(
         callbacks=[experiment_timing, training_monitor, validation_monitor,
                    model_checkpoints, lr_scheduler, neptune_monitor,
-                   early_stopping, lw_scheduler
+                   early_stopping, #lw_scheduler
                    ])

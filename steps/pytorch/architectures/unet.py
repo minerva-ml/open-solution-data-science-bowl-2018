@@ -217,8 +217,8 @@ class DCAN(UNet):
 
         self.convs_for_classifiers = self._convs_for_classifiers()
         self.down_pools_for_classifiers = self._down_pools_for_classifiers()
-        self.mask_output_layer = self._mask_output_layer()
-        self.contour_output_layer = self._contour_output_layer()
+        self.mask_output_layer = self._output_layer()
+        self.contour_output_layer = self._output_layer()
         self.up_convs_mask = self._up_samples()
         self.up_convs_contour = self._up_samples()
         self.last_block = self._last_block()
@@ -226,6 +226,12 @@ class DCAN(UNet):
         self.last_up_conv_contour = self._last_up_conv()
         self.mask_to_single_channel = self._to_single_channel()
         self.contour_to_single_channel = self._to_single_channel()
+        self.mask_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
+        if torch.cuda.is_available():
+            self.mask_weights = self.mask_weights.cuda()
+        self.contour_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
+        if torch.cuda.is_available():
+            self.contour_weights = self.contour_weights.cuda()
 
     def _to_single_channel(self):
         in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
@@ -313,17 +319,14 @@ class DCAN(UNet):
                                         )
         return output_block
 
-    def _mask_output_layer(self):
+    def _output_layer(self):
         in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
         out_channels = in_channels
         return Conv(in_channels, out_channels, self.conv_kernel, True, self.dropout)
 
-    def _contour_output_layer(self):
-        return self._mask_output_layer()
-
     def _down_pools_for_classifiers(self):
         down_pools = []
-        for _ in range(self.repeat_blocks):
+        for _ in range(self.n_classifiers-1):
             down_pools.append(nn.Sequential(nn.ConstantPad2d(self.pool_kernel-2, 0), #this padding works for pool_kernel=2,3
                                             nn.MaxPool2d(kernel_size=(self.pool_kernel, self.pool_kernel),
                                                          stride=self.pool_stride)))
@@ -367,6 +370,7 @@ class DCAN(UNet):
             x = down_pool(x)
 
         x = self.last_block(x)
+
         mask = self.last_up_conv_mask(x)
         mask = self.mask_output_layer(mask)
 
@@ -396,19 +400,13 @@ class DCAN(UNet):
         contour_classifier_inputs = tmp
 
         mask_sum = torch.cat(mask_classifier_inputs, dim=1)
-        mask_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
-        if torch.cuda.is_available():
-            mask_weights = mask_weights.cuda()
         mask_sum = torch.cat([mask_sum[:, c_i, :, :].contiguous().view_as(mask_classifier_inputs[0])*d_i
-                              for c_i,d_i in zip(range(self.n_classifiers), mask_weights)], dim=1)
+                              for c_i,d_i in zip(range(self.n_classifiers), self.mask_weights)], dim=1)
         mask_sum = torch.sum(mask_sum, 1).view_as(mask_classifier_inputs[0])
 
         contour_sum = torch.cat(contour_classifier_inputs, dim=1)
-        contour_weights = torch.autograd.Variable(torch.randn(self.n_classifiers), requires_grad=True)
-        if torch.cuda.is_available():
-            contour_weights = contour_weights.cuda()
-        contour_sum = torch.cat([contour_sum[:,c_i, :, :].contiguous().view_as(contour_classifier_inputs[0])*d_i
-                                 for c_i,d_i in zip(range(self.n_classifiers), contour_weights)], dim=1)
+        contour_sum = torch.cat([contour_sum[:, c_i, :, :].contiguous().view_as(contour_classifier_inputs[0])*d_i
+                                 for c_i,d_i in zip(range(self.n_classifiers), self.contour_weights)], dim=1)
         contour_sum = torch.sum(contour_sum, 1).view_as(contour_classifier_inputs[0])
 
         output = [mask_sum, contour_sum, mask_classifier_inputs, contour_classifier_inputs]
@@ -554,10 +552,3 @@ class Conv(nn.Module):
 
     def forward(self, x):
         return self.conv(x)
-
-if __name__=="__main__":
-    x = torch.randn([2,4,512,512])
-    x = torch.autograd.Variable(x)
-    dcan = DCAN(7, 3, 2, 2, 16, True, 0, 4, 1, 3, 3)
-    x0 = x
-    x = dcan(x)

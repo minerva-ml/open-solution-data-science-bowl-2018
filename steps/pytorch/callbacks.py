@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 from deepsense import neptune
-from torch.optim.lr_scheduler import ExponentialLR
+from torch.optim.lr_scheduler import ExponentialLR, ReduceLROnPlateau
 
 from steps.utils import get_logger
 from .utils import Averager, save_model
@@ -131,6 +131,7 @@ class TrainingMonitor(Callback):
                 self.epoch_loss_averagers[name].send(loss)
             else:
                 self.epoch_loss_averagers[name] = Averager()
+                self.epoch_loss_averagers[name].send(loss)
 
             if self.batch_every and ((self.batch_id % self.batch_every) == 0):
                 logger.info('epoch {0} batch {1} {2}:     {3:.5f}'.format(self.epoch_id, self.batch_id, name, loss))
@@ -290,6 +291,7 @@ class NeptuneMonitor(Callback):
                 self.epoch_loss_averagers[name].send(loss)
             else:
                 self.epoch_loss_averagers[name] = Averager()
+                self.epoch_loss_averagers[name].send(loss)
 
             self.ctx.channel_send('{} batch {} loss'.format(self.model_name, name), x=self.batch_id, y=loss)
 
@@ -377,7 +379,6 @@ class LossWeightsScheduler(Callback):
         self.n_steps = n_steps
         self.verbose = verbose
         self.weight_transfers = weight_transfers
-        self.loss_function = [("a",1,10),("b",2,10),("c",3,10),("d",4,10)]
         if epoch_every == 0:
             self.epoch_every = False
         else:
@@ -428,4 +429,45 @@ class LossWeightsScheduler(Callback):
                 for name,_,loss in self.transformer.loss_function:
                     logger.info('epoch {0} batch {1} current weight for {2}: {3}'.format(
                         self.epoch_id + 1, self.batch_id + 1, name, loss))
+        self.batch_id += 1
+
+
+class PlateauLRScheduler(Callback):
+    def __init__(self, lr_factor, lr_patience, epoch_every=1, batch_every=None):
+        super().__init__()
+        self.factor = lr_factor
+        self.patience = lr_patience
+        if epoch_every == 0:
+            self.epoch_every = False
+        else:
+            self.epoch_every = epoch_every
+        if batch_every == 0:
+            self.batch_every = False
+        else:
+            self.batch_every = batch_every
+
+    def set_params(self, transformer, validation_datagen):
+        self.validation_datagen = validation_datagen
+        self.model = transformer.model
+        self.optimizer = transformer.optimizer
+        self.loss_function = transformer.loss_function
+        self.lr_scheduler = ReduceLROnPlateau(self.optimizer, factor = self.factor, patience = self.patience)
+
+    def on_train_begin(self, *args, **kwargs):
+        self.epoch_id = 0
+        self.batch_id = 0
+        logger.info('initial lr: {0}'.format(self.optimizer.state_dict()['param_groups'][0]['initial_lr']))
+
+    def on_epoch_end(self, *args, **kwargs):
+        if self.epoch_every and (((self.epoch_id + 1) % self.epoch_every) == 0):
+            self.lr_scheduler.step()
+            logger.info('epoch {0} current lr: {1}'.format(self.epoch_id + 1,
+                                                           self.optimizer.state_dict()['param_groups'][0]['lr']))
+        self.epoch_id += 1
+
+    def on_batch_end(self, *args, **kwargs):
+        if self.batch_every and ((self.batch_id % self.batch_every) == 0):
+            self.lr_scheduler.step()
+            logger.info('epoch {0} batch {1} current lr: {2}'.format(
+                self.epoch_id + 1, self.batch_id + 1, self.optimizer.state_dict()['param_groups'][0]['lr']))
         self.batch_id += 1

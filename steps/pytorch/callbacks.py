@@ -367,72 +367,6 @@ class ExperimentTiming(Callback):
 
 
 class ReduceLROnPlateau(Callback):  # thank you keras
-    def __init__(self):
-        super().__init__()
-        pass
-
-
-
-class LossWeightsScheduler(Callback):
-    def __init__(self, n_steps, weight_transfers, epoch_every=1, batch_every=None, verbose=False):
-        super().__init__()
-        self.n_steps = n_steps
-        self.verbose = verbose
-        self.weight_transfers = weight_transfers
-        if epoch_every == 0:
-            self.epoch_every = False
-        else:
-            self.epoch_every = epoch_every
-        if batch_every == 0:
-            self.batch_every = False
-        else:
-            self.batch_every = batch_every
-
-    def change_lw(self):
-        self.step_id += 1
-        tmp = self.transformer.loss_function[:]
-        for i, loss in enumerate(self.loss_function):
-            if loss[0] in self.weight_transfers.keys():
-                tmp[i] = (loss[0], loss[1], tmp[i][2] - self.steps[loss[0]])
-            else:
-                for source, dest in self.weight_transfers.items():
-                    if loss[0] in dest:
-                        tmp[i] = (loss[0], loss[1], tmp[i][2] + float(self.steps[source]/len(dest)))
-        self.transformer.loss_function = tmp
-
-    def set_params(self, transformer, validation_datagen):
-        self.loss_function = transformer.loss_function
-        self.steps = {name: loss/self.n_steps for name, _, loss in self.loss_function}
-        self.transformer = transformer
-
-    def on_train_begin(self, *args, **kwargs):
-        self.epoch_id = 0
-        self.batch_id = 0
-        self.step_id = 0
-        if self.verbose:
-            for name,_,loss in self.loss_function:
-                logger.info('initial weight for {0}: {1}'.format(name, loss))
-
-    def on_epoch_end(self, *args, **kwargs):
-        if self.epoch_every and (((self.epoch_id + 1) % self.epoch_every) == 0) and self.step_id<self.n_steps:
-            self.change_lw()
-            if self.verbose:
-                for name,_,loss in self.loss_function:
-                    logger.info('epoch {0} current weight for {1}: {2}'.format(self.epoch_id + 1,
-                                                                               name, loss))
-        self.epoch_id += 1
-
-    def on_batch_end(self, *args, **kwargs):
-        if self.batch_every and ((self.batch_id % self.batch_every) == 0) and self.step_id<self.n_steps:
-            self.change_lw()
-            if self.verbose:
-                for name,_,loss in self.transformer.loss_function:
-                    logger.info('epoch {0} batch {1} current weight for {2}: {3}'.format(
-                        self.epoch_id + 1, self.batch_id + 1, name, loss))
-        self.batch_id += 1
-
-
-class PlateauLRScheduler(Callback):
     def __init__(self, lr_factor, lr_patience, epoch_every=1, batch_every=None):
         super().__init__()
         self.factor = lr_factor
@@ -471,3 +405,66 @@ class PlateauLRScheduler(Callback):
             logger.info('epoch {0} batch {1} current lr: {2}'.format(
                 self.epoch_id + 1, self.batch_id + 1, self.optimizer.state_dict()['param_groups'][0]['lr']))
         self.batch_id += 1
+
+
+
+class LossWeightsScheduler(Callback):
+    def __init__(self, n_steps, weight_transfers, epoch_every=1, batch_every=None, verbose=False):
+        super().__init__()
+        self.n_steps = n_steps
+        self.verbose = verbose
+        self.weight_transfers = weight_transfers
+        if epoch_every == 0:
+            self.epoch_every = False
+        else:
+            self.epoch_every = epoch_every
+        if batch_every == 0:
+            self.batch_every = False
+        else:
+            self.batch_every = batch_every
+
+    def change_lw(self):
+        self.step_id += 1
+        tmp = self.transformer.loss_function[:]
+        for i, loss in enumerate(self.loss_function):
+            if loss[0] in self.weight_transfers.keys():
+                tmp[i] = (loss[0], loss[1], tmp[i][2] - self.steps[loss[0]])
+            '''
+            else:
+                for source, dest in self.weight_transfers.items():
+                    if loss[0] in dest:
+                        tmp[i] = (loss[0], loss[1], tmp[i][2] + float(self.steps[source]/len(dest)))
+            '''
+        self.transformer.loss_function = tmp
+
+    def set_params(self, transformer, validation_datagen):
+        self.loss_function = transformer.loss_function
+        self.steps = {name: loss/self.n_steps for name, _, loss in self.loss_function}
+        self.transformer = transformer
+
+    def on_train_begin(self, *args, **kwargs):
+        self.epoch_id = 0
+        self.batch_id = 0
+        self.step_id = 0
+        if self.verbose:
+            for name,_,loss in self.loss_function:
+                logger.info('initial weight for {0}: {1}'.format(name, loss))
+
+    def on_epoch_end(self, *args, **kwargs):
+        if self.epoch_every and (((self.epoch_id + 1) % self.epoch_every) == 0) and self.step_id<self.n_steps:
+            self.change_lw()
+            if self.verbose:
+                for name,_,loss in self.loss_function:
+                    logger.info('epoch {0} current weight for {1}: {2}'.format(self.epoch_id + 1,
+                                                                               name, loss))
+        self.epoch_id += 1
+
+    def on_batch_end(self, *args, **kwargs):
+        if self.batch_every and ((self.batch_id % self.batch_every) == 0) and self.step_id<self.n_steps:
+            self.change_lw()
+            if self.verbose:
+                for name,_,loss in self.transformer.loss_function:
+                    logger.info('epoch {0} batch {1} current weight for {2}: {3}'.format(
+                        self.epoch_id + 1, self.batch_id + 1, name, loss))
+        self.batch_id += 1
+

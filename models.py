@@ -80,7 +80,10 @@ class PyTorchDCAN(Model):
         batch_gen, steps = datagen
         outputs = {}
         for batch_id, data in enumerate(batch_gen):
-            X = data[0]
+            if isinstance(data, list):
+                X = data[0]
+            else:
+                X = data
 
             if torch.cuda.is_available():
                 X = torch.autograd.Variable(X, volatile=True).cuda()
@@ -174,6 +177,7 @@ def callbacks_dcan(callbacks_config):
 
     return CallbackList(
         callbacks=[experiment_timing, training_monitor, validation_monitor,
-                   model_checkpoints, lr_scheduler, neptune_monitor,
-                   early_stopping, #lw_scheduler
+                   model_checkpoints, #lr_scheduler,
+                   neptune_monitor,
+                   early_stopping, lw_scheduler
                    ])

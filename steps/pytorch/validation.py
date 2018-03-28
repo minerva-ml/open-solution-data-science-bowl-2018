@@ -26,7 +26,7 @@ def list_segmentation_loss(outputs, target):
     loss = 0
     for output in outputs:
         loss += segmentation_loss(output, target)
-    return loss
+    return loss/len(outputs)
 
 
 def cross_entropy(output, target, squeeze=False):

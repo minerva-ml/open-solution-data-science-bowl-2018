@@ -429,12 +429,10 @@ class LossWeightsScheduler(Callback):
         for i, loss in enumerate(self.loss_function):
             if loss[0] in self.weight_transfers.keys():
                 tmp[i] = (loss[0], loss[1], tmp[i][2] - self.steps[loss[0]])
-            '''
             else:
                 for source, dest in self.weight_transfers.items():
                     if loss[0] in dest:
                         tmp[i] = (loss[0], loss[1], tmp[i][2] + float(self.steps[source]/len(dest)))
-            '''
         self.transformer.loss_function = tmp
 
     def set_params(self, transformer, validation_datagen):

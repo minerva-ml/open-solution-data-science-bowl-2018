@@ -8,7 +8,7 @@ from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMon
 from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss, list_segmentation_loss
 from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation
+from callbacks import NeptuneMonitorSegmentation, DebugNeptuneMonitorDCAN
 
 
 class PyTorchUNet(Model):
@@ -172,12 +172,13 @@ def callbacks_dcan(callbacks_config):
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
+    neptune_monitor = DebugNeptuneMonitorDCAN(**callbacks_config['neptune_monitor'])
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
     lw_scheduler = LossWeightsScheduler(**callbacks_config['loss_weights_scheduler'])
 
     return CallbackList(
         callbacks=[experiment_timing, training_monitor, validation_monitor,
-                   model_checkpoints, #lr_scheduler,
+                   model_checkpoints, lr_scheduler,
                    neptune_monitor,
-                   early_stopping, lw_scheduler
+                   early_stopping, #lw_scheduler
                    ])

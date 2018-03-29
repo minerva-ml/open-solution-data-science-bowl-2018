@@ -127,6 +127,7 @@ class Model(BaseTransformer):
                     outputs.setdefault(name, []).append(output_)
             if batch_id == steps:
                 break
+        self.model.train()
         outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 

@@ -1,5 +1,6 @@
 import numpy as np
 import torch.optim as optim
+import torch.nn as nn
 
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \

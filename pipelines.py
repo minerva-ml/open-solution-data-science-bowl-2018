@@ -153,14 +153,24 @@ def two_unet_specialists(config, train_mode):
         unet_mask_patches = Step(name='unet_mask',
                                  transformer=PyTorchUNetMultitask(**config.unet_mask),
                                  input_steps=[loader],
+                                 adapter={'datagen': ([(loader.name, 'datagen')]),
+                                          'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                          },
                                  cache_dirpath=config.env.cache_dirpath,
-                                 save_output=save_output, load_saved_output=load_saved_output)
+                                 cache_output=False,
+                                 save_output=save_output,
+                                 load_saved_output=load_saved_output)
 
         unet_contour_patches = Step(name='unet_contour',
                                     transformer=PyTorchUNetMultitask(**config.unet_contour),
                                     input_steps=[loader],
+                                    adapter={'datagen': ([(loader.name, 'datagen')]),
+                                             'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                             },
                                     cache_dirpath=config.env.cache_dirpath,
-                                    save_output=save_output, load_saved_output=load_saved_output)
+                                    cache_output=False,
+                                    save_output=save_output,
+                                    load_saved_output=load_saved_output)
 
         unet_specialists = Step(name='patch_joiner',
                                 transformer=loaders.PatchCombiner(**config.patch_combiner),
@@ -173,8 +183,6 @@ def two_unet_specialists(config, train_mode):
                                                                                    'contour_prediction'])),
                                          },
                                 cache_dirpath=config.env.cache_dirpath,
-                                cache_output=True,
-                                save_output=True,
                                 load_saved_output=load_saved_output)
 
         mask_resize = Step(name='mask_resize',
@@ -185,7 +193,7 @@ def two_unet_specialists(config, train_mode):
                                     'target_sizes': ([('input', 'target_sizes')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath,
-                           save_output=save_output)
+                           save_output=True)
 
         contour_resize = Step(name='contour_resize',
                               transformer=Resizer(),
@@ -195,7 +203,7 @@ def two_unet_specialists(config, train_mode):
                                        'target_sizes': ([('input', 'target_sizes')]),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              save_output=save_output)
+                              save_output=True)
 
     else:
         unet_mask = Step(name='unet_mask',
@@ -236,7 +244,7 @@ def two_unet_specialists(config, train_mode):
                              'contours': ([(contour_resize.name, 'resized_images')]),
                              },
                     cache_dirpath=config.env.cache_dirpath,
-                    save_output=save_output)
+                    save_output=True)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -502,7 +510,7 @@ def _preprocessing_single_generator(config, is_train, use_patching):
 
 def _preprocessing_multitask_in_memory(config, is_train, loader_mode, is_specialist):
     if is_specialist:
-        reader_config = config.reader_specialist
+        reader_config = config.reader_specialists
     else:
         reader_config = config.reader_multitask
 

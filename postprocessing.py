@@ -167,7 +167,7 @@ def watershed_contour(image, contour):
 
 
 def postprocess(image, contour):
-    cleaned_mask = clean_mask(image, contour)
+    cleaned_mask = get_clean_mask(image, contour)
     good_markers = get_markers(cleaned_mask, contour)
     good_distance = get_distance(cleaned_mask)
 
@@ -175,12 +175,11 @@ def postprocess(image, contour):
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    m_thresh = 0.05  # threshold_otsu(image)
-    initial_mask_binary = (image > m_thresh).astype(np.uint8)
+    m_tresh = threshold_otsu(mask)
+    initial_mask_binary = (mask > m_tresh).astype(np.uint8)
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels = drop_small(labels, min_size=20)
-    labels = fill_holes_per_blob(labels)
+    labels = connect_small(labels, min_size_percentile=10)
 
     return labels
 
@@ -195,10 +194,10 @@ def drop_artifacts_per_label(labels, initial_mask):
     return labels_cleaned
 
 
-def clean_mask(m, c):
+def get_clean_mask(m, c):
     # threshold
-    m_b = m > 0.05  # threshold_otsu(m)
-    c_b = c > 0.05  # threshold_otsu(c)
+    m_b = m > threshold_otsu(m)
+    c_b = c > threshold_otsu(c)
 
     # combine contours and masks and fill the cells
     m_ = np.where(m_b | c_b, 1, 0)
@@ -206,47 +205,49 @@ def clean_mask(m, c):
 
     # close what wasn't closed before
     area, radius = mean_blob_size(m_b)
-    struct_size = int(.5 * radius)
-    struct_el = morph.disk(struct_size)
-    m_padded = pad_mask(m_, pad=struct_size)
-    m_padded = morph.binary_closing(m_padded, selem=struct_el)
-    m_padded = ndi.binary_fill_holes(m_padded)
-    m_ = crop_mask(m_padded, crop=struct_size)
+    if radius >= 6:
+        struct_size = int(1.0 * radius)
+        struct_el = morph.disk(struct_size)
+        m_padded = pad_mask(m_, pad=struct_size)
+        m_padded = morph.binary_closing(m_padded, selem=struct_el)
+        m_padded = ndi.binary_fill_holes(m_padded)
+        m_ = crop_mask(m_padded, crop=struct_size)
 
-    # open to cut the real cells from the artifacts
-    area, radius = mean_blob_size(m_b)
-    struct_size = int(1.25 * radius)
-    struct_el = morph.disk(struct_size)
-    m_ = np.where(c_b & (~m_b), 0, m_)
-    m_padded = pad_mask(m_, pad=struct_size)
-    m_padded = morph.binary_opening(m_padded, selem=struct_el)
-    m_ = crop_mask(m_padded, crop=struct_size)
+        # open to cut the real cells from the artifacts
+        area, radius = mean_blob_size(m_b)
+        struct_size = int(1.25 * radius)
+        struct_el = morph.disk(struct_size)
+        m_ = np.where(c_b & (~m_b), 0, m_)
+        m_padded = pad_mask(m_, pad=struct_size)
+        m_padded = morph.binary_opening(m_padded, selem=struct_el)
+        m_ = crop_mask(m_padded, crop=struct_size)
 
-    # join the connected cells with what we had at the beginning
-    m_ = np.where(m_b | m_, 1, 0)
-    m_ = ndi.binary_fill_holes(m_)
+        # join the connected cells with what we had at the beginning
+        m_ = np.where(m_b | m_, 1, 0)
+        m_ = ndi.binary_fill_holes(m_)
 
-    # drop all the cells that weren't present at least in 25% of area in the initial mask
-    m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
+        # drop all the cells that weren't present at least in 25% of area in the initial mask
+        m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
 
     return m_
 
 
 def get_markers(m_b, c):
     # threshold
-    c_thresh = threshold_otsu(c)
-    c_b = c > c_thresh
-
-    mk_ = np.where(c_b, 0, m_b)
-
     area, radius = mean_blob_size(m_b)
-    struct_size = int(0.25 * radius)
-    struct_el = morph.disk(struct_size)
-    m_padded = pad_mask(mk_, pad=struct_size)
-    m_padded = morph.erosion(m_padded, selem=struct_el)
-    mk_ = crop_mask(m_padded, crop=struct_size)
-    mk_, _ = ndi.label(mk_)
-    return mk_
+    if radius >= 4:
+        c_b = c > threshold_otsu(c)
+        m_ = np.where(c_b, 0, m_b)
+
+        struct_size = int(0.5 * radius)
+        struct_el = morph.disk(struct_size)
+        m_padded = pad_mask(m_, pad=struct_size)
+        m_padded = morph.erosion(m_padded, selem=struct_el)
+        m_ = crop_mask(m_padded, crop=struct_size)
+    else:
+        m_ = m_b
+    m_, _ = ndi.label(m_)
+    return m_
 
 
 def get_distance(m_b):
@@ -294,8 +295,10 @@ def mean_blob_size(mask):
         mean_area = 1
         mean_radius = 1
     else:
-        mean_area = int(itemfreq(labels)[1:, 1].mean())
-        mean_radius = int(np.round(np.sqrt(mean_area / np.pi)))
+        blob_sizes = itemfreq(labels)
+        blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, :]
+        mean_area = int(blob_sizes.mean())
+        mean_radius = int(np.round(np.sqrt(mean_area) / np.pi))
     return mean_area, mean_radius
 
 
@@ -331,3 +334,36 @@ def drop_small(img, min_size):
 def label(mask):
     labeled, nr_true = ndi.label(mask)
     return labeled
+
+
+def blob_size_percentile(mask, percentile):
+    labels, labels_nr = ndi.label(mask)
+    blob_sizes = itemfreq(labels)
+    blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
+    return np.percentile(blob_sizes, percentile)
+
+
+def find_touching_labels(labels, label_id):
+    mask = np.where(labels == label_id, 0, 1)
+    dist = ndi.distance_transform_edt(mask)
+    neighbour_labels = np.unique(np.where(dist == 1.0, labels, 0)).tolist()
+    neighbour_labels.remove(0)
+    return neighbour_labels
+
+
+def connect_small(labels, min_size_percentile=10):
+    touching_cell_was_connected = False
+    min_cell_size = blob_size_percentile(labels, min_size_percentile)
+    for label_id in range(1, labels.max() + 1):
+        cell_size = np.sum(labels == label_id)
+        touching_labels = find_touching_labels(labels, label_id)
+        for touching_label in touching_labels:
+            touching_cell_mask = np.where(labels == touching_label, 1, 0)
+            touching_cell_size = np.sum(touching_cell_mask)
+            if touching_cell_size < min_cell_size:
+                labels = np.where(labels == touching_label, label_id, labels)
+                touching_cell_was_connected = True
+    labels = relabel(labels)
+    if touching_cell_was_connected:
+        labels = connect_small(labels, min_size_percentile)
+    return labels

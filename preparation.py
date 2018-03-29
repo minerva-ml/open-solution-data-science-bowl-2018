@@ -41,9 +41,9 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / 255.0
+            image = ndi.binary_fill_holes(image) * 255. 
             masks.append(image)
-        overlayed_masks = np.sum(masks, axis=0)
+        overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
@@ -55,8 +55,10 @@ def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / 255.0
-            masks.append(get_contour(image))
+            image = ndi.binary_fill_holes(image)
+            contour = get_contour(image)
+            inside_contour = np.where(image & contour, 255, 0)
+            masks.append(inside_contour)
         if touching_only:
             overlayed_masks = np.where(np.sum(masks, axis=0) > 128. + 255., 255., 0.).astype(np.uint8)
         else:
@@ -72,7 +74,7 @@ def overlay_centers(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / 255.0
+            image = ndi.binary_fill_holes(image)
             masks.append(get_center(image))
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
@@ -83,7 +85,7 @@ def overlay_centers(images_dir, subdir_name, target_dir):
 def get_contour(img):
     img_contour = np.zeros_like(img).astype(np.uint8)
     _, contours, hierarchy = cv2.findContours(img.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    cv2.drawContours(img_contour, contours, -1, (255, 255, 255), 4)
+    cv2.drawContours(img_contour, contours, -1, (255, 255, 255), 8)
     return img_contour
 
 

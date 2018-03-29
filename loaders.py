@@ -479,8 +479,9 @@ def get_mosaic_padded_image(img, patch_size, patch_stride):
 
 
 def get_padded_size(img_size, patch_size, patch_stride):
-    for img_size_padded in range(img_size, 3 * img_size, 1):
-        if (img_size_padded - patch_size) % patch_stride == 0 and img_size_padded > 2 * patch_size:
+    min_image_size = img_size + patch_size + 2 * patch_stride
+    for img_size_padded in range(img_size, 6 * img_size, 1):
+        if (img_size_padded - patch_size) % patch_stride == 0 and img_size_padded > min_image_size:
             break
 
     diff = img_size_padded - img_size

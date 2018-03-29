@@ -71,9 +71,8 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode):
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(64)
-        meta_valid_split = meta_valid_split.sample(8)
-        meta_train_split.to_csv('/mnt/ml-team/dsb_2018/kuba/train_debug.csv', index=None)
+        meta_train_split = meta_train_split.sample(16, random_state=1234)
+        meta_valid_split = meta_valid_split.sample(2, random_state=1234)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
@@ -155,9 +154,11 @@ def _predict_pipeline(pipeline_name):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def train_evaluate_predict_pipeline(pipeline_name, validation_size):
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
+              required=False)
+def train_evaluate_predict_pipeline(pipeline_name, validation_size, dev_mode):
     logger.info('training')
-    _train_pipeline(pipeline_name, validation_size)
+    _train_pipeline(pipeline_name, validation_size, dev_mode)
     logger.info('evaluating')
     _evaluate_pipeline(pipeline_name, validation_size)
     logger.info('predicting')
@@ -167,9 +168,11 @@ def train_evaluate_predict_pipeline(pipeline_name, validation_size):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def train_evaluate_pipeline(pipeline_name, validation_size):
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
+              required=False)
+def train_evaluate_pipeline(pipeline_name, validation_size, dev_mode):
     logger.info('training')
-    _train_pipeline(pipeline_name, validation_size)
+    _train_pipeline(pipeline_name, validation_size, dev_mode)
     logger.info('evaluating')
     _evaluate_pipeline(pipeline_name, validation_size)
 

@@ -175,11 +175,11 @@ def postprocess(image, contour):
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    m_tresh = threshold_otsu(mask)
-    initial_mask_binary = (mask > m_tresh).astype(np.uint8)
+    m_tresh = threshold_otsu(image)
+    initial_mask_binary = (image > m_tresh).astype(np.uint8)
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels = connect_small(labels, min_size_percentile=10)
+    labels = connect_small(labels, fraction_of_percentile=0.1)
 
     return labels
 
@@ -336,11 +336,11 @@ def label(mask):
     return labeled
 
 
-def blob_size_percentile(mask, percentile):
+def min_blob_size(mask, percentile=25, fraction_of_percentile=0.1):
     labels, labels_nr = ndi.label(mask)
     blob_sizes = itemfreq(labels)
-    blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
-    return np.percentile(blob_sizes, percentile)
+    blob_sizes = blob_sizes[blob_sizes[:,0].argsort()][1:,1]
+    return fraction_of_percentile * np.percentile(blob_sizes, percentile)
 
 
 def find_touching_labels(labels, label_id):
@@ -351,9 +351,9 @@ def find_touching_labels(labels, label_id):
     return neighbour_labels
 
 
-def connect_small(labels, min_size_percentile=10):
+def connect_small(labels, fraction_of_percentile):
     touching_cell_was_connected = False
-    min_cell_size = blob_size_percentile(labels, min_size_percentile)
+    min_cell_size = min_blob_size(labels, fraction_of_percentile)
     for label_id in range(1, labels.max() + 1):
         cell_size = np.sum(labels == label_id)
         touching_labels = find_touching_labels(labels, label_id)
@@ -365,5 +365,5 @@ def connect_small(labels, min_size_percentile=10):
                 touching_cell_was_connected = True
     labels = relabel(labels)
     if touching_cell_was_connected:
-        labels = connect_small(labels, min_size_percentile)
+        labels = connect_small(labels, fraction_of_percentile)
     return labels

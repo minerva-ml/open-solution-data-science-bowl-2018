@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from sklearn.externals import joblib
+from skimage.transform import resize
 import torch
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
@@ -408,11 +409,14 @@ class PatchCombiner(BaseTransformer):
             prediction_image_padded[window_y:self.patching_size + window_y,
             window_x:self.patching_size + window_x] += image_patch
 
-        _, h_top, h_bottom = get_padded_size(image_h, self.patching_size, self.patching_stride)
-        _, w_left, w_right = get_padded_size(image_w, self.patching_size, self.patching_stride)
-        prediction_image = prediction_image_padded[h_top:image_h + h_top, w_left:image_w + w_left]
+        h_pad, h_top, h_bottom = get_padded_size(max(image_h, self.patching_size) , self.patching_size, self.patching_stride)
+        w_pad, w_left, w_right = get_padded_size(max(image_w, self.patching_size) , self.patching_size, self.patching_stride)
+        prediction_image = prediction_image_padded[h_top:-h_bottom, w_left:-w_right]
+        print(prediction_image.shape, image_h, image_w)
+        print(h_pad, h_top, h_bottom)
+        print(w_pad, w_left, w_right)
+        print(' ')
         prediction_image /= prediction_image.max()
-
         return prediction_image
 
 
@@ -458,9 +462,8 @@ def get_mosaic_padded_image(img, patch_size, patch_stride):
         squeeze_output = False
 
     h, w = (max(h_, patch_size), max(w_, patch_size))
-    img_ = np.zeros((h, w, c))
-    img_[:h_, :w_, :] = img
-    img = img_
+    if h > h_ or w > w_:
+        img = resize(img, (h, w), preserve_range=True)
 
     h_pad, h_pad_top, h_pad_bottom = get_padded_size(h, patch_size, patch_stride)
     w_pad, w_pad_left, w_pad_right = get_padded_size(w, patch_size, patch_stride)

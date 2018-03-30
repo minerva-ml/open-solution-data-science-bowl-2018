@@ -409,11 +409,12 @@ class ReduceLROnPlateau(Callback):  # thank you keras
 
 
 class LossWeightsScheduler(Callback):
-    def __init__(self, n_steps, weight_transfers, epoch_every=1, batch_every=None, verbose=False):
+    def __init__(self, n_steps, weight_transfers, normalize_loss = False, epoch_every=1, batch_every=None, verbose=False):
         super().__init__()
         self.n_steps = n_steps
         self.verbose = verbose
         self.weight_transfers = weight_transfers
+        self.normalize_loss = normalize_loss
         if epoch_every == 0:
             self.epoch_every = False
         else:
@@ -429,11 +430,13 @@ class LossWeightsScheduler(Callback):
         for i, loss in enumerate(self.loss_function):
             if loss[0] in self.weight_transfers.keys():
                 tmp[i] = (loss[0], loss[1], tmp[i][2] - self.steps[loss[0]])
-            else:
+            elif self.normalize_loss:
                 for source, dest in self.weight_transfers.items():
                     if loss[0] in dest:
                         tmp[i] = (loss[0], loss[1], tmp[i][2] + float(self.steps[source]/len(dest)))
         self.transformer.loss_function = tmp
+        for callback in self.transformer.callbacks.callbacks:
+            callback.loss_function = tmp
 
     def set_params(self, transformer, validation_datagen):
         self.loss_function = transformer.loss_function

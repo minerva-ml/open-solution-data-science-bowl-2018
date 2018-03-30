@@ -219,8 +219,8 @@ class DCAN(UNet):
         self.down_pools_for_classifiers = self._down_pools_for_classifiers()
         self.mask_output_layer = self._output_layer()
         self.contour_output_layer = self._output_layer()
-        self.up_convs_mask = self._up_samples()
-        self.up_convs_contour = self._up_samples()
+        self.up_convs_mask = self._upsample_convs()
+        self.up_convs_contour = self._upsample_convs()
         self.last_block = self._last_block()
         self.last_up_conv_mask = self._last_up_conv()
         self.last_up_conv_contour = self._last_up_conv()
@@ -339,19 +339,32 @@ class DCAN(UNet):
             down_convs.append(Conv(in_channels, in_channels, self.conv_kernel, self.batch_norm, self.dropout))
         return nn.ModuleList(down_convs)
 
+    def _upsample_convs(self):
+        up_convs = []
+        kernel_scale = 3
+        for i in range(self.n_classifiers-1):
+            in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
+            out_channels = in_channels
+            stride = self.pool_stride ** (self.repeat_blocks + i)
+            up_convs.append(nn.ConvTranspose2d(in_channels=in_channels,
+                                                 out_channels=out_channels,
+                                                 kernel_size=kernel_scale*stride,
+                                                 stride=stride,
+                                                 padding=int((kernel_scale-1)*stride/2+0.5),
+                                                 output_padding=((kernel_scale-1)*stride)%2,
+                                                 bias=False
+                                                 ))
+        return nn.ModuleList(up_convs)
+
     def _up_samples(self):
         up_samples = []
         for i in range(self.n_classifiers-1):
             in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
             out_channels = in_channels
-            up_samples.append(nn.ConvTranspose2d(in_channels=in_channels,
-                                                 out_channels=out_channels,
-                                                 kernel_size=self.pool_stride ** (self.repeat_blocks + i),
-                                                 stride=self.pool_stride ** (self.repeat_blocks + i),
-                                                 padding=0,
-                                                 output_padding=0,
-                                                 bias=False
-                                                 ))
+            up_samples.append(nn.Sequential(
+                nn.Upsample(scale_factor=self.pool_stride ** (self.repeat_blocks + i)),
+                Conv(in_channels, out_channels, self.conv_kernel, self.batch_norm, self.dropout)
+            ))
         return nn.ModuleList(up_samples)
 
     def forward(self, x):

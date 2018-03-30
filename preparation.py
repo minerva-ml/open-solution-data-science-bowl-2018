@@ -3,6 +3,7 @@ import os
 
 import cv2
 import numpy as np
+import pandas as pd
 import scipy.ndimage as ndi
 import torch
 from PIL import Image
@@ -16,9 +17,14 @@ from tqdm import tqdm
 
 def train_valid_split(meta, validation_size, valid_category_ids=None, simple_split=False):
     meta_train = meta[meta['is_train'] == 1]
-    
+
     if simple_split:
-        meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
+        meta_train_splittable = meta_train[meta_train['vgg_features_clusters'] != -1]
+        artifacts = meta_train[meta_train['vgg_features_clusters'] == -1]
+        meta_train_split, meta_valid_split = train_test_split(meta_train_splittable,
+                                                              test_size=validation_size,
+                                                              random_state=1234)
+        meta_train_split = pd.concat([meta_train_split, artifacts], axis=0).sample(frac=1, random_state=1234)
     else:
         meta_train_split, meta_valid_split = split_on_column(meta_train,
                                                              column='vgg_features_clusters',
@@ -46,7 +52,7 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = ndi.binary_fill_holes(image) * 255. 
+            image = ndi.binary_fill_holes(image) * 255.
             masks.append(image)
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
@@ -146,3 +152,35 @@ def cluster_features(features, n_clusters=10):
     kmeans.fit(features)
     labels = kmeans.labels_
     return labels
+
+
+def build_artifacts_metadata(artifacts_dir):
+    artifact_info = {}
+    for subdir in os.listdir(artifacts_dir):
+        artifact_info.setdefault('n_nuclei', []).append(0)
+        artifact_info.setdefault('vgg_features_clusters', []).append(-1)
+        artifact_info.setdefault('ImageId', []).append(subdir)
+        artifact_info.setdefault('is_train', []).append(1)
+
+        file_path_image = glob.glob('{}/{}/images/*'.format(artifacts_dir, subdir))[0]
+        file_path_masks = os.path.join(artifacts_dir, subdir, 'masks')
+        file_path_mask = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
+        file_path_contour = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
+        file_path_center = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
+        file_path_contour_touching = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
+
+        artifact_info.setdefault('file_path_image', []).append(file_path_image)
+        artifact_info.setdefault('file_path_masks', []).append(file_path_masks)
+        artifact_info.setdefault('file_path_mask', []).append(file_path_mask)
+        artifact_info.setdefault('file_path_contours', []).append(file_path_contour)
+        artifact_info.setdefault('file_path_centers', []).append(file_path_center)
+        artifact_info.setdefault('file_path_contours_touching', []).append(file_path_contour_touching)
+
+        img = plt.imread(file_path_image)
+        h, w = img.shape[:2]
+
+        artifact_info.setdefault('width', []).append(w)
+        artifact_info.setdefault('height', []).append(h)
+
+    artifact_info = pd.DataFrame(artifact_info)
+    return artifact_info

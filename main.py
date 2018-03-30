@@ -8,7 +8,8 @@ from deepsense import neptune
 from metrics import intersection_over_union, intersection_over_union_thresholds
 from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
-from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
+from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters, \
+    build_artifacts_metadata
 from utils import get_logger, read_masks, read_params, create_submission, generate_metadata
 
 logger = get_logger()
@@ -30,13 +31,17 @@ def prepare_metadata():
                              contours_touching_overlayed_dir=params.contours_touching_overlayed_dir,
                              centers_overlayed_dir=params.centers_overlayed_dir)
     logger.info('calculating clusters')
-
     meta_train = meta[meta['is_train'] == 1]
     meta_test = meta[meta['is_train'] == 0]
     vgg_features_clusters = get_vgg_clusters(meta_train)
     meta_train['vgg_features_clusters'] = vgg_features_clusters
     meta_test['vgg_features_clusters'] = 'NaN'
     meta = pd.concat([meta_train, meta_test], axis=0)
+
+    logger.info('adding artifacts metadata')
+    meta_artifacts = build_artifacts_metadata(artifacts_dir=params.artifacts_dir)
+    meta = pd.concat([meta, meta_artifacts], axis=0)
+
     meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
 
 
@@ -54,7 +59,7 @@ def prepare_masks():
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
               required=False)
 def train_pipeline(pipeline_name, validation_size, dev_mode):
@@ -68,10 +73,12 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, simple_split=True)
+    #     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
+
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(16, random_state=1234)
+        meta_train_split = meta_train_split.sample(2, random_state=1234)
         meta_valid_split = meta_valid_split.sample(2, random_state=1234)
 
     data = {'input': {'meta': meta_train_split,
@@ -89,7 +96,7 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
 def evaluate_pipeline(pipeline_name, validation_size):
     _evaluate_pipeline(pipeline_name, validation_size)
 

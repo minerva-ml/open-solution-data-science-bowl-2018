@@ -417,8 +417,7 @@ class PatchCombiner(BaseTransformer):
                                                 self.patching_stride)
 
         prediction_image = prediction_image_padded[h_top:-h_bottom, w_left:-w_right]
-
-        #         prediction_image /= prediction_image.max()
+        prediction_image /= prediction_image.max()
         return prediction_image
 
 

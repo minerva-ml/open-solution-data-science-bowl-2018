@@ -19,22 +19,22 @@ color_seq = iaa.Sequential([
     # Color
     iaa.SomeOf((1, 2),
                [
-        iaa.Sequential([
-            iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
-            iaa.WithChannels(0, iaa.Add((0, 100))),
-            iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
-        iaa.Sequential([
-            iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
-            iaa.WithChannels(1, iaa.Add((0, 100))),
-            iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
-        iaa.Sequential([
-            iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
-            iaa.WithChannels(2, iaa.Add((0, 100))),
-            iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
-        iaa.WithChannels(0, iaa.Add((0, 100))),
-        iaa.WithChannels(1, iaa.Add((0, 100))),
-        iaa.WithChannels(2, iaa.Add((0, 100)))
-    ])
+                   iaa.Sequential([
+                       iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
+                       iaa.WithChannels(0, iaa.Add((0, 100))),
+                       iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
+                   iaa.Sequential([
+                       iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
+                       iaa.WithChannels(1, iaa.Add((0, 100))),
+                       iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
+                   iaa.Sequential([
+                       iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
+                       iaa.WithChannels(2, iaa.Add((0, 100))),
+                       iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
+                   iaa.WithChannels(0, iaa.Add((0, 100))),
+                   iaa.WithChannels(1, iaa.Add((0, 100))),
+                   iaa.WithChannels(2, iaa.Add((0, 100)))
+               ])
 ], random_order=True)
 
 
@@ -46,6 +46,7 @@ def patching_seq(crop_size):
         CropFixed(px=h),
         iaa.Fliplr(0.5),
         iaa.Flipud(0.5),
+        iaa.Sometimes(0.5, iaa.CropAndPad(percent=(-0.1, 0.1), pad_cval=0)),
         iaa.Sometimes(0.5, iaa.PiecewiseAffine(scale=(0.02, 0.06)))
     ], random_order=False)
     return seq

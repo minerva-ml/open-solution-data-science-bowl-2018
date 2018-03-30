@@ -96,6 +96,9 @@ def unet_multitask(config, train_mode):
         unet_multitask = Step(name='unet_multitask',
                               transformer=PyTorchUNetMultitask(**config.unet),
                               input_steps=[loader],
+                              adapter={'datagen': ([(loader.name, 'datagen')]),
+                                       'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                       },
                               cache_dirpath=config.env.cache_dirpath,
                               cache_output=False,
                               save_output=False,
@@ -209,11 +212,17 @@ def two_unet_specialists(config, train_mode):
         unet_mask = Step(name='unet_mask',
                          transformer=PyTorchUNetMultitask(**config.unet_mask),
                          input_steps=[loader],
+                         adapter={'datagen': ([(loader.name, 'datagen')]),
+                                  'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                  },
                          cache_dirpath=config.env.cache_dirpath,
                          save_output=save_output, load_saved_output=load_saved_output)
         unet_contour = Step(name='unet_contour',
                             transformer=PyTorchUNetMultitask(**config.unet_contour),
                             input_steps=[loader],
+                            adapter={'datagen': ([(loader.name, 'datagen')]),
+                                     'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                     },
                             cache_dirpath=config.env.cache_dirpath,
                             save_output=save_output, load_saved_output=load_saved_output)
 

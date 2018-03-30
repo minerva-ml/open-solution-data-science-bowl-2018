@@ -9,18 +9,23 @@ from PIL import Image
 from imageio import imwrite
 from skimage.transform import resize
 from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
 from torchvision import models
 from tqdm import tqdm
 
 
-def train_valid_split(meta, validation_size, valid_category_ids=None):
+def train_valid_split(meta, validation_size, valid_category_ids=None, simple_split=False):
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = split_on_column(meta_train,
-                                                         column='vgg_features_clusters',
-                                                         test_size=validation_size,
-                                                         random_state=1234,
-                                                         valid_category_ids=valid_category_ids
-                                                         )
+    
+    if simple_split:
+        meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
+    else:
+        meta_train_split, meta_valid_split = split_on_column(meta_train,
+                                                             column='vgg_features_clusters',
+                                                             test_size=validation_size,
+                                                             random_state=1234,
+                                                             valid_category_ids=valid_category_ids
+                                                             )
     return meta_train_split, meta_valid_split
 
 

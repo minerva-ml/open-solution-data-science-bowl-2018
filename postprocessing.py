@@ -179,7 +179,9 @@ def postprocess(image, contour):
     initial_mask_binary = (image > m_tresh).astype(np.uint8)
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels = connect_small(labels, fraction_of_percentile=0.1)
+    labels = connect_small(labels, fraction_of_percentile=0.25)
+    min_size = min_blob_size(labels, fraction_of_percentile=0.25)
+    labels = drop_small(labels, min_size=min_size)
 
     return labels
 

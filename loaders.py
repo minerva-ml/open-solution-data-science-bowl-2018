@@ -411,12 +411,10 @@ class PatchCombiner(BaseTransformer):
 
         h_pad, h_top, h_bottom = get_padded_size(max(image_h, self.patching_size) , self.patching_size, self.patching_stride)
         w_pad, w_left, w_right = get_padded_size(max(image_w, self.patching_size) , self.patching_size, self.patching_stride)
+        
         prediction_image = prediction_image_padded[h_top:-h_bottom, w_left:-w_right]
-        print(prediction_image.shape, image_h, image_w)
-        print(h_pad, h_top, h_bottom)
-        print(w_pad, w_left, w_right)
-        print(' ')
-        prediction_image /= prediction_image.max()
+        
+#         prediction_image /= prediction_image.max()
         return prediction_image
 
 

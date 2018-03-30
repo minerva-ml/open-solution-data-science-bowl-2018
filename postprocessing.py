@@ -142,6 +142,25 @@ class Postprocessor(BaseTransformer):
         joblib.dump({}, filepath)
 
 
+class CellSizer(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, labeled_images):
+        mean_sizes = []
+        for image in tqdm(labeled_images):
+            mean_size = mean_cell_size(image)
+            mean_sizes.append(mean_size)
+        print(mean_sizes)
+        return {'sizes': mean_sizes}
+
+    def load(self, filepath):
+        return self
+
+    def save(self, filepath):
+        joblib.dump({}, filepath)
+
+
 def watershed_center(image, center):
     distance = ndi.distance_transform_edt(image)
     markers, nr_blobs = ndi.label(center)
@@ -167,23 +186,23 @@ def watershed_contour(image, contour):
 
 
 def postprocess(image, contour):
-    cleaned_mask = get_clean_mask(image, contour)
-    good_markers = get_markers(cleaned_mask, contour)
+    cleaned_mask = get_clean_mask_basic(image, contour)
+    good_markers = get_markers_basic(cleaned_mask, contour)
     good_distance = get_distance(cleaned_mask)
 
     labels = morph.watershed(-good_distance, good_markers, mask=cleaned_mask)
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    m_tresh = threshold_otsu(image)
-    initial_mask_binary = (image > m_tresh).astype(np.uint8)
-    labels = drop_artifacts_per_label(labels, initial_mask_binary)
+    # m_tresh = threshold_otsu(image)
+    # initial_mask_binary = (image > m_tresh).astype(np.uint8)
+    # labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
     labels = connect_small(labels, fraction_of_percentile=0.25)
     min_size = min_blob_size(labels, fraction_of_percentile=0.25)
     labels = drop_small(labels, min_size=min_size)
 
-    return labels
+    return relabel(labels)
 
 
 def drop_artifacts_per_label(labels, initial_mask):
@@ -194,6 +213,12 @@ def drop_artifacts_per_label(labels, initial_mask):
         component = drop_artifacts(component, component_initial_mask)
         labels_cleaned = labels_cleaned + component * i
     return labels_cleaned
+
+
+def get_clean_mask_basic(m, c):
+    m_b = m > threshold_otsu(m)
+
+    return m_b
 
 
 def get_clean_mask(m, c):
@@ -231,6 +256,14 @@ def get_clean_mask(m, c):
         # drop all the cells that weren't present at least in 25% of area in the initial mask
         m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
 
+    return m_
+
+
+def get_markers_basic(m_b, c):
+    c_b = c > threshold_otsu(c)
+    m_ = np.where(c_b, 0, m_b)
+
+    m_, _ = ndi.label(m_)
     return m_
 
 
@@ -341,8 +374,14 @@ def label(mask):
 def min_blob_size(mask, percentile=25, fraction_of_percentile=0.1):
     labels, labels_nr = ndi.label(mask)
     blob_sizes = itemfreq(labels)
-    blob_sizes = blob_sizes[blob_sizes[:,0].argsort()][1:,1]
+    blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
     return fraction_of_percentile * np.percentile(blob_sizes, percentile)
+
+
+def mean_cell_size(labeled_image):
+    blob_sizes = itemfreq(labeled_image)
+    blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
+    return np.mean(blob_sizes)
 
 
 def find_touching_labels(labels, label_id):
@@ -368,4 +407,4 @@ def connect_small(labels, fraction_of_percentile):
     labels = relabel(labels)
     if touching_cell_was_connected:
         labels = connect_small(labels, fraction_of_percentile)
-    return labels
+    return relabel(labels)

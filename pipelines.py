@@ -3,7 +3,8 @@ from functools import partial
 import loaders
 from models import PyTorchUNet, PyTorchUNetMultitask
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor
+    WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor, CellSizer
+from preprocessing import ImageReaderRescaler
 from steps.base import Step, Dummy, to_dict_inputs
 from steps.preprocessing import XYSplit, ImageReader
 from utils import squeeze_inputs
@@ -63,9 +64,11 @@ def unet_multitask(config, train_mode):
         save_output = False
         load_saved_output = False
 
-    loader = preprocessing(config, model_type='multitask', is_train=train_mode, loader_mode='patching_inference')
-
     if config.loader.dataset_params.use_patching:
+        loader = preprocessing(config, model_type='multitask',
+                               is_train=train_mode,
+                               loader_mode='patching_inference')
+
         unet_multitask_patches = Step(name='unet_multitask',
                                       transformer=PyTorchUNetMultitask(**config.unet),
                                       input_steps=[loader],
@@ -93,6 +96,10 @@ def unet_multitask(config, train_mode):
                               save_output=True,
                               load_saved_output=load_saved_output)
     else:
+        loader = preprocessing(config, model_type='multitask',
+                               is_train=train_mode,
+                               loader_mode=None)
+
         unet_multitask = Step(name='unet_multitask',
                               transformer=PyTorchUNetMultitask(**config.unet),
                               input_steps=[loader],
@@ -100,8 +107,8 @@ def unet_multitask(config, train_mode):
                                        'validation_datagen': ([(loader.name, 'validation_datagen')]),
                                        },
                               cache_dirpath=config.env.cache_dirpath,
-                              cache_output=False,
-                              save_output=False,
+                              cache_output=True,
+                              save_output=True,
                               load_saved_output=False)
 
     mask_resize = Step(name='mask_resize',
@@ -262,6 +269,77 @@ def two_unet_specialists(config, train_mode):
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
+
+
+def scale_estimator(config):
+    reader = Step(name='scale_estimator_reader',
+                  transformer=ImageReader(**config.reader_multitask),
+                  input_data=['input'],
+                  adapter={'meta': ([('input', 'meta')]),
+                           'train_mode': ([('input', 'train_mode')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+
+    loader = Step(name='scale_estimator_loader',
+                  transformer=loaders.ImageSegmentationMultitaskLoader(**config.loader),
+                  input_data=['input'],
+                  input_steps=[reader],
+                  adapter={'X': ([('scale_estimator_reader', 'X')]),
+                           'y': ([('scale_estimator_reader', 'y')]),
+                           'train_mode': ([('input', 'train_mode')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+
+    unet_multitask = Step(name='scale_estimator_unet',
+                          transformer=PyTorchUNetMultitask(**config.unet),
+                          input_steps=[loader],
+                          adapter={'datagen': ([(loader.name, 'datagen')]),
+                                   'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath)
+
+    mask_resize = Step(name='scale_estimator_mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[unet_multitask],
+                       adapter={'images': ([(unet_multitask.name, 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath)
+
+    contour_resize = Step(name='scale_estimator_contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[unet_multitask],
+                          adapter={'images': ([(unet_multitask.name, 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath)
+
+    detached = Step(name='scale_estimator_detached',
+                    transformer=Postprocessor(),
+                    input_steps=[mask_resize, contour_resize],
+                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                             'contours': ([(contour_resize.name, 'resized_images')]),
+                             },
+                    cache_dirpath=config.env.cache_dirpath)
+
+    cell_sizer = Step(name='scale_estimator_cell_sizer',
+                      transformer=CellSizer(),
+                      input_steps=[detached],
+                      adapter={'labeled_images': ([(detached.name, 'labeled_images')])},
+                      cache_dirpath=config.env.cache_dirpath)
+
+    reader_rescaler = Step(name='scale_estimator_rescaler',
+                      transformer=ImageReaderRescaler(),
+                      input_steps=[reader, cell_sizer],
+                      adapter={'sizes': ([(cell_sizer.name, 'sizes')]),
+                               'X': ([(reader.name, 'X')]),
+                               'y': ([(reader.name, 'y')])
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+
+    return reader_rescaler
 
 
 def preprocessing(config, model_type, is_train, loader_mode=None):
@@ -648,5 +726,7 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
              'two_unets_specialists': {'train': partial(two_unet_specialists, train_mode=True),
                                        'inference': partial(two_unet_specialists, train_mode=False),
                                        },
-             'patched_unet_training': {'train': patched_unet_training}
+             'patched_unet_training': {'train': patched_unet_training},
+             'scale_estimator': {'train': scale_estimator,
+                                 'inference': scale_estimator}
              }

@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from utils import initializeBilinear
 
 
 class UNet(nn.Module):
@@ -346,14 +347,16 @@ class DCAN(UNet):
             in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
             out_channels = in_channels
             stride = self.pool_stride ** (self.repeat_blocks + i)
-            up_convs.append(nn.ConvTranspose2d(in_channels=in_channels,
+            up_conv = nn.ConvTranspose2d(in_channels=in_channels,
                                                  out_channels=out_channels,
                                                  kernel_size=kernel_scale*stride,
                                                  stride=stride,
                                                  padding=int((kernel_scale-1)*stride/2+0.5),
                                                  output_padding=((kernel_scale-1)*stride)%2,
                                                  bias=False
-                                                 ))
+                                                 )
+            up_conv.weight.data = initializeBilinear(up_conv.weight.data)
+            up_convs.append(up_conv)
         return nn.ModuleList(up_convs)
 
     def _up_samples(self):

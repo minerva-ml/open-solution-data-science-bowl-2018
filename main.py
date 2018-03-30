@@ -10,11 +10,13 @@ from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters, \
     build_artifacts_metadata
-from utils import get_logger, read_masks, read_params, create_submission, generate_metadata
+from utils import get_logger, read_masks, read_params, create_submission, generate_metadata, set_seed
 
 logger = get_logger()
 ctx = neptune.Context()
 params = read_params(ctx)
+
+set_seed(1234)
 
 
 @click.group()

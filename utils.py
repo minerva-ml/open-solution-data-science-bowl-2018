@@ -4,8 +4,10 @@ import os
 import sys
 from itertools import product
 
+import random
 import numpy as np
 import pandas as pd
+import torch
 import yaml
 from PIL import Image
 from attrdict import AttrDict
@@ -229,3 +231,11 @@ def to_pil(*images):
         return images[0]
     else:
         return images
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)

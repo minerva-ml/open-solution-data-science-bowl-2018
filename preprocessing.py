@@ -1,12 +1,14 @@
+import glob
+
 import numpy as np
-import scipy.ndimage as ndi
 from PIL import Image
+import scipy.ndimage as ndi
 from skimage.transform import resize
 from sklearn.externals import joblib
 from tqdm import tqdm
 
-from steps.base import BaseTransformer
 from preparation import get_contour
+from steps.base import BaseTransformer
 from utils import from_pil, to_pil, clip
 
 
@@ -76,17 +78,12 @@ class ImageReaderRescaler(BaseTransformer):
         self.max_size = max_size
         self.target_ratio = target_ratio
 
-    def transform(self, sizes, X, y, sizes_valid, X_valid, y_valid):
-        X, y = self._transform(sizes, X, y)
-        if X_valid is not None and y_valid is not None:
-            X_valid, y_valid = self._transform(sizes_valid, X_valid, y_valid)
-        else:
-            X_valid, y_valid = None, None
+    def transform(self, sizes, X, y=None, meta=None):
+        X, y = self._transform(sizes, X, y, meta)
 
         return {'X': X,
-                'y': y,
-                'X_valid': X_valid,
-                'y_valid': y_valid}
+                'y': y
+                }
 
     def load(self, filepath):
         return self
@@ -95,30 +92,40 @@ class ImageReaderRescaler(BaseTransformer):
         params = {}
         joblib.dump(params, filepath)
 
-    def _transform(self, sizes, X, y=None):
+    def _transform(self, sizes, X, y=None, meta=None):
         raw_images = X[0]
-        masks, contours, centers = y
-
-        raw_images_adj, masks_adj, contours_adj, centers_adj = [], [], [], []
-        for size, raw_image, mask, contour, center in zip(sizes, raw_images, masks, contours, centers):
-            raw_image_adj = self._adjust_image_size(size, from_pil(raw_image))
-            mask_adj = self._adjust_image_size(size, from_pil(mask))
-            contour_adj = self._get_contour(from_pil(mask_adj))
-            center_adj = self._adjust_image_size(size, from_pil(center))
-
+        raw_images_adj = []
+        for size, raw_image in zip(sizes, raw_images):
+            h_adj, w_adj = self._get_adjusted_image_size(size, from_pil(raw_image))
+            raw_image_adj = resize(from_pil(raw_image), (h_adj, w_adj), preserve_range=True).astype(np.uint8)
             raw_images_adj.append(to_pil(raw_image_adj))
-            masks_adj.append(to_pil(mask_adj))
-            contours_adj.append(to_pil(contour_adj))
-            centers_adj.append(to_pil(center_adj))
-
         X_adj = [raw_images_adj]
-        y_adj = [masks_adj, contours_adj, centers_adj]
 
-        joblib.dump(contours, '/mnt/ml-team/dsb_2018/kuba/debug/contours_pre_resize.pkl')
-        joblib.dump(contours_adj, '/mnt/ml-team/dsb_2018/kuba/debug/contours_post_resize.pkl')
+        if y is not None and meta is not None:
+            masks, contours, centers = y
+            mask_dirnames = meta['file_path_masks'].tolist()
+
+            masks_adj, contours_adj, centers_adj = [], [], []
+            for size, mask, contour, center, mask_dirname in zip(sizes, masks, contours, centers, mask_dirnames):
+                h_adj, w_adj = self._get_adjusted_image_size(size, from_pil(mask))
+
+                mask_adj = resize(from_pil(mask), (h_adj, w_adj), preserve_range=True).astype(np.uint8)
+                center_adj = resize(from_pil(center), (h_adj, w_adj), preserve_range=True).astype(np.uint8)
+                contour_adj = self._get_contour(mask_dirname, (h_adj, w_adj))
+
+                masks_adj.append(to_pil(mask_adj))
+                contours_adj.append(to_pil(contour_adj))
+                centers_adj.append(to_pil(center_adj))
+
+            y_adj = [masks_adj, contours_adj, centers_adj]
+
+            joblib.dump(contours, '/mnt/ml-team/dsb_2018/kuba/debug/contours_pre_resize.pkl')
+            joblib.dump(contours_adj, '/mnt/ml-team/dsb_2018/kuba/debug/contours_post_resize.pkl')
+        else:
+            y_adj = None
         return X_adj, y_adj
 
-    def _adjust_image_size(self, mean_cell_size, img):
+    def _get_adjusted_image_size(self, mean_cell_size, img):
         h, w = img.shape[:2]
         img_area = h * w
 
@@ -128,20 +135,17 @@ class ImageReaderRescaler(BaseTransformer):
         h_adj = int(clip(self.min_size, h * adj_ratio, self.max_size))
         w_adj = int(clip(self.min_size, w * adj_ratio, self.max_size))
 
-        img_adj = resize(img, (h_adj, w_adj), preserve_range=True).astype(np.uint8)
+        return h_adj, w_adj
 
-        return img_adj
-
-    def _get_contour(self, mask):
-        # Todo: This should be done on each mask individually
-        labels, nr_labels = ndi.label(mask)
-
-        label_contours = np.zeros_like(mask).astype(np.uint8)
-        for label in range(1, nr_labels + 1):
-            label_mask = np.where(labels == label, 1, 0)
-            label_contour = get_contour(label_mask)
-            label_contour_inside = np.where((label_contour != 0) & (label_mask != 0), 1, 0).astype(np.uint8)
-            label_contours += label_contour_inside
-
-        label_contours = np.where(label_contours > 0, 255, 0).astype(np.uint8)
-        return label_contours
+    def _get_contour(self, mask_dirname, shape_adjusted):
+        h_adj, w_adj = shape_adjusted
+        overlayed_masks = np.zeros((h_adj, w_adj)).astype(np.uint8)
+        for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
+            image = np.asarray(Image.open(image_filepath))
+            image = ndi.binary_fill_holes(image)
+            image = resize(image, (h_adj, w_adj), preserve_range=True).astype(np.uint8)
+            contour = get_contour(image)
+            inside_contour = np.where(image & contour, 255, 0).astype(np.uint8)
+            overlayed_masks += inside_contour
+        overlayed_masks = np.where(overlayed_masks > 0, 255., 0.).astype(np.uint8)
+        return overlayed_masks

@@ -49,12 +49,7 @@ def split_on_column(meta, column, test_size, random_state=1, valid_category_ids=
 def overlay_masks(images_dir, subdir_name, target_dir):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
-        masks = []
-        for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
-            image = np.asarray(Image.open(image_filepath))
-            image = ndi.binary_fill_holes(image) * 255.
-            masks.append(image)
-        overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+        overlayed_masks = overlay_masks_from_dir(mask_dirname)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
@@ -63,17 +58,7 @@ def overlay_masks(images_dir, subdir_name, target_dir):
 def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
-        masks = []
-        for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
-            image = np.asarray(Image.open(image_filepath))
-            image = ndi.binary_fill_holes(image)
-            contour = get_contour(image)
-            inside_contour = np.where(image & contour, 255, 0)
-            masks.append(inside_contour)
-        if touching_only:
-            overlayed_masks = np.where(np.sum(masks, axis=0) > 128. + 255., 255., 0.).astype(np.uint8)
-        else:
-            overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+        overlayed_masks = overlay_contours_from_dir(mask_dirname, touching_only)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
@@ -82,16 +67,41 @@ def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):
 def overlay_centers(images_dir, subdir_name, target_dir):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
-        masks = []
-        for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
-            image = np.asarray(Image.open(image_filepath))
-            image = ndi.binary_fill_holes(image)
-            masks.append(get_center(image))
-        overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+        overlayed_masks = overlay_centers_from_dir(mask_dirname)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
 
+def overlay_contours_from_dir(mask_dirname, toching_only=False):
+    for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
+        image = np.asarray(Image.open(image_filepath))
+        image = ndi.binary_fill_holes(image)
+        contour = get_contour(image)
+        inside_contour = np.where(image & contour, 255, 0)
+        masks.append(inside_contour)
+    if touching_only:
+        overlayed_masks = np.where(np.sum(masks, axis=0) > 128. + 255., 255., 0.).astype(np.uint8)
+    else:
+        overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+    return overlayed_masks
+
+def overlay_masks_from_dir(mask_dirname):
+    masks = []
+    for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
+        image = np.asarray(Image.open(image_filepath))
+        image = ndi.binary_fill_holes(image) * 255.
+        masks.append(image)
+    overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+    return
+
+def overlay_centers_from_dir(mask_dirname):
+    masks = []
+    for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
+        image = np.asarray(Image.open(image_filepath))
+        image = ndi.binary_fill_holes(image)
+        masks.append(get_center(image))
+    overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+    return overlayed_masks
 
 def get_contour(img):
     img_contour = np.zeros_like(img).astype(np.uint8)

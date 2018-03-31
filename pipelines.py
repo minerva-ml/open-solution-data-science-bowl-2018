@@ -291,19 +291,38 @@ def scale_adjusted_patched_unet_training(config):
     scale_estimator_train = unet_size_estimator(reader_train, config)
     scale_estimator_valid = unet_size_estimator(reader_valid, config)
 
-    reader_rescaler = Step(name='scale_estimator_rescaler',
-                           transformer=ImageReaderRescaler(**config.reader_rescaler),
-                           input_steps=[reader_train, reader_valid,
-                                        scale_estimator_train, scale_estimator_valid],
-                           adapter={'sizes': ([(scale_estimator_train.name, 'sizes')]),
-                                    'X': ([(reader_train.name, 'X')]),
-                                    'y': ([(reader_train.name, 'y')]),
-                                    'sizes_valid': ([(scale_estimator_valid.name, 'sizes')]),
-                                    'X_valid': ([(reader_valid.name, 'X')]),
-                                    'y_valid': ([(reader_valid.name, 'y')]),
+    reader_rescaler_train = Step(name='scale_estimator_rescaler',
+                                 transformer=ImageReaderRescaler(**config.reader_rescaler),
+                                 input_data=['input'],
+                                 input_steps=[reader_train, scale_estimator_train],
+                                 adapter={'sizes': ([(scale_estimator_train.name, 'sizes')]),
+                                          'X': ([(reader_train.name, 'X')]),
+                                          'y': ([(reader_train.name, 'y')]),
+                                          'meta': ([('input', 'meta')]),
+                                          },
+                                 cache_dirpath=config.env.cache_dirpath)
+
+    reader_rescaler_valid = Step(name='scale_estimator_rescaler',
+                                 transformer=ImageReaderRescaler(**config.reader_rescaler),
+                                 input_data=['input'],
+                                 input_steps=[reader_valid, scale_estimator_valid],
+                                 adapter={'sizes': ([(scale_estimator_valid.name, 'sizes')]),
+                                          'X': ([(reader_valid.name, 'X')]),
+                                          'y': ([(reader_valid.name, 'y')]),
+                                          'meta': ([('input', 'meta_valid')]),
+                                          },
+                                 cache_dirpath=config.env.cache_dirpath)
+
+    reader_rescaler = Step(name='scale_estimator_rescaler_join',
+                           transformer=Dummy(),
+                           input_steps=[reader_rescaler_train, reader_rescaler_valid],
+                           adapter={'X': ([(reader_rescaler_train.name, 'X')]),
+                                    'y': ([(reader_rescaler_train.name, 'y')]),
+                                    'X_valid': ([(reader_rescaler_valid.name, 'X')]),
+                                    'y_valid': ([(reader_rescaler_valid.name, 'y')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath,
-                           save_output=True, load_saved_output=True)
+                           save_output=True, load_saved_output=False)
 
     unet_rescaled = unet_multitask_block(reader_rescaler, config,
                                          loader_mode='patched_training',
@@ -327,10 +346,12 @@ def scale_adjusted_patched_unet_inference(config):
 
     reader_rescaler = Step(name='scale_estimator_rescaler',
                            transformer=ImageReaderRescaler(**config.reader_rescaler),
+                           input_data=['input'],
                            input_steps=[reader, scale_estimator],
                            adapter={'sizes': ([(scale_estimator.name, 'sizes')]),
                                     'X': ([(reader.name, 'X')]),
                                     'y': ([(reader.name, 'y')]),
+                                    'meta': ([('input', 'meta')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath)
 
@@ -366,8 +387,7 @@ def scale_adjusted_patched_unet_inference(config):
                          cache_dirpath=config.env.cache_dirpath,
                          save_output=True)
 
-    detached = postprocessing(unet_rescaled, unet_rescaled, config,
-                              postprocessor_name='morphological_postprocessor')
+    detached = postprocessing(unet_rescaled, unet_rescaled, config, postprocessor_name='morphological_postprocessor')
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -384,7 +404,7 @@ def unet_size_estimator(reader, config):
                                 loader_name='loader_size_estimator',
                                 network_name='unet_size_estimator')
 
-    detached = postprocessing(unet, unet, config, postprocessor_name='simple_morphological_postprocessor')
+    detached = postprocessing(unet, unet, config, postprocessor_name='morphological_postprocessor')
 
     cell_sizer = Step(name='scale_estimator_cell_sizer',
                       transformer=CellSizer(),

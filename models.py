@@ -38,8 +38,7 @@ class PyTorchUNetMultitask(Model):
                                     **architecture_config['optimizer_params'])
         self.loss_function = [('mask', segmentation_loss, architecture_config['loss_weights']['mask']),
                               ('contour', segmentation_loss, architecture_config['loss_weights']['contour']),
-                              ('contour_touching', segmentation_loss,
-                               architecture_config['loss_weights']['contour_touching']),
+                              # ('contour_touching', segmentation_loss, architecture_config['loss_weights']['contour_touching']),
                               ('center', segmentation_loss, architecture_config['loss_weights']['center'])]
         self.callbacks = callbacks_unet(self.callbacks_config)
 

@@ -232,6 +232,8 @@ def to_pil(*images):
     else:
         return images
 
+def clip(lo, x, hi):
+    return lo if x <= lo else hi if x >= hi else x
 
 def set_seed(seed):
     random.seed(seed)

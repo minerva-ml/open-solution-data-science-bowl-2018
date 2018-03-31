@@ -11,7 +11,7 @@ params = read_params(ctx)
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
-Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_contours_touching', 'file_path_centers']
+Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
 Y_COLUMNS_SPECIALISTS = ['file_path_mask', 'file_path_contours', 'file_path_contours_touching', 'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
@@ -45,6 +45,9 @@ SOLUTION_CONFIG = AttrDict({
     'reader_specialists': {'x_columns': X_COLUMNS,
                            'y_columns': Y_COLUMNS_SPECIALISTS,
                            },
+    'reader_rescaler': {'min_size': 256,
+                        'max_size': 2000,
+                        'target_ratio': 200},
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,
                                   'use_patching': params.use_patching,
@@ -80,7 +83,7 @@ SOLUTION_CONFIG = AttrDict({
                                 'regularizer_params': {'regularize': True,
                                                        'weight_decay_conv2d': params.l2_reg_conv,
                                                        },
-                                'weights_init': {'function': 'xavier',
+                                'weights_init': {'function': 'he',
                                                  },
                                 'loss_weights': {'mask': params.mask,
                                                  'contour': params.contour,
@@ -104,7 +107,7 @@ SOLUTION_CONFIG = AttrDict({
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {'model_name': 'unet',
-                                'image_nr': 4,
+                                'image_nr': 8,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },

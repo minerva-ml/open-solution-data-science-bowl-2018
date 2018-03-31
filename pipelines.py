@@ -4,9 +4,9 @@ import loaders
 from models import PyTorchUNet, PyTorchUNetMultitask
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
     WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor, CellSizer
-from preprocessing import ImageReaderRescaler
+from preprocessing import ImageReaderRescaler, ImageReader
 from steps.base import Step, Dummy, to_dict_inputs
-from steps.preprocessing import XYSplit, ImageReader
+from steps.preprocessing import XYSplit
 from utils import squeeze_inputs
 
 
@@ -271,8 +271,51 @@ def two_unet_specialists(config, train_mode):
     return output
 
 
-def scale_estimator(config):
-    reader = Step(name='scale_estimator_reader',
+def scale_adjusted_patched_unet_training(config):
+    reader_train = Step(name='reader',
+                        transformer=ImageReader(**config.reader_multitask),
+                        input_data=['input'],
+                        adapter={'meta': ([('input', 'meta')]),
+                                 'meta_valid': ([('input', 'meta_valid')]),
+                                 'train_mode': ([('input', 'train_mode')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+    reader_valid = Step(name='reader',
+                        transformer=ImageReader(**config.reader_multitask),
+                        input_data=['input'],
+                        adapter={'meta': ([('input', 'meta_valid')]),
+                                 'train_mode': ([('input', 'train_mode')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+
+    scale_estimator_train = unet_size_estimator(reader_train, config)
+    scale_estimator_valid = unet_size_estimator(reader_valid, config)
+
+    reader_rescaler = Step(name='scale_estimator_rescaler',
+                           transformer=ImageReaderRescaler(**config.reader_rescaler),
+                           input_steps=[reader_train, reader_valid,
+                                        scale_estimator_train, scale_estimator_valid],
+                           adapter={'sizes': ([(scale_estimator_train.name, 'sizes')]),
+                                    'X': ([(reader_train.name, 'X')]),
+                                    'y': ([(reader_train.name, 'y')]),
+                                    'sizes_valid': ([(scale_estimator_valid.name, 'sizes')]),
+                                    'X_valid': ([(reader_valid.name, 'X')]),
+                                    'y_valid': ([(reader_valid.name, 'y')]),
+                                    },
+                           cache_dirpath=config.env.cache_dirpath,
+                           save_output=True, load_saved_output=True)
+
+    unet_rescaled = unet_multitask_block(reader_rescaler, config,
+                                         loader_mode='patched_training',
+                                         loader_name='loader_rescaled',
+                                         network_name='unet_rescaled',
+                                         force_fitting=True)
+
+    return unet_rescaled
+
+
+def scale_adjusted_patched_unet_inference(config):
+    reader = Step(name='reader',
                   transformer=ImageReader(**config.reader_multitask),
                   input_data=['input'],
                   adapter={'meta': ([('input', 'meta')]),
@@ -280,66 +323,108 @@ def scale_estimator(config):
                            },
                   cache_dirpath=config.env.cache_dirpath)
 
-    loader = Step(name='scale_estimator_loader',
-                  transformer=loaders.ImageSegmentationMultitaskLoader(**config.loader),
+    scale_estimator = unet_size_estimator(reader, config)
+
+    reader_rescaler = Step(name='scale_estimator_rescaler',
+                           transformer=ImageReaderRescaler(**config.reader_rescaler),
+                           input_steps=[reader, scale_estimator],
+                           adapter={'sizes': ([(scale_estimator.name, 'sizes')]),
+                                    'X': ([(reader.name, 'X')]),
+                                    'y': ([(reader.name, 'y')]),
+                                    },
+                           cache_dirpath=config.env.cache_dirpath)
+
+    loader = Step(name='loader_rescaled',
+                  transformer=loaders.ImageSegmentationMultitaskLoaderPatchingInference(**config.loader),
                   input_data=['input'],
-                  input_steps=[reader],
-                  adapter={'X': ([('scale_estimator_reader', 'X')]),
-                           'y': ([('scale_estimator_reader', 'y')]),
+                  input_steps=[reader_rescaler],
+                  adapter={'X': ([(reader_rescaler.name, 'X')]),
+                           'y': ([(reader_rescaler.name, 'y')]),
                            'train_mode': ([('input', 'train_mode')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
 
-    unet_multitask = Step(name='scale_estimator_unet',
-                          transformer=PyTorchUNetMultitask(**config.unet),
-                          input_steps=[loader],
-                          adapter={'datagen': ([(loader.name, 'datagen')]),
-                                   'validation_datagen': ([(loader.name, 'validation_datagen')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath)
+    unet_rescaled_patches = Step(name='unet_rescaled',
+                                 transformer=PyTorchUNetMultitask(**config.unet),
+                                 input_steps=[loader],
+                                 adapter={'datagen': ([(loader.name, 'datagen')]),
+                                          'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                          },
+                                 cache_dirpath=config.env.cache_dirpath)
 
-    mask_resize = Step(name='scale_estimator_mask_resize',
-                       transformer=Resizer(),
-                       input_data=['input'],
-                       input_steps=[unet_multitask],
-                       adapter={'images': ([(unet_multitask.name, 'mask_prediction')]),
-                                'target_sizes': ([('input', 'target_sizes')]),
-                                },
-                       cache_dirpath=config.env.cache_dirpath)
+    unet_rescaled = Step(name='patch_joiner',
+                         transformer=loaders.PatchCombiner(**config.patch_combiner),
+                         input_steps=[unet_rescaled_patches, loader],
+                         adapter={'patch_ids': ([(loader.name, 'patch_ids')]),
+                                  'outputs': ([(unet_rescaled_patches.name, 'mask_prediction'),
+                                               (unet_rescaled_patches.name, 'contour_prediction'),
+                                               (unet_rescaled_patches.name, 'center_prediction')],
+                                              partial(to_dict_inputs, keys=['mask_prediction',
+                                                                            'contour_prediction',
+                                                                            'center_prediction'])),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath,
+                         save_output=True,
+                         load_saved_output=load_saved_output)
 
-    contour_resize = Step(name='scale_estimator_contour_resize',
-                          transformer=Resizer(),
-                          input_data=['input'],
-                          input_steps=[unet_multitask],
-                          adapter={'images': ([(unet_multitask.name, 'contour_prediction')]),
-                                   'target_sizes': ([('input', 'target_sizes')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath)
+    detached = postprocessing(unet_rescaled, unet_rescaled, config)
 
-    detached = Step(name='scale_estimator_detached',
-                    transformer=Postprocessor(),
-                    input_steps=[mask_resize, contour_resize],
-                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
-                             'contours': ([(contour_resize.name, 'resized_images')]),
-                             },
-                    cache_dirpath=config.env.cache_dirpath)
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[detached],
+                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+
+def unet_size_estimator(reader, config):
+    unet = unet_multitask_block(reader, config,
+                                loader_mode=None,
+                                loader_name='loader_size_estimator',
+                                network_name='unet_size_estimator')
+
+    detached = postprocessing(unet, unet, config)
 
     cell_sizer = Step(name='scale_estimator_cell_sizer',
                       transformer=CellSizer(),
                       input_steps=[detached],
                       adapter={'labeled_images': ([(detached.name, 'labeled_images')])},
-                      cache_dirpath=config.env.cache_dirpath)
+                      cache_dirpath=config.env.cache_dirpath,
+                      )
+    return cell_sizer
 
-    reader_rescaler = Step(name='scale_estimator_rescaler',
-                      transformer=ImageReaderRescaler(),
-                      input_steps=[reader, cell_sizer],
-                      adapter={'sizes': ([(cell_sizer.name, 'sizes')]),
-                               'X': ([(reader.name, 'X')]),
-                               'y': ([(reader.name, 'y')])
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
 
-    return reader_rescaler
+def unet_multitask_block(reader, config, loader_name, network_name, loader_mode, force_fitting=False):
+    if loader_mode == 'patching_train':
+        Loader = loaders.ImageSegmentationMultitaskLoaderPatchingTrain
+    elif loader_mode == 'patching_inference':
+        Loader = loaders.ImageSegmentationMultitaskLoaderPatchingInference
+    else:
+        Loader = loaders.ImageSegmentationMultitaskLoader
+
+    loader = Step(name=loader_name,
+                  transformer=Loader(**config.loader),
+                  input_data=['input'],
+                  input_steps=[reader],
+                  adapter={'X': ([(reader.name, 'X')]),
+                           'y': ([(reader.name, 'y')]),
+                           'train_mode': ([('input', 'train_mode')]),
+                           'X_valid': ([(reader.name, 'X_valid')]),
+                           'y_valid': ([(reader.name, 'y_valid')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+
+    unet_multitask = Step(name=network_name,
+                          transformer=PyTorchUNetMultitask(**config.unet),
+                          input_steps=[loader],
+                          adapter={'datagen': ([(loader.name, 'datagen')]),
+                                   'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath,
+                          force_fitting=force_fitting)
+
+    return unet_multitask
 
 
 def preprocessing(config, model_type, is_train, loader_mode=None):
@@ -362,6 +447,37 @@ def preprocessing(config, model_type, is_train, loader_mode=None):
         else:
             raise NotImplementedError
     return loader
+
+
+def postprocessing(model_mask, model_contour, config):
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[model_mask],
+                       adapter={'images': ([(model_mask.name, 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath)
+
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[model_contour],
+                          adapter={'images': ([(model_contour.name, 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath)
+
+    detached = Step(name='detached',
+                    transformer=Postprocessor(),
+                    input_steps=[mask_resize, contour_resize],
+                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                             'contours': ([(contour_resize.name, 'resized_images')]),
+                             },
+                    cache_dirpath=config.env.cache_dirpath,
+                    )
+
+    return detached
 
 
 def mask_postprocessing(model, config, save_output=True):
@@ -493,52 +609,26 @@ def _preprocessing_single_in_memory(config, is_train, use_patching):
     if use_patching:
         raise NotImplementedError
     else:
-        if is_train:
-            reader_train = Step(name='reader_train',
-                                transformer=ImageReader(**config.reader_single),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta')]),
-                                         'train_mode': ([('input', 'train_mode')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath)
+        reader = Step(name='reader',
+                      transformer=ImageReader(**config.reader_single),
+                      input_data=['input'],
+                      adapter={'meta': ([('input', 'meta')]),
+                               'meta_valid': ([('input', 'meta_valid')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
 
-            reader_inference = Step(name='reader_inference',
-                                    transformer=ImageReader(**config.reader_single),
-                                    input_data=['input'],
-                                    adapter={'meta': ([('input', 'meta_valid')]),
-                                             'train_mode': ([('input', 'train_mode')]),
-                                             },
-                                    cache_dirpath=config.env.cache_dirpath)
-
-            loader = Step(name='loader',
-                          transformer=loaders.ImageSegmentationLoader(**config.loader),
-                          input_data=['input'],
-                          input_steps=[reader_train, reader_inference],
-                          adapter={'X': ([('reader_train', 'X')]),
-                                   'y': ([('reader_train', 'y')]),
-                                   'train_mode': ([('input', 'train_mode')]),
-                                   'X_valid': ([('reader_inference', 'X')]),
-                                   'y_valid': ([('reader_inference', 'y')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath)
-        else:
-            reader_inference = Step(name='reader_inference',
-                                    transformer=ImageReader(**config.reader_single),
-                                    input_data=['input'],
-                                    adapter={'meta': ([('input', 'meta')]),
-                                             'train_mode': ([('input', 'train_mode')]),
-                                             },
-                                    cache_dirpath=config.env.cache_dirpath)
-
-            loader = Step(name='loader',
-                          transformer=loaders.ImageSegmentationLoader(**config.loader),
-                          input_data=['input'],
-                          input_steps=[reader_inference],
-                          adapter={'X': ([('reader_inference', 'X')]),
-                                   'y': ([('reader_inference', 'y')]),
-                                   'train_mode': ([('input', 'train_mode')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath)
+        loader = Step(name='loader',
+                      transformer=loaders.ImageSegmentationLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[reader],
+                      adapter={'X': ([('reader', 'X')]),
+                               'y': ([('reader', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('reader', 'X_valid')]),
+                               'y_valid': ([('reader', 'y_valid')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
     return loader
 
 
@@ -608,54 +698,27 @@ def _preprocessing_multitask_in_memory(config, is_train, loader_mode, is_special
     else:
         Loader = loaders.ImageSegmentationMultitaskLoader
 
-    if is_train:
-        reader_train = Step(name='reader_train',
-                            transformer=ImageReader(**reader_config),
-                            input_data=['input'],
-                            adapter={'meta': ([('input', 'meta')]),
-                                     'train_mode': ([('input', 'train_mode')]),
-                                     },
-                            cache_dirpath=config.env.cache_dirpath,
-                            save_output=False, load_saved_output=False)
+    reader = Step(name='reader',
+                  transformer=ImageReader(**reader_config),
+                  input_data=['input'],
+                  adapter={'meta': ([('input', 'meta')]),
+                           'meta_valid': ([('input', 'meta_valid')]),
+                           'train_mode': ([('input', 'train_mode')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath,
+                  save_output=False, load_saved_output=False)
 
-        reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**reader_config),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta_valid')]),
-                                         'train_mode': ([('input', 'train_mode')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath,
-                                save_output=False, load_saved_output=False)
-
-        loader = Step(name='loader',
-                      transformer=Loader(**config.loader),
-                      input_data=['input'],
-                      input_steps=[reader_train, reader_inference],
-                      adapter={'X': ([('reader_train', 'X')]),
-                               'y': ([('reader_train', 'y')]),
-                               'train_mode': ([('input', 'train_mode')]),
-                               'X_valid': ([('reader_inference', 'X')]),
-                               'y_valid': ([('reader_inference', 'y')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
-    else:
-        reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**reader_config),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta')]),
-                                         'train_mode': ([('input', 'train_mode')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath)
-
-        loader = Step(name='loader',
-                      transformer=Loader(**config.loader),
-                      input_data=['input'],
-                      input_steps=[reader_inference],
-                      adapter={'X': ([('reader_inference', 'X')]),
-                               'y': ([('reader_inference', 'y')]),
-                               'train_mode': ([('input', 'train_mode')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
+    loader = Step(name='loader',
+                  transformer=Loader(**config.loader),
+                  input_data=['input'],
+                  input_steps=[reader],
+                  adapter={'X': ([('reader', 'X')]),
+                           'y': ([('reader', 'y')]),
+                           'train_mode': ([('input', 'train_mode')]),
+                           'X_valid': ([('reader', 'X_valid')]),
+                           'y_valid': ([('reader', 'y_valid')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
     return loader
 
 
@@ -727,6 +790,6 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                                        'inference': partial(two_unet_specialists, train_mode=False),
                                        },
              'patched_unet_training': {'train': patched_unet_training},
-             'scale_estimator': {'train': scale_estimator,
-                                 'inference': scale_estimator}
+             'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet_training,
+                                             'inference': scale_adjusted_patched_unet_inference}
              }

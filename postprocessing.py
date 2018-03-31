@@ -151,7 +151,6 @@ class CellSizer(BaseTransformer):
         for image in tqdm(labeled_images):
             mean_size = mean_cell_size(image)
             mean_sizes.append(mean_size)
-        print(mean_sizes)
         return {'sizes': mean_sizes}
 
     def load(self, filepath):

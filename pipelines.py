@@ -364,10 +364,10 @@ def scale_adjusted_patched_unet_inference(config):
                                                                             'center_prediction'])),
                                   },
                          cache_dirpath=config.env.cache_dirpath,
-                         save_output=True,
-                         load_saved_output=load_saved_output)
+                         save_output=True)
 
-    detached = postprocessing(unet_rescaled, unet_rescaled, config)
+    detached = postprocessing(unet_rescaled, unet_rescaled, config,
+                              postprocessor_name='morphological_postprocessor')
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -384,7 +384,7 @@ def unet_size_estimator(reader, config):
                                 loader_name='loader_size_estimator',
                                 network_name='unet_size_estimator')
 
-    detached = postprocessing(unet, unet, config)
+    detached = postprocessing(unet, unet, config, postprocessor_name='simple_morphological_postprocessor')
 
     cell_sizer = Step(name='scale_estimator_cell_sizer',
                       transformer=CellSizer(),
@@ -449,7 +449,7 @@ def preprocessing(config, model_type, is_train, loader_mode=None):
     return loader
 
 
-def postprocessing(model_mask, model_contour, config):
+def postprocessing(model_mask, model_contour, config, postprocessor_name):
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
                        input_data=['input'],
@@ -468,7 +468,7 @@ def postprocessing(model_mask, model_contour, config):
                                    },
                           cache_dirpath=config.env.cache_dirpath)
 
-    detached = Step(name='detached',
+    detached = Step(name=postprocessor_name,
                     transformer=Postprocessor(),
                     input_steps=[mask_resize, contour_resize],
                     adapter={'images': ([(mask_resize.name, 'resized_images')]),

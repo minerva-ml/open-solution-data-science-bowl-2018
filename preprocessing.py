@@ -116,7 +116,6 @@ class ImageReaderRescaler(BaseTransformer):
 
         joblib.dump(contours, '/mnt/ml-team/dsb_2018/kuba/debug/contours_pre_resize.pkl')
         joblib.dump(contours_adj, '/mnt/ml-team/dsb_2018/kuba/debug/contours_post_resize.pkl')
-
         return X_adj, y_adj
 
     def _adjust_image_size(self, mean_cell_size, img):
@@ -137,11 +136,12 @@ class ImageReaderRescaler(BaseTransformer):
         # Todo: This should be done on each mask individually
         labels, nr_labels = ndi.label(mask)
 
-        label_contours = np.zeros_like(mask)
+        label_contours = np.zeros_like(mask).astype(np.uint8)
         for label in range(1, nr_labels + 1):
-            label_mask = np.where(mask == label, 1, 0)
+            label_mask = np.where(labels == label, 1, 0)
             label_contour = get_contour(label_mask)
-            label_contours += label_contour
+            label_contour_inside = np.where((label_contour != 0) & (label_mask != 0), 1, 0).astype(np.uint8)
+            label_contours += label_contour_inside
 
-        label_contours = np.where(label_contours > 0, 255, 0)
+        label_contours = np.where(label_contours > 0, 255, 0).astype(np.uint8)
         return label_contours

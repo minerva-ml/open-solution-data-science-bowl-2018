@@ -1,5 +1,8 @@
 import os
 import shutil
+from multiprocessing import set_start_method
+
+set_start_method('spawn')
 
 import click
 import pandas as pd
@@ -10,9 +13,9 @@ from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters, \
     build_artifacts_metadata
-from utils import get_logger, read_masks, read_params, create_submission, generate_metadata, set_seed
+from utils import init_logger, read_masks, read_params, create_submission, generate_metadata, set_seed
 
-logger = get_logger()
+logger = init_logger()
 ctx = neptune.Context()
 params = read_params(ctx)
 
@@ -62,25 +65,28 @@ def prepare_masks():
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
-              required=False)
-def train_pipeline(pipeline_name, validation_size, dev_mode):
-    _train_pipeline(pipeline_name, validation_size, dev_mode)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-s', '--simple_cv', help='use simple train test split', is_flag=True, required=False)
+def train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
+    _train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
 
 
-def _train_pipeline(pipeline_name, validation_size, dev_mode):
+def _train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, simple_split=True)
-    #     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
 
+    if simple_cv:
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, simple_split=True)
+    else:
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size,
+                                                               valid_category_ids=valid_ids)
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(2, random_state=1234)
+        meta_train_split = meta_train_split.sample(8, random_state=1234)
         meta_valid_split = meta_valid_split.sample(2, random_state=1234)
 
     data = {'input': {'meta': meta_train_split,
@@ -99,15 +105,25 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def evaluate_pipeline(pipeline_name, validation_size):
-    _evaluate_pipeline(pipeline_name, validation_size)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-s', '--simple_cv', help='use simple train test split', is_flag=True, required=False)
+def evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
+    _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
 
 
-def _evaluate_pipeline(pipeline_name, validation_size):
+def _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
+
+    if simple_cv:
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, simple_split=True)
+    else:
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size,
+                                                               valid_category_ids=valid_ids)
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(2, random_state=1234)
 
     data = {'input': {'meta': meta_valid_split,
                       'meta_valid': None,
@@ -136,13 +152,17 @@ def _evaluate_pipeline(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-def predict_pipeline(pipeline_name):
-    _predict_pipeline(pipeline_name)
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+def predict_pipeline(pipeline_name, dev_mode):
+    _predict_pipeline(pipeline_name, dev_mode)
 
 
-def _predict_pipeline(pipeline_name):
+def _predict_pipeline(pipeline_name, dev_mode):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_test = meta[meta['is_train'] == 0]
+
+    if dev_mode:
+        meta_test = meta_test.sample(2, random_state=1234)
 
     data = {'input': {'meta': meta_test,
                       'meta_valid': None,
@@ -163,37 +183,39 @@ def _predict_pipeline(pipeline_name):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
-              required=False)
-def train_evaluate_predict_pipeline(pipeline_name, validation_size, dev_mode):
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-s', '--simple_cv', help='use simple train test split', is_flag=True, required=False)
+def train_evaluate_predict_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
     logger.info('training')
-    _train_pipeline(pipeline_name, validation_size, dev_mode)
+    _train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
     logger.info('evaluating')
-    _evaluate_pipeline(pipeline_name, validation_size)
+    _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
     logger.info('predicting')
-    _predict_pipeline(pipeline_name)
+    _predict_pipeline(pipeline_name, dev_mode)
 
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', default=False,
-              required=False)
-def train_evaluate_pipeline(pipeline_name, validation_size, dev_mode):
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-s', '--simple_cv', help='use simple train test split', is_flag=True, required=False)
+def train_evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
     logger.info('training')
-    _train_pipeline(pipeline_name, validation_size, dev_mode)
+    _train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
     logger.info('evaluating')
-    _evaluate_pipeline(pipeline_name, validation_size)
+    _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
 
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def evaluate_predict_pipeline(pipeline_name, validation_size):
+@click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
+@click.option('-s', '--simple_cv', help='use simple train test split', is_flag=True, required=False)
+def evaluate_predict_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
     logger.info('evaluating')
-    _evaluate_pipeline(pipeline_name, validation_size)
+    _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv)
     logger.info('predicting')
-    _predict_pipeline(pipeline_name)
+    _predict_pipeline(pipeline_name, dev_mode)
 
 
 if __name__ == "__main__":

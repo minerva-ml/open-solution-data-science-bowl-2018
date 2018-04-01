@@ -19,8 +19,7 @@ def read_yaml(filepath):
         config = yaml.load(f)
     return AttrDict(config)
 
-
-def get_logger():
+def init_logger():
     logger = logging.getLogger('dsb-2018')
     logger.setLevel(logging.INFO)
     message_format = logging.Formatter(fmt='%(asctime)s %(name)s >>> %(message)s',
@@ -37,6 +36,8 @@ def get_logger():
 
     return logger
 
+def get_logger():
+    return logging.getLogger('dsb-2018')
 
 def decompose(labeled):
     nr_true = labeled.max()

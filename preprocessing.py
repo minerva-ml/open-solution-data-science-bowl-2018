@@ -95,7 +95,7 @@ class ImageReaderRescaler(BaseTransformer):
     def _transform(self, sizes, X, y=None, meta=None):
         raw_images = X[0]
         raw_images_adj = []
-        for size, raw_image in zip(sizes, raw_images):
+        for size, raw_image in tqdm(zip(sizes, raw_images)):
             h_adj, w_adj = self._get_adjusted_image_size(size, from_pil(raw_image))
             raw_image_adj = resize(from_pil(raw_image), (h_adj, w_adj), preserve_range=True).astype(np.uint8)
             raw_images_adj.append(to_pil(raw_image_adj))
@@ -106,7 +106,7 @@ class ImageReaderRescaler(BaseTransformer):
             mask_dirnames = meta['file_path_masks'].tolist()
 
             masks_adj, contours_adj, centers_adj = [], [], []
-            for size, mask, contour, center, mask_dirname in zip(sizes, masks, contours, centers, mask_dirnames):
+            for size, mask, contour, center, mask_dirname in tqdm(zip(sizes, masks, contours, centers, mask_dirnames)):
                 h_adj, w_adj = self._get_adjusted_image_size(size, from_pil(mask))
 
                 mask_adj = resize(from_pil(mask), (h_adj, w_adj), preserve_range=True).astype(np.uint8)
@@ -140,7 +140,7 @@ class ImageReaderRescaler(BaseTransformer):
     def _get_contour(self, mask_dirname, shape_adjusted):
         h_adj, w_adj = shape_adjusted
         overlayed_masks = np.zeros((h_adj, w_adj)).astype(np.uint8)
-        for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
+        for image_filepath in tqdm(glob.glob('{}/*'.format(mask_dirname))):
             image = np.asarray(Image.open(image_filepath))
             image = ndi.binary_fill_holes(image)
             image = resize(image, (h_adj, w_adj), preserve_range=True).astype(np.uint8)

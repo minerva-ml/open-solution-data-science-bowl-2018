@@ -291,7 +291,7 @@ def scale_adjusted_patched_unet_training(config):
     scale_estimator_train = unet_size_estimator(reader_train, config)
     scale_estimator_valid = unet_size_estimator(reader_valid, config)
 
-    reader_rescaler_train = Step(name='scale_estimator_rescaler',
+    reader_rescaler_train = Step(name='rescaler',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
                                  input_data=['input'],
                                  input_steps=[reader_train, scale_estimator_train],
@@ -302,7 +302,7 @@ def scale_adjusted_patched_unet_training(config):
                                           },
                                  cache_dirpath=config.env.cache_dirpath)
 
-    reader_rescaler_valid = Step(name='scale_estimator_rescaler',
+    reader_rescaler_valid = Step(name='rescaler',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
                                  input_data=['input'],
                                  input_steps=[reader_valid, scale_estimator_valid],
@@ -313,7 +313,7 @@ def scale_adjusted_patched_unet_training(config):
                                           },
                                  cache_dirpath=config.env.cache_dirpath)
 
-    reader_rescaler = Step(name='scale_estimator_rescaler_join',
+    reader_rescaler = Step(name='rescaler_join',
                            transformer=Dummy(),
                            input_steps=[reader_rescaler_train, reader_rescaler_valid],
                            adapter={'X': ([(reader_rescaler_train.name, 'X')]),
@@ -326,8 +326,7 @@ def scale_adjusted_patched_unet_training(config):
 
     unet_rescaled = unet_multitask_block(reader_rescaler, config,
                                          loader_mode='patched_training',
-                                         loader_name='loader_rescaled',
-                                         network_name='unet_rescaled',
+                                         suffix='_rescaled',
                                          force_fitting=True)
 
     return unet_rescaled
@@ -340,11 +339,12 @@ def scale_adjusted_patched_unet_inference(config):
                   adapter={'meta': ([('input', 'meta')]),
                            'train_mode': ([('input', 'train_mode')]),
                            },
-                  cache_dirpath=config.env.cache_dirpath)
+                  cache_dirpath=config.env.cache_dirpath,
+                  cache_output=True)
 
-    scale_estimator = unet_size_estimator(reader, config)
+    scale_estimator = unet_size_estimator(reader, config, cache_output=True)
 
-    reader_rescaler = Step(name='scale_estimator_rescaler',
+    reader_rescaler = Step(name='rescaler',
                            transformer=ImageReaderRescaler(**config.reader_rescaler),
                            input_data=['input'],
                            input_steps=[reader, scale_estimator],
@@ -353,30 +353,32 @@ def scale_adjusted_patched_unet_inference(config):
                                     'y': ([(reader.name, 'y')]),
                                     'meta': ([('input', 'meta')]),
                                     },
-                           cache_dirpath=config.env.cache_dirpath)
+                           cache_dirpath=config.env.cache_dirpath,
+                           cache_output=True)
 
-    loader = Step(name='loader_rescaled',
-                  transformer=loaders.ImageSegmentationMultitaskLoaderPatchingInference(**config.loader),
-                  input_data=['input'],
-                  input_steps=[reader_rescaler],
-                  adapter={'X': ([(reader_rescaler.name, 'X')]),
-                           'y': ([(reader_rescaler.name, 'y')]),
-                           'train_mode': ([('input', 'train_mode')]),
-                           },
-                  cache_dirpath=config.env.cache_dirpath)
+    loader_rescaled = Step(name='loader_rescaled',
+                           transformer=loaders.ImageSegmentationMultitaskLoaderPatchingInference(**config.loader),
+                           input_data=['input'],
+                           input_steps=[reader_rescaler],
+                           adapter={'X': ([(reader_rescaler.name, 'X')]),
+                                    'y': ([(reader_rescaler.name, 'y')]),
+                                    'train_mode': ([('input', 'train_mode')]),
+                                    },
+                           cache_dirpath=config.env.cache_dirpath,
+                           cache_output=True)
 
     unet_rescaled_patches = Step(name='unet_rescaled',
                                  transformer=PyTorchUNetMultitask(**config.unet),
-                                 input_steps=[loader],
-                                 adapter={'datagen': ([(loader.name, 'datagen')]),
-                                          'validation_datagen': ([(loader.name, 'validation_datagen')]),
+                                 input_steps=[loader_rescaled],
+                                 adapter={'datagen': ([(loader_rescaled.name, 'datagen')]),
+                                          'validation_datagen': ([(loader_rescaled.name, 'validation_datagen')]),
                                           },
                                  cache_dirpath=config.env.cache_dirpath)
 
     unet_rescaled = Step(name='patch_joiner',
                          transformer=loaders.PatchCombiner(**config.patch_combiner),
-                         input_steps=[unet_rescaled_patches, loader],
-                         adapter={'patch_ids': ([(loader.name, 'patch_ids')]),
+                         input_steps=[unet_rescaled_patches, loader_rescaled],
+                         adapter={'patch_ids': ([(loader_rescaled.name, 'patch_ids')]),
                                   'outputs': ([(unet_rescaled_patches.name, 'mask_prediction'),
                                                (unet_rescaled_patches.name, 'contour_prediction'),
                                                (unet_rescaled_patches.name, 'center_prediction')],
@@ -385,37 +387,36 @@ def scale_adjusted_patched_unet_inference(config):
                                                                             'center_prediction'])),
                                   },
                          cache_dirpath=config.env.cache_dirpath,
-                         save_output=True)
+                         cache_output=True)
 
-    detached = postprocessing(unet_rescaled, unet_rescaled, config, postprocessor_name='morphological_postprocessor')
+    morphological_postprocessing = postprocessing(unet_rescaled, unet_rescaled, config,
+                                                  suffix='_rescaled', save_output=True)
 
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                  input_steps=[morphological_postprocessing],
+                  adapter={'y_pred': ([(morphological_postprocessing.name, 'labeled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
 
-def unet_size_estimator(reader, config):
-    unet = unet_multitask_block(reader, config,
-                                loader_mode=None,
-                                loader_name='loader_size_estimator',
-                                network_name='unet_size_estimator')
+def unet_size_estimator(reader, config, suffix='_size_estimator', cache_output=False):
+    unet = unet_multitask_block(reader, config, loader_mode=None, suffix=suffix, cache_output=cache_output)
 
-    detached = postprocessing(unet, unet, config, postprocessor_name='morphological_postprocessor')
+    morphological_postprocessing = postprocessing(unet, unet, config, suffix=suffix,cache_output=cache_output)
 
-    cell_sizer = Step(name='scale_estimator_cell_sizer',
+    cell_sizer = Step(name='cell_sizer{}'.format(suffix),
                       transformer=CellSizer(),
-                      input_steps=[detached],
-                      adapter={'labeled_images': ([(detached.name, 'labeled_images')])},
+                      input_steps=[morphological_postprocessing],
+                      adapter={'labeled_images': ([(morphological_postprocessing.name, 'labeled_images')])},
                       cache_dirpath=config.env.cache_dirpath,
+                      cache_output=cache_output
                       )
     return cell_sizer
 
 
-def unet_multitask_block(reader, config, loader_name, network_name, loader_mode, force_fitting=False):
+def unet_multitask_block(reader, config, loader_mode, force_fitting=False, suffix='',cache_output=False):
     if loader_mode == 'patching_train':
         Loader = loaders.ImageSegmentationMultitaskLoaderPatchingTrain
     elif loader_mode == 'patching_inference':
@@ -423,7 +424,7 @@ def unet_multitask_block(reader, config, loader_name, network_name, loader_mode,
     else:
         Loader = loaders.ImageSegmentationMultitaskLoader
 
-    loader = Step(name=loader_name,
+    loader = Step(name='loader{}'.format(suffix),
                   transformer=Loader(**config.loader),
                   input_data=['input'],
                   input_steps=[reader],
@@ -433,16 +434,18 @@ def unet_multitask_block(reader, config, loader_name, network_name, loader_mode,
                            'X_valid': ([(reader.name, 'X_valid')]),
                            'y_valid': ([(reader.name, 'y_valid')]),
                            },
-                  cache_dirpath=config.env.cache_dirpath)
+                  cache_dirpath=config.env.cache_dirpath,
+                  cache_output=cache_output)
 
-    unet_multitask = Step(name=network_name,
+    unet_multitask = Step(name='unet{}'.format(suffix),
                           transformer=PyTorchUNetMultitask(**config.unet),
                           input_steps=[loader],
                           adapter={'datagen': ([(loader.name, 'datagen')]),
                                    'validation_datagen': ([(loader.name, 'validation_datagen')]),
                                    },
                           cache_dirpath=config.env.cache_dirpath,
-                          force_fitting=force_fitting)
+                          force_fitting=force_fitting,
+                          cache_output=cache_output)
 
     return unet_multitask
 
@@ -469,35 +472,40 @@ def preprocessing(config, model_type, is_train, loader_mode=None):
     return loader
 
 
-def postprocessing(model_mask, model_contour, config, postprocessor_name):
-    mask_resize = Step(name='mask_resize',
+def postprocessing(model_mask, model_contour, config, suffix='', save_output=False, cache_output=False):
+    mask_resize = Step(name='mask_resize{}'.format(suffix),
                        transformer=Resizer(),
                        input_data=['input'],
                        input_steps=[model_mask],
                        adapter={'images': ([(model_mask.name, 'mask_prediction')]),
                                 'target_sizes': ([('input', 'target_sizes')]),
                                 },
-                       cache_dirpath=config.env.cache_dirpath)
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output,
+                       cache_output=cache_output)
 
-    contour_resize = Step(name='contour_resize',
+    contour_resize = Step(name='contour_resize{}'.format(suffix),
                           transformer=Resizer(),
                           input_data=['input'],
                           input_steps=[model_contour],
                           adapter={'images': ([(model_contour.name, 'contour_prediction')]),
                                    'target_sizes': ([('input', 'target_sizes')]),
                                    },
-                          cache_dirpath=config.env.cache_dirpath)
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output,
+                          cache_output=cache_output)
 
-    detached = Step(name=postprocessor_name,
-                    transformer=Postprocessor(),
-                    input_steps=[mask_resize, contour_resize],
-                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
-                             'contours': ([(contour_resize.name, 'resized_images')]),
-                             },
-                    cache_dirpath=config.env.cache_dirpath,
-                    )
+    morphological_postprocessing = Step(name='morphological_postprocessing{}'.format(suffix),
+                                        transformer=Postprocessor(),
+                                        input_steps=[mask_resize, contour_resize],
+                                        adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                                                 'contours': ([(contour_resize.name, 'resized_images')]),
+                                                 },
+                                        cache_dirpath=config.env.cache_dirpath,
+                                        save_output=save_output,
+                                        cache_output=cache_output)
 
-    return detached
+    return morphological_postprocessing
 
 
 def mask_postprocessing(model, config, save_output=True):
@@ -810,6 +818,7 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                                        'inference': partial(two_unet_specialists, train_mode=False),
                                        },
              'patched_unet_training': {'train': patched_unet_training},
-             'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet_training,
+             'scale_adjusted_patched_unet_training': {'train': patched_unet_training},
+             'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet_inference,
                                              'inference': scale_adjusted_patched_unet_inference}
              }

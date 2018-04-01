@@ -48,6 +48,7 @@ SOLUTION_CONFIG = AttrDict({
     'reader_rescaler': {'min_size': 256,
                         'max_size': 2000,
                         'target_ratio': 200},
+    'stain_deconvolution': {'mode': 'hematoxylin_eosin_sum'},
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,
                                   'use_patching': params.use_patching,

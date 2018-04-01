@@ -4,7 +4,7 @@ import loaders
 from models import PyTorchUNet, PyTorchUNetMultitask
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
     WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor, CellSizer
-from preprocessing import ImageReaderRescaler, ImageReader
+from preprocessing import ImageReaderRescaler, ImageReader, StainDeconvolution
 from steps.base import Step, Dummy, to_dict_inputs
 from steps.preprocessing import XYSplit
 from utils import squeeze_inputs
@@ -302,6 +302,13 @@ def scale_adjusted_patched_unet_training(config):
                                           },
                                  cache_dirpath=config.env.cache_dirpath)
 
+    stain_deconvolution_train = Step(name='stain_deconvolution',
+                                     transformer=StainDeconvolution(**config.stain_deconvolution),
+                                     input_steps=[reader_rescaler_train],
+                                     adapter={'X': ([(reader_rescaler_train.name, 'X')]),
+                                              },
+                                     cache_dirpath=config.env.cache_dirpath)
+
     reader_rescaler_valid = Step(name='rescaler',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
                                  input_data=['input'],
@@ -322,9 +329,35 @@ def scale_adjusted_patched_unet_training(config):
                                     'y_valid': ([(reader_rescaler_valid.name, 'y')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath,
-                           save_output=True, load_saved_output=False)
+                           save_output=True, load_saved_output=True)
 
-    unet_rescaled = unet_multitask_block(reader_rescaler, config,
+    stain_deconvolution_train = Step(name='stain_deconvolution',
+                                     transformer=StainDeconvolution(**config.stain_deconvolution),
+                                     input_steps=[reader_rescaler],
+                                     adapter={'X': ([(reader_rescaler.name, 'X')]),
+                                              },
+                                     cache_dirpath=config.env.cache_dirpath)
+
+    stain_deconvolution_valid = Step(name='stain_deconvolution',
+                                     transformer=StainDeconvolution(**config.stain_deconvolution),
+                                     input_steps=[reader_rescaler],
+                                     adapter={'X': ([(reader_rescaler.name, 'X_valid')]),
+                                              },
+                                     cache_dirpath=config.env.cache_dirpath)
+
+    rescaler_deconver = Step(name='rescaled_deconved',
+                             transformer=Dummy(),
+                             input_steps=[reader_rescaler,
+                                          stain_deconvolution_train, stain_deconvolution_valid],
+                             adapter={'X': ([(stain_deconvolution_train.name, 'X')]),
+                                      'y': ([(reader_rescaler.name, 'y')]),
+                                      'X_valid': ([(stain_deconvolution_valid.name, 'X')]),
+                                      'y_valid': ([(reader_rescaler.name, 'y')]),
+                                      },
+                             cache_dirpath=config.env.cache_dirpath,
+                             save_output=True, load_saved_output=True)
+
+    unet_rescaled = unet_multitask_block(rescaler_deconver, config,
                                          loader_mode='patched_training',
                                          suffix='_rescaled',
                                          force_fitting=True)
@@ -356,11 +389,19 @@ def scale_adjusted_patched_unet_inference(config):
                            cache_dirpath=config.env.cache_dirpath,
                            cache_output=True)
 
+    stain_deconvolution = Step(name='stain_deconvolution',
+                               transformer=StainDeconvolution(**config.stain_deconvolution),
+                               input_steps=[reader_rescaler],
+                               adapter={'X': ([(reader_rescaler.name, 'X')]),
+                                        },
+                               cache_dirpath=config.env.cache_dirpath,
+                               cache_output=True)
+
     loader_rescaled = Step(name='loader_rescaled',
                            transformer=loaders.ImageSegmentationMultitaskLoaderPatchingInference(**config.loader),
                            input_data=['input'],
-                           input_steps=[reader_rescaler],
-                           adapter={'X': ([(reader_rescaler.name, 'X')]),
+                           input_steps=[reader_rescaler, stain_deconvolution],
+                           adapter={'X': ([(stain_deconvolution.name, 'X')]),
                                     'y': ([(reader_rescaler.name, 'y')]),
                                     'train_mode': ([('input', 'train_mode')]),
                                     },
@@ -404,7 +445,7 @@ def scale_adjusted_patched_unet_inference(config):
 def unet_size_estimator(reader, config, suffix='_size_estimator', cache_output=False):
     unet = unet_multitask_block(reader, config, loader_mode=None, suffix=suffix, cache_output=cache_output)
 
-    morphological_postprocessing = postprocessing(unet, unet, config, suffix=suffix,cache_output=cache_output)
+    morphological_postprocessing = postprocessing(unet, unet, config, suffix=suffix, cache_output=cache_output)
 
     cell_sizer = Step(name='cell_sizer{}'.format(suffix),
                       transformer=CellSizer(),
@@ -416,7 +457,7 @@ def unet_size_estimator(reader, config, suffix='_size_estimator', cache_output=F
     return cell_sizer
 
 
-def unet_multitask_block(reader, config, loader_mode, force_fitting=False, suffix='',cache_output=False):
+def unet_multitask_block(reader, config, loader_mode, force_fitting=False, suffix='', cache_output=False):
     if loader_mode == 'patching_train':
         Loader = loaders.ImageSegmentationMultitaskLoaderPatchingTrain
     elif loader_mode == 'patching_inference':
@@ -818,7 +859,7 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                                        'inference': partial(two_unet_specialists, train_mode=False),
                                        },
              'patched_unet_training': {'train': patched_unet_training},
-             'scale_adjusted_patched_unet_training': {'train': patched_unet_training},
+             'scale_adjusted_patched_unet_training': {'train': scale_adjusted_patched_unet_training},
              'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet_inference,
                                              'inference': scale_adjusted_patched_unet_inference}
              }

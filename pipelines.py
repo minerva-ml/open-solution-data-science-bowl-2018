@@ -288,8 +288,8 @@ def scale_adjusted_patched_unet_training(config):
                                  },
                         cache_dirpath=config.env.cache_dirpath)
 
-    scale_estimator_train = unet_size_estimator(reader_train, config)
-    scale_estimator_valid = unet_size_estimator(reader_valid, config)
+    scale_estimator_train = unet_size_estimator(reader_train, config, config.unet_size_estimator)
+    scale_estimator_valid = unet_size_estimator(reader_valid, config, config.unet_size_estimator)
 
     reader_rescaler_train = Step(name='rescaler',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
@@ -357,7 +357,7 @@ def scale_adjusted_patched_unet_training(config):
                              cache_dirpath=config.env.cache_dirpath,
                              save_output=True, load_saved_output=True)
 
-    unet_rescaled = unet_multitask_block(rescaler_deconver, config,
+    unet_rescaled = unet_multitask_block(rescaler_deconver, config, config.unet,
                                          loader_mode='patched_training',
                                          suffix='_rescaled',
                                          force_fitting=True)
@@ -375,7 +375,7 @@ def scale_adjusted_patched_unet_inference(config):
                   cache_dirpath=config.env.cache_dirpath,
                   cache_output=True)
 
-    scale_estimator = unet_size_estimator(reader, config, cache_output=True)
+    scale_estimator = unet_size_estimator(reader, config, config.unet_size_estimator, cache_output=True)
 
     reader_rescaler = Step(name='rescaler',
                            transformer=ImageReaderRescaler(**config.reader_rescaler),
@@ -442,8 +442,8 @@ def scale_adjusted_patched_unet_inference(config):
     return output
 
 
-def unet_size_estimator(reader, config, suffix='_size_estimator', cache_output=False):
-    unet = unet_multitask_block(reader, config, loader_mode=None, suffix=suffix, cache_output=cache_output)
+def unet_size_estimator(reader, config, config_network, suffix='_size_estimator', cache_output=False):
+    unet = unet_multitask_block(reader, config, config_network, loader_mode=None, suffix=suffix, cache_output=cache_output)
 
     morphological_postprocessing = postprocessing(unet, unet, config, suffix=suffix, cache_output=cache_output)
 
@@ -457,7 +457,7 @@ def unet_size_estimator(reader, config, suffix='_size_estimator', cache_output=F
     return cell_sizer
 
 
-def unet_multitask_block(reader, config, loader_mode, force_fitting=False, suffix='', cache_output=False):
+def unet_multitask_block(reader, config, config_network, loader_mode, force_fitting=False, suffix='', cache_output=False):
     if loader_mode == 'patching_train':
         Loader = loaders.ImageSegmentationMultitaskLoaderPatchingTrain
     elif loader_mode == 'patching_inference':
@@ -479,7 +479,7 @@ def unet_multitask_block(reader, config, loader_mode, force_fitting=False, suffi
                   cache_output=cache_output)
 
     unet_multitask = Step(name='unet{}'.format(suffix),
-                          transformer=PyTorchUNetMultitask(**config.unet),
+                          transformer=PyTorchUNetMultitask(**config_network),
                           input_steps=[loader],
                           adapter={'datagen': ([(loader.name, 'datagen')]),
                                    'validation_datagen': ([(loader.name, 'validation_datagen')]),

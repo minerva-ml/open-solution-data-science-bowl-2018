@@ -75,6 +75,7 @@ class ImageReader(BaseTransformer):
 
 
 class ImageReaderRescaler(BaseTransformer):
+    #Todo: when downsizing we should pad not resize
     def __init__(self, min_size, max_size, target_ratio):
         self.min_size = min_size
         self.max_size = max_size

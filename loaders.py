@@ -447,7 +447,11 @@ def generate_patches(img, patch_size, patch_stride):
     w_patch_nr = math.ceil(w_pad / patch_stride) - math.floor(patch_size / patch_stride)
 
     for y_coordinate, x_coordinate in product(range(h_patch_nr), range(w_patch_nr)):
-        img_patch = img_padded[y_coordinate * patch_stride:y_coordinate * patch_stride + patch_size,
+        if len(img.shape)==2:
+            img_patch = img_padded[y_coordinate * patch_stride:y_coordinate * patch_stride + patch_size,
+                    x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size]
+        else:
+            img_patch = img_padded[y_coordinate * patch_stride:y_coordinate * patch_stride + patch_size,
                     x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size, :]
         yield y_coordinate, x_coordinate, img_patch
 

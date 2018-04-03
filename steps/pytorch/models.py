@@ -40,6 +40,8 @@ class Model(BaseTransformer):
             weights_init_func = partial(init_weights_normal, **weights_init_config['params'])
         elif weights_init_config['function'] == 'xavier':
             weights_init_func = init_weights_xavier
+        elif weights_init_config['function'] == 'he':
+            weights_init_func = init_weights_he
         else:
             raise NotImplementedError
 
@@ -184,3 +186,9 @@ def init_weights_xavier(model):
     if isinstance(model, nn.Conv2d):
         init.xavier_normal(model.weight)
         init.constant(model.bias, 0)
+        
+def init_weights_he(model):
+    if isinstance(model, nn.Conv2d):
+        init.kaiming_normal(model.weight)
+        init.constant(model.bias, 0)
+        

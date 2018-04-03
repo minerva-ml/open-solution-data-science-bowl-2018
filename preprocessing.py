@@ -75,7 +75,6 @@ class ImageReader(BaseTransformer):
 
 
 class ImageReaderRescaler(BaseTransformer):
-    #Todo: when downsizing we should pad not resize
     def __init__(self, min_size, max_size, target_ratio):
         self.min_size = min_size
         self.max_size = max_size
@@ -121,9 +120,6 @@ class ImageReaderRescaler(BaseTransformer):
                 centers_adj.append(to_pil(center_adj))
 
             y_adj = [masks_adj, contours_adj, centers_adj]
-
-            joblib.dump(contours, '/mnt/ml-team/dsb_2018/kuba/debug/contours_pre_resize.pkl')
-            joblib.dump(contours_adj, '/mnt/ml-team/dsb_2018/kuba/debug/contours_post_resize.pkl')
         else:
             y_adj = None
         return X_adj, y_adj

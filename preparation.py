@@ -39,8 +39,7 @@ def split_on_column(meta, column, test_size, random_state=1, valid_category_ids=
     if valid_category_ids is None:
         categories = meta[column].unique()
         np.random.seed(random_state)
-        valid_category_ids = np.random.choice(categories,
-                                              int(test_size * len(categories)))
+        valid_category_ids = np.random.choice(categories, int(test_size * len(categories)))
     valid = meta[meta[column].isin(valid_category_ids)].sample(frac=1, random_state=random_state)
     train = meta[~(meta[column].isin(valid_category_ids))].sample(frac=1, random_state=random_state)
     return train, valid
@@ -72,6 +71,7 @@ def overlay_centers(images_dir, subdir_name, target_dir):
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
 
+
 def overlay_contours_from_dir(mask_dirname, toching_only=False):
     for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
         image = np.asarray(Image.open(image_filepath))
@@ -85,6 +85,7 @@ def overlay_contours_from_dir(mask_dirname, toching_only=False):
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
     return overlayed_masks
 
+
 def overlay_masks_from_dir(mask_dirname):
     masks = []
     for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
@@ -94,6 +95,7 @@ def overlay_masks_from_dir(mask_dirname):
     overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
     return
 
+
 def overlay_centers_from_dir(mask_dirname):
     masks = []
     for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
@@ -102,6 +104,7 @@ def overlay_centers_from_dir(mask_dirname):
         masks.append(get_center(image))
     overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
     return overlayed_masks
+
 
 def get_contour(img):
     img_contour = np.zeros_like(img).astype(np.uint8)

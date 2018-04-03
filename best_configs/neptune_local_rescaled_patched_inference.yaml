@@ -22,24 +22,25 @@ exclude:
 
 parameters:
 # Cloud Environment
-  data_dir:               /public/dsb_2018_data/
-  meta_dir:               /public/dsb_2018_data/
-  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
-  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
-  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
-  experiment_dir:         /output/dsb/experiments/unet_multitask_size_estimator
+#  data_dir:               /public/dsb_2018_data/
+#  meta_dir:               /public/dsb_2018_data/
+#  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
+#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+#  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
+#  experiment_dir:         /output/dsb/experiments/
 
 # Local Environment
-#  data_dir:               /mnt/ml-team/dsb_2018/data
-#  meta_dir:               /mnt/ml-team/dsb_2018/kuba
-#  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
-#  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-#  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-#  artifacts_dir: /mnt/ml-team/dsb_2018/files/image_no_nuclei
-#  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_multitask_size_estimator
+  data_dir:               /mnt/ml-team/dsb_2018/data
+  meta_dir:               /mnt/ml-team/dsb_2018/kuba
+  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
+  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
+  contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed
+  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
+  artifacts_dir: /mnt/ml-team/dsb_2018/files/image_no_nuclei
+  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/rescaled_patched_unet_deconv_inference
 
   valid_category_ids: '[0, 1]'
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1

@@ -19,7 +19,7 @@ class DiceLoss(nn.Module):
 def segmentation_loss(output, target):
     bce = nn.BCEWithLogitsLoss()
     dice = DiceLoss()
-    return bce(output, target) + 1.0 * dice(output, target)
+    return bce(output, target) + 0.5* dice(output, target)
 
 def cross_entropy(output, target, squeeze=False):
     if squeeze:

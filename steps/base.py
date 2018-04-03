@@ -14,7 +14,7 @@ logger = get_logger()
 
 class Step:
     def __init__(self, name, transformer, input_steps=[], input_data=[], adapter=None,
-                 cache_dirpath=None, cache_output=True, save_output=False, load_saved_output=False,
+                 cache_dirpath=None, cache_output=False, save_output=False, load_saved_output=False,
                  save_graph=False, force_fitting=False):
         self.name = name
         self.transformer = transformer

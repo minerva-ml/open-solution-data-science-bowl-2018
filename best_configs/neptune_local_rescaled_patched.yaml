@@ -34,10 +34,9 @@ parameters:
   meta_dir:               /mnt/ml-team/dsb_2018/kuba
   masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-  contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed
   centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
   artifacts_dir: /mnt/ml-team/dsb_2018/files/image_no_nuclei
-  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/rescaled_patched_unet_deconv
+  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/rescaled_patched_deconv_unet_training
 
   valid_category_ids: '[0, 1]'
   overwrite: 0

@@ -115,14 +115,8 @@ def patched_unet_training(config):
                                  'train_mode': ([('input', 'train_mode')]),
                                  },
                         cache_dirpath=config.env.cache_dirpath)
-
-    stain_deconvolution_train = Step(name='stain_deconvolution',
-                                     transformer=StainDeconvolution(**config.stain_deconvolution),
-                                     input_steps=[reader_train],
-                                     adapter={'X': ([(reader_train.name, 'X')]),
-                                              },
-                                     cache_dirpath=config.env.cache_dirpath,
-                                     cache_output=True)
+    deconved_reader_train = add_stain_deconvolution(reader_train, config, cache_output=True, save_output=False,
+                                                    suffix='')
 
     reader_valid = Step(name='reader_valid',
                         transformer=ImageReader(**config.reader_multitask),
@@ -131,23 +125,17 @@ def patched_unet_training(config):
                                  'train_mode': ([('input', 'train_mode')]),
                                  },
                         cache_dirpath=config.env.cache_dirpath)
-
-    stain_deconvolution_valid = Step(name='stain_deconvolution_valid',
-                                     transformer=StainDeconvolution(**config.stain_deconvolution),
-                                     input_steps=[reader_valid],
-                                     adapter={'X': ([(reader_valid.name, 'X')]),
-                                              },
-                                     cache_dirpath=config.env.cache_dirpath,
-                                     cache_output=True)
+    deconved_reader_valid = add_stain_deconvolution(reader_valid, config, cache_output=True, save_output=False,
+                                                    suffix='_valid')
 
     reader = Step(name='reader_joined',
                   transformer=Dummy(),
                   input_steps=[reader_train, reader_valid,
-                               stain_deconvolution_train, stain_deconvolution_valid],
-                  adapter={'X': ([(stain_deconvolution_train.name, 'X')]),
-                           'y': ([(reader_train.name, 'y')]),
-                           'X_valid': ([(stain_deconvolution_valid.name, 'X')]),
-                           'y_valid': ([(reader_valid.name, 'y')]),
+                               deconved_reader_train, deconved_reader_valid],
+                  adapter={'X': ([(deconved_reader_train.name, 'X')]),
+                           'y': ([(deconved_reader_train.name, 'y')]),
+                           'X_valid': ([(deconved_reader_valid.name, 'X')]),
+                           'y_valid': ([(deconved_reader_valid.name, 'y')]),
                            },
                   cache_dirpath=config.env.cache_dirpath,
                   save_output=True, load_saved_output=True)
@@ -166,17 +154,42 @@ def scale_adjusted_patched_unet_training(config):
                                  'meta_valid': ([('input', 'meta_valid')]),
                                  'train_mode': ([('input', 'train_mode')]),
                                  },
-                        cache_dirpath=config.env.cache_dirpath)
-    reader_valid = Step(name='reader',
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
+    deconved_reader_train = add_stain_deconvolution(reader_train, config,
+                                                    cache_output=True,
+                                                    save_output=False,
+                                                    suffix='')
+
+    reader_valid = Step(name='reader_valid',
                         transformer=ImageReader(**config.reader_multitask),
                         input_data=['input'],
                         adapter={'meta': ([('input', 'meta_valid')]),
                                  'train_mode': ([('input', 'train_mode')]),
                                  },
-                        cache_dirpath=config.env.cache_dirpath)
+                        cache_dirpath=config.env.cache_dirpath,
+                        cache_output=True)
+    deconved_reader_valid = add_stain_deconvolution(reader_valid, config,
+                                                    cache_output=True,
+                                                    save_output=False,
+                                                    suffix='_valid')
 
-    scale_estimator_train = unet_size_estimator(reader_train, config, config.unet_size_estimator)
-    scale_estimator_valid = unet_size_estimator(reader_valid, config, config.unet_size_estimator)
+    deconved_reader_train_valid = Step(name='reader_train_valid',
+                                       transformer=Dummy(),
+                                       input_steps=[deconved_reader_train, deconved_reader_valid],
+                                       adapter={'X': ([(deconved_reader_train.name, 'X')]),
+                                                'y': ([(deconved_reader_train.name, 'y')]),
+                                                'X_valid': ([(deconved_reader_valid.name, 'X')]),
+                                                'y_valid': ([(deconved_reader_valid.name, 'y')]),
+                                                },
+                                       cache_dirpath=config.env.cache_dirpath,
+                                       cache_output=True,
+                                       save_output=True, load_saved_output=True)
+
+    scale_estimator_train = unet_size_estimator(deconved_reader_train_valid, config, config.unet_size_estimator,
+                                                cache_output=True, train_mode=True)
+    scale_estimator_valid = unet_size_estimator(deconved_reader_valid, config, config.unet_size_estimator,
+                                                suffix='_valid', cache_output=True, train_mode=False)
 
     reader_rescaler_train = Step(name='rescaler',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
@@ -189,6 +202,10 @@ def scale_adjusted_patched_unet_training(config):
                                           },
                                  cache_dirpath=config.env.cache_dirpath,
                                  cache_output=True)
+    deconved_reader_rescaler_train = add_stain_deconvolution(reader_rescaler_train, config,
+                                                             cache_output=True,
+                                                             save_output=False,
+                                                             suffix='_rescaled')
 
     reader_rescaler_valid = Step(name='rescaler_valid',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
@@ -201,47 +218,24 @@ def scale_adjusted_patched_unet_training(config):
                                           },
                                  cache_dirpath=config.env.cache_dirpath,
                                  cache_output=True)
+    deconved_reader_rescaler_valid = add_stain_deconvolution(reader_rescaler_valid, config,
+                                                             cache_output=True,
+                                                             save_output=False,
+                                                             suffix='_rescaled_valid')
 
     reader_rescaler = Step(name='rescaler_join',
                            transformer=Dummy(),
-                           input_steps=[reader_rescaler_train, reader_rescaler_valid],
-                           adapter={'X': ([(reader_rescaler_train.name, 'X')]),
-                                    'y': ([(reader_rescaler_train.name, 'y')]),
-                                    'X_valid': ([(reader_rescaler_valid.name, 'X')]),
-                                    'y_valid': ([(reader_rescaler_valid.name, 'y')]),
+                           input_steps=[deconved_reader_rescaler_train, deconved_reader_rescaler_valid],
+                           adapter={'X': ([(deconved_reader_rescaler_train.name, 'X')]),
+                                    'y': ([(deconved_reader_rescaler_train.name, 'y')]),
+                                    'X_valid': ([(deconved_reader_rescaler_valid.name, 'X')]),
+                                    'y_valid': ([(deconved_reader_rescaler_valid.name, 'y')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath,
-                           cache_output=True)
+                           cache_output=True,
+                           save_output=True, load_saved_output=True)
 
-    stain_deconvolution_train = Step(name='stain_deconvolution',
-                                     transformer=StainDeconvolution(**config.stain_deconvolution),
-                                     input_steps=[reader_rescaler],
-                                     adapter={'X': ([(reader_rescaler.name, 'X')]),
-                                              },
-                                     cache_dirpath=config.env.cache_dirpath,
-                                     cache_output=True)
-
-    stain_deconvolution_valid = Step(name='stain_deconvolution_valid',
-                                     transformer=StainDeconvolution(**config.stain_deconvolution),
-                                     input_steps=[reader_rescaler],
-                                     adapter={'X': ([(reader_rescaler.name, 'X_valid')]),
-                                              },
-                                     cache_dirpath=config.env.cache_dirpath,
-                                     cache_output=True)
-
-    rescaled_deconved = Step(name='rescaled_deconved',
-                             transformer=Dummy(),
-                             input_steps=[reader_rescaler,
-                                          stain_deconvolution_train, stain_deconvolution_valid],
-                             adapter={'X': ([(stain_deconvolution_train.name, 'X')]),
-                                      'y': ([(reader_rescaler.name, 'y')]),
-                                      'X_valid': ([(stain_deconvolution_valid.name, 'X')]),
-                                      'y_valid': ([(reader_rescaler.name, 'y_valid')]),
-                                      },
-                             cache_dirpath=config.env.cache_dirpath,
-                             save_output=True, load_saved_output=True)
-
-    unet_rescaled = unet_multitask_block(rescaled_deconved, config, config.unet,
+    unet_rescaled = unet_multitask_block(reader_rescaler, config, config.unet,
                                          loader_mode='patched_training',
                                          suffix='_rescaled',
                                          force_fitting=True)
@@ -258,8 +252,12 @@ def scale_adjusted_patched_unet_inference(config):
                            },
                   cache_dirpath=config.env.cache_dirpath,
                   cache_output=True)
-
-    scale_estimator = unet_size_estimator(reader, config, config.unet_size_estimator, cache_output=True)
+    deconved_reader = add_stain_deconvolution(reader, config,
+                                              cache_output=True,
+                                              save_output=False,
+                                              suffix='')
+    scale_estimator = unet_size_estimator(deconved_reader, config, config.unet_size_estimator,
+                                          cache_output=True, train_mode=False)
 
     reader_rescaler = Step(name='rescaler',
                            transformer=ImageReaderRescaler(**config.reader_rescaler),
@@ -272,21 +270,17 @@ def scale_adjusted_patched_unet_inference(config):
                                     },
                            cache_dirpath=config.env.cache_dirpath,
                            cache_output=True)
-
-    stain_deconvolution = Step(name='stain_deconvolution',
-                               transformer=StainDeconvolution(**config.stain_deconvolution),
-                               input_steps=[reader_rescaler],
-                               adapter={'X': ([(reader_rescaler.name, 'X')]),
-                                        },
-                               cache_dirpath=config.env.cache_dirpath,
-                               cache_output=True)
+    deconved_reader = add_stain_deconvolution(reader_rescaler, config,
+                                              cache_output=True,
+                                              save_output=False,
+                                              suffix='_rescaled')
 
     loader_rescaled = Step(name='loader_rescaled',
                            transformer=loaders.ImageSegmentationMultitaskLoaderPatchingInference(**config.loader),
                            input_data=['input'],
-                           input_steps=[reader_rescaler, stain_deconvolution],
-                           adapter={'X': ([(stain_deconvolution.name, 'X')]),
-                                    'y': ([(reader_rescaler.name, 'y')]),
+                           input_steps=[deconved_reader],
+                           adapter={'X': ([(deconved_reader.name, 'X')]),
+                                    'y': ([(deconved_reader.name, 'y')]),
                                     'train_mode': ([('input', 'train_mode')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath,
@@ -326,9 +320,32 @@ def scale_adjusted_patched_unet_inference(config):
     return output
 
 
-def unet_size_estimator(reader, config, config_network, suffix='_size_estimator', cache_output=False):
-    unet = unet_multitask_block(reader, config, config_network, loader_mode=None, suffix=suffix,
-                                cache_output=cache_output)
+def add_stain_deconvolution(reader, config, cache_output=False, save_output=False, suffix=''):
+    stain_deconvolution = Step(name='stain_deconvolution{}'.format(suffix),
+                               transformer=StainDeconvolution(**config.stain_deconvolution),
+                               input_steps=[reader],
+                               adapter={'X': ([(reader.name, 'X')]),
+                                        },
+                               cache_dirpath=config.env.cache_dirpath)
+
+    reader = Step(name='reader_with_deconv{}'.format(suffix),
+                  transformer=Dummy(),
+                  input_steps=[reader, stain_deconvolution],
+                  adapter={'X': ([(stain_deconvolution.name, 'X')]),
+                           'y': ([(reader.name, 'y')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath,
+                  cache_output=cache_output,
+                  save_output=save_output)
+
+    return reader
+
+
+def unet_size_estimator(reader, config, config_network, suffix='', cache_output=False, train_mode=True):
+    unet = unet_multitask_block(reader, config, config_network, loader_mode=None, suffix='_size_estimator',
+                                train_mode=train_mode)
+
+    suffix = '_size_estimator{}'.format(suffix)
 
     morphological_postprocessing = postprocessing(unet, unet, config, suffix=suffix, cache_output=cache_output)
 
@@ -343,7 +360,7 @@ def unet_size_estimator(reader, config, config_network, suffix='_size_estimator'
 
 
 def unet_multitask_block(reader, config, config_network, loader_mode, force_fitting=False, suffix='',
-                         cache_output=False):
+                         cache_output=False, train_mode=True):
     if loader_mode == 'patching_train':
         Loader = loaders.ImageSegmentationMultitaskLoaderPatchingTrain
     elif loader_mode == 'patching_inference':
@@ -351,16 +368,24 @@ def unet_multitask_block(reader, config, config_network, loader_mode, force_fitt
     else:
         Loader = loaders.ImageSegmentationMultitaskLoader
 
-    loader = Step(name='loader{}'.format(suffix),
-                  transformer=Loader(**config.loader),
-                  input_data=['input'],
-                  input_steps=[reader],
-                  adapter={'X': ([(reader.name, 'X')]),
+    if train_mode:
+        adapter_mapping = {'X': ([(reader.name, 'X')]),
                            'y': ([(reader.name, 'y')]),
                            'train_mode': ([('input', 'train_mode')]),
                            'X_valid': ([(reader.name, 'X_valid')]),
                            'y_valid': ([(reader.name, 'y_valid')]),
-                           },
+                           }
+    else:
+        adapter_mapping = {'X': ([(reader.name, 'X')]),
+                           'y': ([(reader.name, 'y')]),
+                           'train_mode': ([('input', 'train_mode')]),
+                           }
+
+    loader = Step(name='loader{}'.format(suffix),
+                  transformer=Loader(**config.loader),
+                  input_data=['input'],
+                  input_steps=[reader],
+                  adapter=adapter_mapping,
                   cache_dirpath=config.env.cache_dirpath,
                   cache_output=cache_output)
 

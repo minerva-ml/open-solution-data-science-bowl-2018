@@ -193,12 +193,12 @@ def postprocess(image, contour):
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    # m_tresh = threshold_otsu(image)
+    # m_tresh = 0.5 #threshold_otsu(image)
     # initial_mask_binary = (image > m_tresh).astype(np.uint8)
     # labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
-    labels = connect_small(labels, fraction_of_percentile=0.25)
-    min_size = min_blob_size(labels, fraction_of_percentile=0.25)
+    labels = connect_small(labels, fraction_of_percentile=0.1)
+    min_size = min_blob_size(labels, fraction_of_percentile=0.1)
     labels = drop_small(labels, min_size=min_size)
 
     return relabel(labels)
@@ -215,15 +215,15 @@ def drop_artifacts_per_label(labels, initial_mask):
 
 
 def get_clean_mask_basic(m, c):
-    m_b = m > threshold_otsu(m)
+    m_b = m > 0.5 #threshold_otsu(m)
 
     return m_b
 
 
 def get_clean_mask(m, c):
     # threshold
-    m_b = m > threshold_otsu(m)
-    c_b = c > threshold_otsu(c)
+    m_b = m > 0.5 #threshold_otsu(m)
+    c_b = c > 0.5 #threshold_otsu(c)
 
     # combine contours and masks and fill the cells
     m_ = np.where(m_b | c_b, 1, 0)
@@ -259,7 +259,7 @@ def get_clean_mask(m, c):
 
 
 def get_markers_basic(m_b, c):
-    c_b = c > threshold_otsu(c)
+    c_b = c > 0.5 #threshold_otsu(c)
     m_ = np.where(c_b, 0, m_b)
 
     m_, _ = ndi.label(m_)
@@ -270,7 +270,7 @@ def get_markers(m_b, c):
     # threshold
     area, radius = mean_blob_size(m_b)
     if radius >= 4:
-        c_b = c > threshold_otsu(c)
+        c_b = c > 0.5 #threshold_otsu(c)
         m_ = np.where(c_b, 0, m_b)
 
         struct_size = int(0.5 * radius)
@@ -372,15 +372,21 @@ def label(mask):
 
 def min_blob_size(mask, percentile=25, fraction_of_percentile=0.1):
     labels, labels_nr = ndi.label(mask)
-    blob_sizes = itemfreq(labels)
-    blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
-    return fraction_of_percentile * np.percentile(blob_sizes, percentile)
+    if labels_nr < 2:
+        return 0
+    else:
+        blob_sizes = itemfreq(labels)
+        blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
+        return fraction_of_percentile * np.percentile(blob_sizes, percentile)
 
 
 def mean_cell_size(labeled_image):
     blob_sizes = itemfreq(labeled_image)
-    blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
-    return np.mean(blob_sizes)
+    if blob_sizes.shape[0]==1:
+        return 0
+    else:
+        blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
+        return np.mean(blob_sizes)
 
 
 def find_touching_labels(labels, label_id):

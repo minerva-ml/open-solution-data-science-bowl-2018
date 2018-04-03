@@ -300,16 +300,10 @@ def scale_adjusted_patched_unet_training(config):
                                           'y': ([(reader_train.name, 'y')]),
                                           'meta': ([('input', 'meta')]),
                                           },
-                                 cache_dirpath=config.env.cache_dirpath)
+                                 cache_dirpath=config.env.cache_dirpath,
+                                cache_output=True)
 
-    stain_deconvolution_train = Step(name='stain_deconvolution',
-                                     transformer=StainDeconvolution(**config.stain_deconvolution),
-                                     input_steps=[reader_rescaler_train],
-                                     adapter={'X': ([(reader_rescaler_train.name, 'X')]),
-                                              },
-                                     cache_dirpath=config.env.cache_dirpath)
-
-    reader_rescaler_valid = Step(name='rescaler',
+    reader_rescaler_valid = Step(name='rescaler_valid',
                                  transformer=ImageReaderRescaler(**config.reader_rescaler),
                                  input_data=['input'],
                                  input_steps=[reader_valid, scale_estimator_valid],
@@ -318,7 +312,8 @@ def scale_adjusted_patched_unet_training(config):
                                           'y': ([(reader_valid.name, 'y')]),
                                           'meta': ([('input', 'meta_valid')]),
                                           },
-                                 cache_dirpath=config.env.cache_dirpath)
+                                 cache_dirpath=config.env.cache_dirpath,
+                                cache_output=True)
 
     reader_rescaler = Step(name='rescaler_join',
                            transformer=Dummy(),
@@ -329,35 +324,37 @@ def scale_adjusted_patched_unet_training(config):
                                     'y_valid': ([(reader_rescaler_valid.name, 'y')]),
                                     },
                            cache_dirpath=config.env.cache_dirpath,
-                           save_output=True, load_saved_output=True)
+                           cache_output=True)
 
     stain_deconvolution_train = Step(name='stain_deconvolution',
                                      transformer=StainDeconvolution(**config.stain_deconvolution),
                                      input_steps=[reader_rescaler],
                                      adapter={'X': ([(reader_rescaler.name, 'X')]),
                                               },
-                                     cache_dirpath=config.env.cache_dirpath)
+                                     cache_dirpath=config.env.cache_dirpath,
+                                    cache_output=True)
 
-    stain_deconvolution_valid = Step(name='stain_deconvolution',
+    stain_deconvolution_valid = Step(name='stain_deconvolution_valid',
                                      transformer=StainDeconvolution(**config.stain_deconvolution),
                                      input_steps=[reader_rescaler],
                                      adapter={'X': ([(reader_rescaler.name, 'X_valid')]),
                                               },
-                                     cache_dirpath=config.env.cache_dirpath)
+                                     cache_dirpath=config.env.cache_dirpath,
+                                    cache_output=True)
 
-    rescaler_deconver = Step(name='rescaled_deconved',
+    rescaled_deconved = Step(name='rescaled_deconved',
                              transformer=Dummy(),
                              input_steps=[reader_rescaler,
                                           stain_deconvolution_train, stain_deconvolution_valid],
                              adapter={'X': ([(stain_deconvolution_train.name, 'X')]),
                                       'y': ([(reader_rescaler.name, 'y')]),
                                       'X_valid': ([(stain_deconvolution_valid.name, 'X')]),
-                                      'y_valid': ([(reader_rescaler.name, 'y')]),
+                                      'y_valid': ([(reader_rescaler.name, 'y_valid')]),
                                       },
                              cache_dirpath=config.env.cache_dirpath,
                              save_output=True, load_saved_output=True)
 
-    unet_rescaled = unet_multitask_block(rescaler_deconver, config, config.unet,
+    unet_rescaled = unet_multitask_block(rescaled_deconved, config, config.unet,
                                          loader_mode='patched_training',
                                          suffix='_rescaled',
                                          force_fitting=True)

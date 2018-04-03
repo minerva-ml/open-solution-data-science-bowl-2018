@@ -386,6 +386,11 @@ class PatchCombiner(BaseTransformer):
         super().__init__()
         self.patching_size = patching_size
         self.patching_stride = patching_stride
+        self.tta_factor = 4
+
+    @property
+    def normalization_factor(self):
+        return self.tta_factor * int(self.patching_size / self.patching_stride) ** 2
 
     def transform(self, outputs, patch_ids):
         combined_outputs = {}
@@ -402,8 +407,10 @@ class PatchCombiner(BaseTransformer):
         prediction_image = np.zeros((image_h, image_w))
         prediction_image_padded = get_mosaic_padded_image(prediction_image, self.patching_size, self.patching_stride)
 
+        patches_per_image = 0
         for (y_coordinate, x_coordinate, tta_angle), image_patch in zip(
                 patch_meta[['y_coordinates', 'x_coordinates', 'tta_angles']].values.tolist(), image_patches):
+            patches_per_image += 1
             image_patch = np.rot90(image_patch, -1 * tta_angle / 90.)
             window_y, window_x = y_coordinate * self.patching_stride, x_coordinate * self.patching_stride
             prediction_image_padded[window_y:self.patching_size + window_y,
@@ -417,7 +424,7 @@ class PatchCombiner(BaseTransformer):
                                                 self.patching_stride)
 
         prediction_image = prediction_image_padded[h_top:-h_bottom, w_left:-w_right]
-        prediction_image /= prediction_image.max()
+        prediction_image /= self.normalization_factor
         return prediction_image
 
 
@@ -447,12 +454,12 @@ def generate_patches(img, patch_size, patch_stride):
     w_patch_nr = math.ceil(w_pad / patch_stride) - math.floor(patch_size / patch_stride)
 
     for y_coordinate, x_coordinate in product(range(h_patch_nr), range(w_patch_nr)):
-        if len(img.shape)==2:
+        if len(img.shape) == 2:
             img_patch = img_padded[y_coordinate * patch_stride:y_coordinate * patch_stride + patch_size,
-                    x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size]
+                        x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size]
         else:
             img_patch = img_padded[y_coordinate * patch_stride:y_coordinate * patch_stride + patch_size,
-                    x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size, :]
+                        x_coordinate * patch_stride:x_coordinate * patch_stride + patch_size, :]
         yield y_coordinate, x_coordinate, img_patch
 
 

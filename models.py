@@ -47,6 +47,7 @@ class PyTorchUNetMultitask(Model):
         center_loss = partial(segmentation_loss,
                               weight_bce=architecture_config['loss_weights']['bce_center'],
                               weight_dice=architecture_config['loss_weights']['dice_center'])
+
         self.loss_function = [('mask', mask_loss, architecture_config['loss_weights']['mask']),
                               ('contour', contour_loss, architecture_config['loss_weights']['contour']),
                               ('center', center_loss, architecture_config['loss_weights']['center'])]

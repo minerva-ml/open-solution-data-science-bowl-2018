@@ -127,9 +127,12 @@ class ImageReaderRescaler(BaseTransformer):
     def _get_adjusted_image_size(self, mean_cell_size, img):
         h, w = img.shape[:2]
         img_area = h * w
-
-        size_ratio = img_area / mean_cell_size
-        adj_ratio = size_ratio / self.target_ratio
+        
+        if mean_cell_size ==0:
+            adj_ratio = 1.0
+        else:
+            size_ratio = img_area / mean_cell_size
+            adj_ratio = size_ratio / self.target_ratio
 
         h_adj = int(clip(self.min_size, h * adj_ratio, self.max_size))
         w_adj = int(clip(self.min_size, w * adj_ratio, self.max_size))

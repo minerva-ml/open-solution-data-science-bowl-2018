@@ -86,8 +86,8 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
                                                                valid_category_ids=valid_ids)
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(8, random_state=1234)
-        meta_valid_split = meta_valid_split.sample(2, random_state=1234)
+        meta_train_split = meta_train_split.sample(5, random_state=1234)
+        meta_valid_split = meta_valid_split.sample(3, random_state=1234)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,

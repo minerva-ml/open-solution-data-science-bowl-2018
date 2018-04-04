@@ -89,7 +89,7 @@ SOLUTION_CONFIG = AttrDict({
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'unet_size_estimator', 'best.torch'),
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
@@ -99,7 +99,7 @@ SOLUTION_CONFIG = AttrDict({
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {'model_name': 'unet',
-                                'image_nr': 8,
+                                'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },
@@ -132,7 +132,7 @@ SOLUTION_CONFIG = AttrDict({
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'unet', 'best.torch'),
                 'epoch_every': 1},
             'lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
@@ -142,7 +142,7 @@ SOLUTION_CONFIG = AttrDict({
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
             'neptune_monitor': {'model_name': 'unet',
-                                'image_nr': 8,
+                                'image_nr': 4,
                                 'image_resize': 0.2},
             'early_stopping': {'patience': params.patience},
         },

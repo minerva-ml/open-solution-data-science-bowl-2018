@@ -183,8 +183,7 @@ def scale_adjusted_patched_unet_training(config):
                                                 'y_valid': ([(deconved_reader_valid.name, 'y')]),
                                                 },
                                        cache_dirpath=config.env.cache_dirpath,
-                                       cache_output=True,
-                                       save_output=True, load_saved_output=True)
+                                       cache_output=True)
 
     scale_estimator_train = unet_size_estimator(deconved_reader_train_valid, config, config.unet_size_estimator,
                                                 cache_output=True, train_mode=True)
@@ -227,6 +226,7 @@ def scale_adjusted_patched_unet_training(config):
                            transformer=Dummy(),
                            input_steps=[deconved_reader_rescaler_train, deconved_reader_rescaler_valid],
                            adapter={'X': ([(deconved_reader_rescaler_train.name, 'X')]),
+
                                     'y': ([(deconved_reader_rescaler_train.name, 'y')]),
                                     'X_valid': ([(deconved_reader_rescaler_valid.name, 'X')]),
                                     'y_valid': ([(deconved_reader_rescaler_valid.name, 'y')]),
@@ -243,7 +243,7 @@ def scale_adjusted_patched_unet_training(config):
     return unet_rescaled
 
 
-def scale_adjusted_patched_unet_inference(config):
+def scale_adjusted_patched_unet(config):
     reader = Step(name='reader',
                   transformer=ImageReader(**config.reader_multitask),
                   input_data=['input'],
@@ -641,6 +641,6 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
 
              'patched_unet_training': {'train': patched_unet_training},
              'scale_adjusted_patched_unet_training': {'train': scale_adjusted_patched_unet_training},
-             'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet_inference,
-                                             'inference': scale_adjusted_patched_unet_inference}
+             'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet,
+                                             'inference': scale_adjusted_patched_unet}
              }

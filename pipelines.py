@@ -558,6 +558,6 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                                        'inference': partial(two_unets_specialists, train_mode=False),
                                        },
              'dcan': {'train': partial(dcan, train_mode=True),
-                                       'inference': partial(dcan, train_mode=False),
-                                       }
+                      'inference': partial(dcan, train_mode=False),
+                      }
              }

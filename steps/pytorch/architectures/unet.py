@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from utils import initializeBilinear
 
 
 class UNet(nn.Module):
@@ -207,7 +206,7 @@ class DCAN(UNet):
                  pool_kernel, pool_stride,
                  repeat_blocks, n_filters,
                  batch_norm, dropout,
-                 in_channels, n_classifiers):
+                 in_channels, n_classifiers, upsampling):
         assert conv_kernel%2==1
         self.n_classifiers = n_classifiers
         super(DCAN, self).__init__(conv_kernel,
@@ -220,8 +219,8 @@ class DCAN(UNet):
         self.down_pools_for_classifiers = self._down_pools_for_classifiers()
         self.mask_output_layer = self._output_layer()
         self.contour_output_layer = self._output_layer()
-        self.up_convs_mask = self._upsample_convs()
-        self.up_convs_contour = self._upsample_convs()
+        self.up_convs_mask = getattr(self, "_upsample_{}".format(upsampling))()
+        self.up_convs_contour = getattr(self, "_upsample_{}".format(upsampling))()
         self.last_block = self._last_block()
         self.last_up_conv_mask = self._last_up_conv()
         self.last_up_conv_contour = self._last_up_conv()
@@ -355,17 +354,16 @@ class DCAN(UNet):
                                                  output_padding=((kernel_scale-1)*stride)%2,
                                                  bias=False
                                                  )
-            up_conv.weight.data = initializeBilinear(up_conv.weight.data)
             up_convs.append(up_conv)
         return nn.ModuleList(up_convs)
 
-    def _up_samples(self):
+    def _upsample_bilinear(self):
         up_samples = []
         for i in range(self.n_classifiers-1):
             in_channels = int(self.n_filters * 2 ** self.repeat_blocks)
             out_channels = in_channels
             up_samples.append(nn.Sequential(
-                nn.Upsample(scale_factor=self.pool_stride ** (self.repeat_blocks + i)),
+                nn.Upsample(scale_factor=self.pool_stride ** (self.repeat_blocks + i), mode="bilinear"),
                 Conv(in_channels, out_channels, self.conv_kernel, self.batch_norm, self.dropout)
             ))
         return nn.ModuleList(up_samples)

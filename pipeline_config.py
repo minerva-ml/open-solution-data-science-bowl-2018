@@ -219,7 +219,8 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'n_classifiers': params.dcan_n_classifiers
+                                                 'n_classifiers': params.dcan_n_classifiers,
+                                                 'upsampling': params.dcan_upsampling
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },

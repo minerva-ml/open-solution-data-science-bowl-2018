@@ -8,7 +8,7 @@ metric:
   goal: maximize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - .git
@@ -21,23 +21,23 @@ exclude:
   - notebooks
 
 parameters:
-# Cloud Environment
-  data_dir:               /public/dsb_2018_data/
-  meta_dir:               /public/dsb_2018_data/
-  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
-  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
-  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
-  experiment_dir:         /output/dsb/experiments/unet_multitask_size_estimator
+# Cloud environment
+  data_dir:                        /public/dsb_2018_data/
+  meta_dir:                        /public/dsb_2018_data/
+  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
+  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
+  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
+  experiment_dir:                  /output/dsb/experiments/
 
-# Local Environment
-#  data_dir:               /mnt/ml-team/dsb_2018/data
-#  meta_dir:               /mnt/ml-team/dsb_2018/kuba
-#  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
-#  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-#  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-#  artifacts_dir: /mnt/ml-team/dsb_2018/files/image_no_nuclei
-#  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/unet_multitask_size_estimator
+# Local environment
+#  data_dir:                        /path/to/data
+#  meta_dir:                        /path/to/data
+#  masks_overlayed_dir:             /path/to/masks_overlayed
+#  contours_overlayed_dir:          /path/to/contours_overlayed
+#  centers_overlayed_dir:           /path/to/centers_overlayed
+#  experiment_dir:                  /path/to/work/dir
 
+# General parameters
   valid_category_ids: '[0, 1]'
   overwrite: 1
   num_workers: 4
@@ -46,43 +46,10 @@ parameters:
   use_patching: 1
   patching_stride: 256
 
-# General parameters (size estimator)
-  size_estimator__image_h: 512
-  size_estimator__image_w: 512
-  size_estimator__image_channels: 1
-
-# U-Net parameters (size estimator)
-  size_estimator__nr_unet_outputs: 3
-  size_estimator__n_filters: 16
-  size_estimator__conv_kernel: 3
-  size_estimator__pool_kernel: 3
-  size_estimator__pool_stride: 2
-  size_estimator__repeat_blocks: 4
-
-# U-Net loss weights (size estimator)
-  mask: 0.75
-  contour: 1.0
-  contour_touching: 0.0
-  center: 0.25
-
-# General parameters (multi-output)
+# Images parameters
   image_h: 512
   image_w: 512
   image_channels: 1
-
-# U-Net parameters (multi-output)
-  nr_unet_outputs: 3
-  n_filters: 16
-  conv_kernel: 3
-  pool_kernel: 3
-  pool_stride: 2
-  repeat_blocks: 4
-
-# U-Net loss weights (multi-output)
-  mask: 0.75
-  contour: 1.0
-  contour_touching: 0.0
-  center: 0.25
 
 # Training schedule
   epochs_nr: 1000
@@ -103,3 +70,37 @@ parameters:
 # Postprocessing
   threshold: 0.5
   min_nuclei_size: 20
+
+# Multi-output U-Net parameters
+  nr_unet_outputs: 3
+  n_filters: 16
+  conv_kernel: 3
+  pool_kernel: 3
+  pool_stride: 2
+  repeat_blocks: 4
+
+# Multi-output U-Net loss weights
+  # weights per target
+  mask: 0.45
+  contour: 0.45
+  center: 0.1
+  # weights for bce and dice
+  bce_mask: 1.0
+  dice_mask: 1.0
+  bce_contour: 1.0
+  dice_contour: 1.0
+  bce_center: 1.0
+  dice_center: 1.0
+
+# Size estimator, general parameters
+  size_estimator__image_h: 512
+  size_estimator__image_w: 512
+  size_estimator__image_channels: 1
+
+# Size estimator, U-Net parameters
+  size_estimator__nr_unet_outputs: 3
+  size_estimator__n_filters: 16
+  size_estimator__conv_kernel: 3
+  size_estimator__pool_kernel: 3
+  size_estimator__pool_stride: 2
+  size_estimator__repeat_blocks: 4

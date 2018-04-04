@@ -13,7 +13,6 @@ X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
 Y_COLUMNS_MULTITASK = ['file_path_mask',
                        'file_path_contours',
-                       'file_path_contours_touching',
                        'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
 

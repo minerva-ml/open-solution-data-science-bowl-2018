@@ -254,7 +254,7 @@ def preprocessing_inference(config):
 
 def preprocessing_multitask_train(config, is_specialist=False):
     if is_specialist:
-        reader_config = config.reader_specialist
+        reader_config = config.reader_specialists
         splitter_config = config.xy_splitter_specialists
     else:
         reader_config = config.reader_multitask

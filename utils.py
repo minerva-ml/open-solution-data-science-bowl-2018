@@ -1,11 +1,13 @@
 import glob
 import logging
 import os
+import random
 import sys
 from itertools import product
 
 import numpy as np
 import pandas as pd
+import torch
 import yaml
 from PIL import Image
 from attrdict import AttrDict
@@ -17,8 +19,7 @@ def read_yaml(filepath):
         config = yaml.load(f)
     return AttrDict(config)
 
-
-def get_logger():
+def init_logger():
     logger = logging.getLogger('dsb-2018')
     logger.setLevel(logging.INFO)
     message_format = logging.Formatter(fmt='%(asctime)s %(name)s >>> %(message)s',
@@ -35,6 +36,8 @@ def get_logger():
 
     return logger
 
+def get_logger():
+    return logging.getLogger('dsb-2018')
 
 def decompose(labeled):
     nr_true = labeled.max()
@@ -216,8 +219,28 @@ def relabel_random_colors(img, max_colours=1000):
 
 
 def from_pil(*images):
-    return [np.array(image) for image in images]
+    images = [np.array(image) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
 
 
 def to_pil(*images):
-    return [Image.fromarray((image).astype(np.uint8)) for image in images]
+    images = [Image.fromarray((image).astype(np.uint8)) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
+
+
+def clip(lo, x, hi):
+    return lo if x <= lo else hi if x >= hi else x
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)

@@ -1,15 +1,15 @@
-import numpy as np
-
 from functools import partial
+
+import numpy as np
 from torch import optim
 
+from callbacks import NeptuneMonitorSegmentation
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation
 
 
 class PyTorchUNet(Model):
@@ -38,6 +38,7 @@ class PyTorchUNetMultitask(Model):
         self.optimizer = optim.Adam(self.weight_regularization(self.model,
                                                                **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
+
         mask_loss = partial(segmentation_loss,
                             weight_bce=architecture_config['loss_weights']['bce_mask'],
                             weight_dice=architecture_config['loss_weights']['dice_mask'])

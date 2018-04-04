@@ -1,5 +1,4 @@
 import os
-import shutil
 import pprint
 
 import numpy as np
@@ -14,7 +13,7 @@ logger = get_logger()
 
 class Step:
     def __init__(self, name, transformer, input_steps=[], input_data=[], adapter=None,
-                 cache_dirpath=None, cache_output=True, save_output=False, load_saved_output=False,
+                 cache_dirpath=None, cache_output=False, save_output=False, load_saved_output=False,
                  save_graph=False, force_fitting=False):
         self.name = name
         self.transformer = transformer
@@ -275,6 +274,10 @@ class Dummy(BaseTransformer):
 
     def save(self, filepath):
         joblib.dump({}, filepath)
+
+
+def to_dict_inputs(inputs, keys):
+    return {key: input for key, input in zip(keys, inputs)}
 
 
 def to_tuple_inputs(inputs):

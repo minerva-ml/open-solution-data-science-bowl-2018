@@ -91,7 +91,10 @@ class Averager:
 
     @property
     def value(self):
-        return 1.0 * self.current_total / self.iterations
+        if self.iterations == 0:
+            return 0
+        else:
+            return 1.0 * self.current_total / self.iterations
 
     def reset(self):
         self.current_total = 0.0

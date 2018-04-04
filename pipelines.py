@@ -32,7 +32,7 @@ def unet(config, train_mode):
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labels')]),
+                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output

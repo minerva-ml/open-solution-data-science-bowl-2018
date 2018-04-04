@@ -14,11 +14,11 @@ exclude:
   - .git
   - .idea
   - .ipynb_checkpoints
-  - output
   - imgs
   - neptune.log
-  - offline_job.log
   - notebooks
+  - offline_job.log
+  - output
 
 parameters:
 # Cloud environment

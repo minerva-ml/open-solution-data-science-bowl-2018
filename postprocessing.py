@@ -180,6 +180,7 @@ def postprocess(image, contour):
     labels = drop_artifacts_per_label(labels, initial_mask_binary)
 
     labels = drop_small(labels, min_size=20)
+    #labels = connect_or_drop_small(labels, min_size_percentile = 10)
     labels = fill_holes_per_blob(labels)
 
     return labels
@@ -299,6 +300,10 @@ def mean_blob_size(mask):
         mean_radius = int(np.round(np.sqrt(mean_area / np.pi)))
     return mean_area, mean_radius
 
+def blob_size_percentile(mask, percentile):
+    labels, labels_nr = ndi.label(mask)
+    return np.percentile(itemfreq(labels)[1:,1], percentile)
+
 
 def pad_mask(mask, pad):
     if pad <= 1:
@@ -327,6 +332,27 @@ def crop_mask(mask, crop):
 def drop_small(img, min_size):
     img = morph.remove_small_objects(img, min_size=min_size)
     return relabel(img)
+
+def connect_or_drop_small(labels, min_size_percentile=10, min_length = 1):
+    new_labels = np.zeros_like(labels)
+    n_labels = labels.max()
+    min_cell_size = blob_size_percentile(labels, min_size_percentile)
+    for i in range(1, n_labels+1):
+        cell_size = np.sum(labels==i)
+        if cell_size<min_cell_size:
+            continue
+        new_labels += np.where(labels==i, i, 0)
+        mask = np.where(labels==i, 0, 1)
+        dist = ndi.distance_transform_edt(mask)
+        touching_labels = np.where(dist==1.0, labels, 0)
+        for label in np.unique(touching_labels):
+            if label==0:
+                continue
+            connection_length = np.sum(touching_labels==label)
+            if label==0 or np.sum(labels==label)>min_cell_size or connection_length<min_length:
+                continue
+            new_labels = np.where(labels!=label, new_labels, 0) + np.where(labels==label, i, 0)
+    return drop_small(new_labels, min_cell_size)
 
 
 def label(mask):

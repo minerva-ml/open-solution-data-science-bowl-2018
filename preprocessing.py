@@ -1,10 +1,10 @@
 import glob
 
 import numpy as np
-from PIL import Image
 import scipy.ndimage as ndi
-from skimage.exposure import rescale_intensity
+from PIL import Image
 from skimage.color import rgb2grey, rgb2hed
+from skimage.exposure import rescale_intensity
 from skimage.transform import resize
 from sklearn.externals import joblib
 from tqdm import tqdm

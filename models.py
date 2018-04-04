@@ -1,7 +1,7 @@
-import numpy as np
-
 from functools import partial
-from torch import nn, optim
+
+import numpy as np
+from torch import optim
 
 from callbacks import NeptuneMonitorSegmentation
 from steps.pytorch.architectures.unet import UNet, UNetMultitask

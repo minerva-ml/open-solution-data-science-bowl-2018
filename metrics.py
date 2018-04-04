@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.metrics.pairwise import pairwise_distances
 from tqdm import tqdm
 
 from utils import decompose, get_logger

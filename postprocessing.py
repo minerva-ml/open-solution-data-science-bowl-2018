@@ -2,8 +2,8 @@ import numpy as np
 import skimage.morphology as morph
 from scipy import ndimage as ndi
 from scipy.stats import itemfreq
-from skimage.transform import resize
 from skimage.filters import threshold_otsu
+from skimage.transform import resize
 from sklearn.externals import joblib
 from tqdm import tqdm
 

@@ -1,7 +1,7 @@
 import os
 
-from deepsense import neptune
 from attrdict import AttrDict
+from deepsense import neptune
 
 from utils import read_params
 
@@ -79,9 +79,14 @@ SOLUTION_CONFIG = AttrDict({
                                                        },
                                 'weights_init': {'function': 'he',
                                                  },
-                                'loss_weights': {'mask': params.mask,
+                                'loss_weights': {'bce_mask': params.bce_mask,
+                                                 'dice_mask': params.dice_mask,
+                                                 'bce_contour': params.bce_contour,
+                                                 'dice_contour': params.dice_contour,
+                                                 'bce_center': params.bce_center,
+                                                 'dice_center': params.dice_center,
+                                                 'mask': params.mask,
                                                  'contour': params.contour,
-                                                 'contour_touching': params.contour_touching,
                                                  'center': params.center,
                                                  },
                                 },
@@ -120,11 +125,16 @@ SOLUTION_CONFIG = AttrDict({
                                 'regularizer_params': {'regularize': True,
                                                        'weight_decay_conv2d': params.l2_reg_conv,
                                                        },
-                                'weights_init': {'function': 'he',
+                                'weights_init': {'function': 'xavier',
                                                  },
-                                'loss_weights': {'mask': params.mask,
+                                'loss_weights': {'bce_mask': params.bce_mask,
+                                                 'dice_mask': params.dice_mask,
+                                                 'bce_contour': params.bce_contour,
+                                                 'dice_contour': params.dice_contour,
+                                                 'bce_center': params.bce_center,
+                                                 'dice_center': params.dice_center,
+                                                 'mask': params.mask,
                                                  'contour': params.contour,
-                                                 'contour_touching': params.contour_touching,
                                                  'center': params.center,
                                                  },
                                 },

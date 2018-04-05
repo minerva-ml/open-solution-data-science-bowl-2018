@@ -19,12 +19,6 @@ class Resizer(BaseTransformer):
             resized_images.append(resized_image)
         return {'resized_images': resized_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class Thresholder(BaseTransformer):
     def __init__(self, threshold):
@@ -37,12 +31,6 @@ class Thresholder(BaseTransformer):
             binarized_images.append(binarized_image)
         return {'binarized_images': binarized_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class WatershedCenter(BaseTransformer):
     def transform(self, images, centers):
@@ -51,12 +39,6 @@ class WatershedCenter(BaseTransformer):
             detached_image = watershed_center(image, center)
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 class WatershedContour(BaseTransformer):
@@ -67,12 +49,6 @@ class WatershedContour(BaseTransformer):
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class BinaryFillHoles(BaseTransformer):
     def transform(self, images):
@@ -81,12 +57,6 @@ class BinaryFillHoles(BaseTransformer):
             filled_image = fill_holes_per_blob(image)
             filled_images.append(filled_image)
         return {'filled_images': filled_images}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 class Dropper(BaseTransformer):
@@ -101,12 +71,6 @@ class Dropper(BaseTransformer):
 
         return {'labels': labeled_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class NucleiLabeler(BaseTransformer):
     def transform(self, images):
@@ -116,12 +80,6 @@ class NucleiLabeler(BaseTransformer):
             labeled_images.append(labeled_image)
 
         return {'labeled_images': labeled_images}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 class Postprocessor(BaseTransformer):
@@ -135,12 +93,6 @@ class Postprocessor(BaseTransformer):
             labeled_images.append(labeled_image)
         return {'labeled_images': labeled_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class CellSizer(BaseTransformer):
     def __init__(self, **kwargs):
@@ -152,12 +104,6 @@ class CellSizer(BaseTransformer):
             mean_size = mean_cell_size(image)
             mean_sizes.append(mean_size)
         return {'sizes': mean_sizes}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 def watershed_center(image, center):

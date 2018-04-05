@@ -4,6 +4,7 @@ import os
 import random
 import sys
 from itertools import product
+import math
 
 import numpy as np
 import pandas as pd
@@ -18,6 +19,7 @@ def read_yaml(filepath):
     with open(filepath) as f:
         config = yaml.load(f)
     return AttrDict(config)
+
 
 def init_logger():
     logger = logging.getLogger('dsb-2018')
@@ -36,8 +38,10 @@ def init_logger():
 
     return logger
 
+
 def get_logger():
     return logging.getLogger('dsb-2018')
+
 
 def decompose(labeled):
     nr_true = labeled.max()
@@ -54,7 +58,7 @@ def decompose(labeled):
         return masks
 
 
-def create_submission(experiments_dir, meta, predictions, logger):
+def create_submission(meta, predictions, logger):
     image_ids, encodings = [], []
     output = []
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
@@ -70,10 +74,7 @@ def create_submission(experiments_dir, meta, predictions, logger):
 
     submission = pd.DataFrame(output, columns=['ImageId', 'EncodedPixels']).astype(str)
     submission = submission[submission['EncodedPixels'] != 'nan']
-    submission_filepath = os.path.join(experiments_dir, 'submission.csv')
-    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
-    logger.info('submission saved to {}'.format(submission_filepath))
-    logger.info('submission head \n\n{}'.format(submission.head()))
+    return submission
 
 
 def read_masks(masks_filepaths):
@@ -245,3 +246,13 @@ def set_seed(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
+
+
+def generate_data_frame_chunks(meta, chunk_size):
+    n_rows = meta.shape[0]
+    chunk_nr = math.ceil(n_rows / chunk_size)
+    meta_chunks = []
+    for i in tqdm(range(chunk_nr)):
+        meta_chunk = meta.iloc[i * chunk_size:(i + 1) * chunk_size]
+        yield meta_chunk
+

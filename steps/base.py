@@ -244,7 +244,7 @@ class BaseTransformer:
         return self
 
     def save(self, filepath):
-        pass
+        joblib.dump({}, filepath)
 
 
 class MockTransformer(BaseTransformer):

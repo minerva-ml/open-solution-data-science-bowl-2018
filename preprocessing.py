@@ -169,13 +169,6 @@ class StainDeconvolution(BaseTransformer):
             X_deconvoled.append(x_deconv)
         return {'X': [X_deconvoled]}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        params = {}
-        joblib.dump(params, filepath)
-
 
 def is_stained(img):
     red_mean, green_mean, blue_mean = img.mean(axis=(0, 1))

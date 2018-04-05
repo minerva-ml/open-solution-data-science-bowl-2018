@@ -1,5 +1,8 @@
 import numpy as np
+<<<<<<< HEAD
 import imgaug as ia
+=======
+>>>>>>> dev-solution-5
 from imgaug import augmenters as iaa
 
 affine_seq = iaa.Sequential([
@@ -16,6 +19,7 @@ affine_seq = iaa.Sequential([
 ], random_order=True)
 
 color_seq = iaa.Sequential([
+<<<<<<< HEAD
     # Color
     # iaa.SomeOf((1, 2),
     #            [iaa.Sequential([
@@ -34,6 +38,8 @@ color_seq = iaa.Sequential([
     #                iaa.WithChannels(1, iaa.Add((0, 100))),
     #                iaa.WithChannels(2, iaa.Add((0, 100)))
     #            ]),
+=======
+>>>>>>> dev-solution-5
     iaa.Sometimes(0.5, iaa.OneOf([iaa.AverageBlur(k=((5, 11), (5, 11))),
                                   iaa.AdditiveGaussianNoise(scale=0.05 * 255, per_channel=0.5)
                                   ]))

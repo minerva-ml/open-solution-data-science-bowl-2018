@@ -12,8 +12,8 @@ from deepsense import neptune
 from metrics import intersection_over_union, intersection_over_union_thresholds
 from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
-from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters, \
-    build_external_dataset_metadata
+from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
+
 from utils import init_logger, read_masks, read_params, create_submission, generate_metadata, set_seed
 
 logger = init_logger()

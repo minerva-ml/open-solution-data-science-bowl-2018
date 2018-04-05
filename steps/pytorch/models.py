@@ -1,13 +1,12 @@
-from functools import partial
-import shutil
 import os
+import shutil
+from functools import partial
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import init
-from tqdm import tqdm
 
 from steps.base import BaseTransformer
 from steps.utils import get_logger

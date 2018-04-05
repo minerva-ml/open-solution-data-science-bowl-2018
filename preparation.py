@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 def train_valid_split(meta, validation_size, valid_category_ids=None, simple_split=False):
     meta_train = meta[meta['is_train'] == 1]
-    
+
     if simple_split:
         meta_train_splittable = meta_train[meta_train['is_external'] == 0]
         external_data = meta_train[meta_train['is_external'] == 1]
@@ -166,34 +166,3 @@ def cluster_features(features, n_clusters=10):
     kmeans.fit(features)
     labels = kmeans.labels_
     return labels
-
-
-def build_external_dataset_metadata(external_data_dir):
-    external_data_info = {}
-    for subdir in os.listdir(external_data_dir):
-        external_data_info.setdefault('n_nuclei', []).append('NaN')
-        external_data_info.setdefault('is_external', []).append(1)
-        external_data_info.setdefault('ImageId', []).append(subdir)
-        external_data_info.setdefault('is_train', []).append(1)
-
-        file_path_image = glob.glob('{}/{}/images/*'.format(external_data_dir, subdir))[0]
-        file_path_masks = os.path.join(external_data_dir, subdir, 'masks')
-        file_path_mask = glob.glob('{}/{}/masks_overlayed/*'.format(external_data_dir, subdir))[0]
-        file_path_contour = glob.glob('{}/{}/contours_overlayed/*'.format(external_data_dir, subdir))[0]
-        file_path_center = glob.glob('{}/{}/centers_overlayed/*'.format(external_data_dir, subdir))[0]
-
-        external_data_info.setdefault('file_path_image', []).append(file_path_image)
-        external_data_info.setdefault('file_path_masks', []).append(file_path_masks)
-        external_data_info.setdefault('file_path_mask', []).append(file_path_mask)
-        external_data_info.setdefault('file_path_contours', []).append(file_path_contour)
-        external_data_info.setdefault('file_path_centers', []).append(file_path_center)
-        external_data_info.setdefault('file_path_contours_touching', []).append(file_path_contour_touching)
-
-        img = plt.imread(file_path_image)
-        h, w = img.shape[:2]
-
-        external_data_info.setdefault('width', []).append(w)
-        external_data_info.setdefault('height', []).append(h)
-
-    external_data_info = pd.DataFrame(external_data_info)
-    return external_data_info

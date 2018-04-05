@@ -24,6 +24,7 @@ parameters:
 # Cloud Environment
   data_dir:               /public/dsb_2018_data/
   meta_dir:               /public/dsb_2018_data/
+  external_data_dirs:     /public/dsb_2018_data/external_data/
   masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
   contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
   centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
@@ -32,20 +33,22 @@ parameters:
 # Local Environment
 #  data_dir:               /path/to/data
 #  meta_dir:               /path/to/data
+#  external_data_dirs:     /path/to/external/data
 #  masks_overlayed_dir:    /path/to/masks_overlayed
 #  contours_overlayed_dir: /path/to/contours_overlayed
 #  centers_overlayed_dir:  /path/to/centers_overlayed
 #  experiment_dir:         /path/to/work/dir
 
+# General parameters
   valid_category_ids: '[0, 1]'
-  overwrite: 0
+  overwrite: 1
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
   use_patching: 1
   patching_stride: 256
 
-# General parameters (size estimator)
+# Image parameters (size estimator)
   size_estimator__image_h: 512
   size_estimator__image_w: 512
   size_estimator__image_channels: 1
@@ -59,12 +62,17 @@ parameters:
   size_estimator__repeat_blocks: 4
 
 # U-Net loss weights (size estimator)
-  mask: 0.75
-  contour: 1.0
-  contour_touching: 0.0
-  center: 0.25
+  size_estimator__mask: 0.75
+  size_estimator__contour: 1.0
+  size_estimator__center: 0.25
+  size_estimator__bce_mask: 1.0
+  size_estimator__dice_mask: 1.0
+  size_estimator__bce_contour: 1.0
+  size_estimator__dice_contour: 1.0
+  size_estimator__bce_center: 1.0
+  size_estimator__dice_center: 1.0
 
-# General parameters (multi-output)
+# Image parameters (multi-output)
   image_h: 512
   image_w: 512
   image_channels: 1
@@ -80,8 +88,13 @@ parameters:
 # U-Net loss weights (multi-output)
   mask: 0.75
   contour: 1.0
-  contour_touching: 0.0
   center: 0.25
+  bce_mask: 1.0
+  dice_mask: 1.0
+  bce_contour: 1.0
+  dice_contour: 1.0
+  bce_center: 1.0
+  dice_center: 1.0
 
 # Training schedule
   epochs_nr: 1000

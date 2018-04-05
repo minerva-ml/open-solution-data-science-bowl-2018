@@ -155,6 +155,8 @@ def postprocess(image, contour):
     min_size = min_blob_size(labels, fraction_of_percentile=0.1)
     labels = drop_small(labels, min_size=min_size)
 
+    labels = drop_big_artifacts(labels, scale=0.01)
+
     return relabel(labels)
 
 
@@ -208,14 +210,12 @@ def get_clean_mask(m, c):
 
         # drop all the cells that weren't present at least in 25% of area in the initial mask
         m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
-
     return m_
 
 
 def get_markers_basic(m_b, c):
     c_b = c > 0.5 #threshold_otsu(c)
     m_ = np.where(c_b, 0, m_b)
-
     m_, _ = ndi.label(m_)
     return m_
 
@@ -367,3 +367,41 @@ def connect_small(labels, fraction_of_percentile):
     if touching_cell_was_connected:
         labels = connect_small(labels, fraction_of_percentile)
     return relabel(labels)
+
+
+def is_slim(im, object_ar, area_ar):
+    ind = np.where(im == 1)
+    ydiff = np.max(ind[0]) - np.min(ind[0])
+    xdiff = np.max(ind[1]) - np.min(ind[1])
+    rec_area = xdiff * ydiff
+    area = np.sum(im == 1)
+    if xdiff / ydiff < object_ar and xdiff / ydiff > 1.0/object_ar and area / rec_area > area_ar:
+        return False
+    return True
+
+
+def touching_edges(im, margin):
+    indices = np.where(im == 1)
+    edges = []
+    edges.append(np.sum(indices[0] <= margin))
+    edges.append(np.sum(indices[1] <= margin))
+    edges.append(np.sum(indices[0] >= im.shape[0] - 1 - margin))
+    edges.append(np.sum(indices[1] >= im.shape[1] - 1 - margin))
+    return np.sum(np.array(edges) > 0)
+
+
+def drop_big_artifacts(im, scale):
+    im_cleaned = np.copy(im)
+    im_size = im.shape[0] * im.shape[1]
+    for label in np.unique(im):
+        if label == 0:
+            continue
+        size = np.sum(im == label)
+        if size < scale * im_size:
+            continue
+        if not is_slim(im == label, 2, 0.5):
+            continue
+        if touching_edges(im = im==label, margin=2) < 2:
+            continue
+        im_cleaned[im_cleaned == label] = 0
+    return im_cleaned

@@ -256,14 +256,12 @@ def get_clean_mask(m, c):
 
         # drop all the cells that weren't present at least in 25% of area in the initial mask
         m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
-
     return m_
 
 
 def get_markers_basic(m_b, c):
     c_b = c > 0.5 #threshold_otsu(c)
     m_ = np.where(c_b, 0, m_b)
-
     m_, _ = ndi.label(m_)
     return m_
 

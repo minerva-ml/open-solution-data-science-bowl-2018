@@ -2,7 +2,7 @@ from functools import partial
 
 import loaders
 from models import PyTorchUNet, PyTorchUNetMultitask
-from postprocessing import Thresholder, Resizer, NucleiLabeler, Postprocessor, CellSizer
+from postprocessing import Resizer, Thresholder, NucleiLabeler, Postprocessor, CellSizer
 from preprocessing import ImageReaderRescaler, ImageReader, StainDeconvolution
 from steps.base import Step, Dummy, to_dict_inputs
 from steps.preprocessing import XYSplit
@@ -631,6 +631,7 @@ def _preprocessing_multitask_generator(config, is_train, use_patching):
     return loader
 
 
+
 def mask_postprocessing(model, config, save_output=True):
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
@@ -649,7 +650,6 @@ def mask_postprocessing(model, config, save_output=True):
                              cache_dirpath=config.env.cache_dirpath,
                              save_output=save_output)
     return mask_thresholding
-
 
 PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       'inference': partial(unet, train_mode=False),

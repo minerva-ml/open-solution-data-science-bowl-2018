@@ -268,12 +268,6 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         steps = len(datagen)
         return datagen, steps
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class ImageSegmentationLoaderPatchingTrain(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
@@ -425,7 +419,6 @@ class PatchCombiner(BaseTransformer):
         prediction_image = prediction_image_padded[h_top:-h_bottom, w_left:-w_right]
         prediction_image /= self.normalization_factor
         return prediction_image
-
 
 def binarize(x):
     x_ = x.convert('L')  # convert image to monochrome

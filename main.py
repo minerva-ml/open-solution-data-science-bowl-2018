@@ -13,7 +13,7 @@ from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters, \
     build_artifacts_metadata
-from utils import init_logger, read_masks, read_params, create_submission, generate_metadata, set_seed
+from utils import init_logger, read_masks, read_params, create_submission, generate_metadata, set_seed, generate_data_frame_chunks
 
 logger = init_logger()
 ctx = neptune.Context()
@@ -153,8 +153,12 @@ def _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-def predict_pipeline(pipeline_name, dev_mode):
-    _predict_pipeline(pipeline_name, dev_mode)
+@click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None, required=False)
+def predict_pipeline(pipeline_name, dev_mode, chunk_size):
+    if chunk_size is not None:
+        _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size)
+    else:
+        _predict_pipeline(pipeline_name, dev_mode)
 
 
 def _predict_pipeline(pipeline_name, dev_mode):
@@ -177,7 +181,48 @@ def _predict_pipeline(pipeline_name, dev_mode):
     pipeline.clean_cache()
     y_pred = output['y_pred']
 
-    create_submission(params.experiment_dir, meta_test, y_pred, logger)
+    submission = create_submission(meta_test, y_pred, logger)
+
+    submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
+    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
+    logger.info('submission saved to {}'.format(submission_filepath))
+    logger.info('submission head \n\n{}'.format(submission.head()))
+
+
+def _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size):
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta_test = meta[meta['is_train'] == 0]
+
+    if dev_mode:
+        meta_test = meta_test.sample(9, random_state=1234)
+
+    logger.info('processing metadata of shape {}'.format(meta_test.shape))
+
+    submission_chunks = []
+    for meta_chunk in generate_data_frame_chunks(meta_test, chunk_size):
+
+        data = {'input': {'meta': meta_chunk,
+                          'meta_valid': None,
+                          'train_mode': False,
+                          'target_sizes': meta_chunk[SIZE_COLUMNS].values
+                          },
+                }
+
+        pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
+        pipeline.clean_cache()
+        output = pipeline.transform(data)
+        pipeline.clean_cache()
+        y_pred = output['y_pred']
+
+        submission_chunk = create_submission(meta_chunk, y_pred, logger)
+        submission_chunks.append(submission_chunk)
+
+    submission = pd.concat(submission_chunks, axis=0)
+
+    submission_filepath = os.path.join(params.experiment_dir, 'submission.csv')
+    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
+    logger.info('submission saved to {}'.format(submission_filepath))
+    logger.info('submission head \n\n{}'.format(submission.head()))
 
 
 @action.command()

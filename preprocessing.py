@@ -170,7 +170,6 @@ class StainDeconvolution(BaseTransformer):
         return {'X': [X_deconvoled]}
 
 
-
 def is_stained(img):
     red_mean, green_mean, blue_mean = img.mean(axis=(0, 1))
     if red_mean == green_mean == blue_mean:

@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5, unet-multitask, patching]
+tags: [setup]
 
 metric:
   channel: 'Final Validation Score'
@@ -21,26 +21,25 @@ exclude:
   - notebooks
 
 parameters:
-# Cloud environment
-  data_dir:                        /public/dsb_2018_data/
-  external_data_dirs:              /public/dsb_2018_data/kuba/external_data
-  meta_dir:                        /public/dsb_2018_data/
-  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
-  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
-  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
-  experiment_dir:                  /output/dsb/experiments/
+# Cloud Environment
+#  data_dir:               /public/dsb_2018_data/
+#  meta_dir:               /public/dsb_2018_data/
+#  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
+#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+#  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
+#  experiment_dir:         /output/dsb/experiments/
 
-# Local environment
-#  data_dir:                        /path/to/data
-#  external_data_dirs:              /path/to/external_data
-#  meta_dir:                        /path/to/data
-#  masks_overlayed_dir:             /path/to/masks_overlayed
-#  contours_overlayed_dir:          /path/to/contours_overlayed
-#  centers_overlayed_dir:           /path/to/centers_overlayed
-#  experiment_dir:                  /path/to/work/dir
+# Local Environment
+  data_dir:               /mnt/ml-team/dsb_2018/data
+  external_data_dirs: /mnt/ml-team/dsb_2018/kuba/external_data
+  meta_dir:               /mnt/ml-team/dsb_2018/kuba
+  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
+  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
+  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
+  experiment_dir:         None
 
   valid_category_ids: '[0, 1]'
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
@@ -96,6 +95,7 @@ parameters:
   dice_contour: 1.0
   bce_center: 1.0
   dice_center: 1.0
+
 # Training schedule
   epochs_nr: 1000
   batch_size_train: 4

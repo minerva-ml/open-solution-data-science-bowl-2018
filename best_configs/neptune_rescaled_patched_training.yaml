@@ -31,11 +31,11 @@ parameters:
 
 # Local Environment
   data_dir:               /mnt/ml-team/dsb_2018/data
+  external_data_dirs: /mnt/ml-team/dsb_2018/kuba/external_data
   meta_dir:               /mnt/ml-team/dsb_2018/kuba
   masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
   contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
   centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-  artifacts_dir: /mnt/ml-team/dsb_2018/files/image_no_nuclei
   experiment_dir:         /mnt/ml-team/dsb_2018/kuba/trained_pipelines/rescaled_patched_deconv_unet_training
 
   valid_category_ids: '[0, 1]'
@@ -60,10 +60,16 @@ parameters:
   size_estimator__repeat_blocks: 4
 
 # U-Net loss weights (size estimator)
-  mask: 0.75
-  contour: 1.0
-  contour_touching: 0.0
-  center: 0.25
+  size_estimator__mask: 0.75
+  size_estimator__contour: 1.0
+  size_estimator__contour_touching: 0.0
+  size_estimator__center: 0.25
+  size_estimator__bce_mask: 1.0
+  size_estimator__dice_mask: 1.0
+  size_estimator__bce_contour: 1.0
+  size_estimator__dice_contour: 1.0
+  size_estimator__bce_center: 1.0
+  size_estimator__dice_center: 1.0
 
 # General parameters (multi-output)
   image_h: 512
@@ -83,6 +89,12 @@ parameters:
   contour: 1.0
   contour_touching: 0.0
   center: 0.25
+  bce_mask: 1.0
+  dice_mask: 1.0
+  bce_contour: 1.0
+  dice_contour: 1.0
+  bce_center: 1.0
+  dice_center: 1.0
 
 # Training schedule
   epochs_nr: 1000

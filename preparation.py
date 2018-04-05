@@ -17,14 +17,14 @@ from tqdm import tqdm
 
 def train_valid_split(meta, validation_size, valid_category_ids=None, simple_split=False):
     meta_train = meta[meta['is_train'] == 1]
-
+    
     if simple_split:
-        meta_train_splittable = meta_train[meta_train['vgg_features_clusters'] != -1]
-        artifacts = meta_train[meta_train['vgg_features_clusters'] == -1]
+        meta_train_splittable = meta_train[meta_train['is_external'] == 0]
+        external_data = meta_train[meta_train['is_external'] == 1]
         meta_train_split, meta_valid_split = train_test_split(meta_train_splittable,
                                                               test_size=validation_size,
                                                               random_state=1234)
-        meta_train_split = pd.concat([meta_train_split, artifacts], axis=0).sample(frac=1, random_state=1234)
+        meta_train_split = pd.concat([meta_train_split, external_data], axis=0).sample(frac=1, random_state=1234)
     else:
         meta_train_split, meta_valid_split = split_on_column(meta_train,
                                                              column='vgg_features_clusters',
@@ -54,10 +54,10 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         imwrite(target_filepath, overlayed_masks)
 
 
-def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):
+def overlay_contours(images_dir, subdir_name, target_dir):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
-        overlayed_masks = overlay_contours_from_dir(mask_dirname, touching_only)
+        overlayed_masks = overlay_contours_from_dir(mask_dirname)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
@@ -72,17 +72,15 @@ def overlay_centers(images_dir, subdir_name, target_dir):
         imwrite(target_filepath, overlayed_masks)
 
 
-def overlay_contours_from_dir(mask_dirname, toching_only=False):
+def overlay_contours_from_dir(mask_dirname):
+    masks = []
     for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
         image = np.asarray(Image.open(image_filepath))
         image = ndi.binary_fill_holes(image)
         contour = get_contour(image)
         inside_contour = np.where(image & contour, 255, 0)
         masks.append(inside_contour)
-    if touching_only:
-        overlayed_masks = np.where(np.sum(masks, axis=0) > 128. + 255., 255., 0.).astype(np.uint8)
-    else:
-        overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
+    overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
     return overlayed_masks
 
 
@@ -93,7 +91,7 @@ def overlay_masks_from_dir(mask_dirname):
         image = ndi.binary_fill_holes(image) * 255.
         masks.append(image)
     overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
-    return
+    return overlayed_masks
 
 
 def overlay_centers_from_dir(mask_dirname):
@@ -114,10 +112,13 @@ def get_contour(img):
 
 
 def get_center(img):
-    img_center = np.zeros_like(img).astype(np.uint8)
-    y, x = ndi.measurements.center_of_mass(img)
-    cv2.circle(img_center, (int(x), int(y)), 4, (255, 255, 255), -1)
-    return img_center
+    if img.max() == 0:
+        return img
+    else:
+        img_center = np.zeros_like(img).astype(np.uint8)
+        y, x = ndi.measurements.center_of_mass(img)
+        cv2.circle(img_center, (int(x), int(y)), 4, (255, 255, 255), -1)
+        return img_center
 
 
 def get_vgg_clusters(meta):
@@ -167,33 +168,32 @@ def cluster_features(features, n_clusters=10):
     return labels
 
 
-def build_artifacts_metadata(artifacts_dir):
-    artifact_info = {}
-    for subdir in os.listdir(artifacts_dir):
-        artifact_info.setdefault('n_nuclei', []).append(0)
-        artifact_info.setdefault('vgg_features_clusters', []).append(-1)
-        artifact_info.setdefault('ImageId', []).append(subdir)
-        artifact_info.setdefault('is_train', []).append(1)
+def build_external_dataset_metadata(external_data_dir):
+    external_data_info = {}
+    for subdir in os.listdir(external_data_dir):
+        external_data_info.setdefault('n_nuclei', []).append('NaN')
+        external_data_info.setdefault('is_external', []).append(1)
+        external_data_info.setdefault('ImageId', []).append(subdir)
+        external_data_info.setdefault('is_train', []).append(1)
 
-        file_path_image = glob.glob('{}/{}/images/*'.format(artifacts_dir, subdir))[0]
-        file_path_masks = os.path.join(artifacts_dir, subdir, 'masks')
-        file_path_mask = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
-        file_path_contour = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
-        file_path_center = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
-        file_path_contour_touching = glob.glob('{}/{}/masks/*'.format(artifacts_dir, subdir))[0]
+        file_path_image = glob.glob('{}/{}/images/*'.format(external_data_dir, subdir))[0]
+        file_path_masks = os.path.join(external_data_dir, subdir, 'masks')
+        file_path_mask = glob.glob('{}/{}/masks_overlayed/*'.format(external_data_dir, subdir))[0]
+        file_path_contour = glob.glob('{}/{}/contours_overlayed/*'.format(external_data_dir, subdir))[0]
+        file_path_center = glob.glob('{}/{}/centers_overlayed/*'.format(external_data_dir, subdir))[0]
 
-        artifact_info.setdefault('file_path_image', []).append(file_path_image)
-        artifact_info.setdefault('file_path_masks', []).append(file_path_masks)
-        artifact_info.setdefault('file_path_mask', []).append(file_path_mask)
-        artifact_info.setdefault('file_path_contours', []).append(file_path_contour)
-        artifact_info.setdefault('file_path_centers', []).append(file_path_center)
-        artifact_info.setdefault('file_path_contours_touching', []).append(file_path_contour_touching)
+        external_data_info.setdefault('file_path_image', []).append(file_path_image)
+        external_data_info.setdefault('file_path_masks', []).append(file_path_masks)
+        external_data_info.setdefault('file_path_mask', []).append(file_path_mask)
+        external_data_info.setdefault('file_path_contours', []).append(file_path_contour)
+        external_data_info.setdefault('file_path_centers', []).append(file_path_center)
+        external_data_info.setdefault('file_path_contours_touching', []).append(file_path_contour_touching)
 
         img = plt.imread(file_path_image)
         h, w = img.shape[:2]
 
-        artifact_info.setdefault('width', []).append(w)
-        artifact_info.setdefault('height', []).append(h)
+        external_data_info.setdefault('width', []).append(w)
+        external_data_info.setdefault('height', []).append(h)
 
-    artifact_info = pd.DataFrame(artifact_info)
-    return artifact_info
+    external_data_info = pd.DataFrame(external_data_info)
+    return external_data_info

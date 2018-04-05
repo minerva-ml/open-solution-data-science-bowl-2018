@@ -15,27 +15,32 @@ affine_seq = iaa.Sequential([
 ], random_order=True)
 
 color_seq = iaa.Sequential([
-    # Color
-    # iaa.SomeOf((1, 2),
-    #            [iaa.Sequential([
-    #                iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
-    #                iaa.WithChannels(0, iaa.Add((0, 100))),
-    #                iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
-    #                iaa.Sequential([
-    #                    iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
-    #                    iaa.WithChannels(1, iaa.Add((0, 100))),
-    #                    iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
-    #                iaa.Sequential([
-    #                    iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
-    #                    iaa.WithChannels(2, iaa.Add((0, 100))),
-    #                    iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
-    #                iaa.WithChannels(0, iaa.Add((0, 100))),
-    #                iaa.WithChannels(1, iaa.Add((0, 100))),
-    #                iaa.WithChannels(2, iaa.Add((0, 100)))
-    #            ]),
     iaa.Sometimes(0.5, iaa.OneOf([iaa.AverageBlur(k=((5, 11), (5, 11))),
                                   iaa.AdditiveGaussianNoise(scale=0.05 * 255, per_channel=0.5)
                                   ]))
+], random_order=True)
+
+color_seq_RGB = iaa.Sequential([
+    iaa.SomeOf((1, 2),
+               [iaa.Sequential([
+                   iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
+                   iaa.WithChannels(0, iaa.Add((0, 100))),
+                   iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
+                   iaa.Sequential([
+                       iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
+                       iaa.WithChannels(1, iaa.Add((0, 100))),
+                       iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
+                   iaa.Sequential([
+                       iaa.ChangeColorspace(from_colorspace="RGB", to_colorspace="HSV"),
+                       iaa.WithChannels(2, iaa.Add((0, 100))),
+                       iaa.ChangeColorspace(from_colorspace="HSV", to_colorspace="RGB")]),
+                   iaa.WithChannels(0, iaa.Add((0, 100))),
+                   iaa.WithChannels(1, iaa.Add((0, 100))),
+                   iaa.WithChannels(2, iaa.Add((0, 100)))]
+               ),
+    iaa.Sometimes(0.5, iaa.OneOf([iaa.AverageBlur(k=((5, 11), (5, 11))),
+                                  iaa.AdditiveGaussianNoise(scale=0.05 * 255, per_channel=0.5)])
+                  )
 ], random_order=True)
 
 

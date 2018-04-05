@@ -612,7 +612,7 @@ def _preprocessing_multitask_generator(config, is_train, use_patching):
                           cache_dirpath=config.env.cache_dirpath)
         else:
             xy_inference = Step(name='xy_inference',
-                                transformer=XYSplit(**splitter_config),
+                                transformer=XYSplit(**config.xy_splitter_multitask),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta')]),
                                          'train_mode': ([('input', 'train_mode')])

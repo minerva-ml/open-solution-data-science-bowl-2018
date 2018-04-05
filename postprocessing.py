@@ -20,7 +20,6 @@ class Resizer(BaseTransformer):
         return {'resized_images': resized_images}
 
 
-
 class Thresholder(BaseTransformer):
     def __init__(self, threshold):
         self.threshold = threshold
@@ -33,7 +32,6 @@ class Thresholder(BaseTransformer):
         return {'binarized_images': binarized_images}
 
 
-
 class WatershedCenter(BaseTransformer):
     def transform(self, images, centers):
         detached_images = []
@@ -41,7 +39,6 @@ class WatershedCenter(BaseTransformer):
             detached_image = watershed_center(image, center)
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
-
 
 
 class WatershedContour(BaseTransformer):
@@ -53,7 +50,6 @@ class WatershedContour(BaseTransformer):
         return {'detached_images': detached_images}
 
 
-
 class BinaryFillHoles(BaseTransformer):
     def transform(self, images):
         filled_images = []
@@ -61,7 +57,6 @@ class BinaryFillHoles(BaseTransformer):
             filled_image = fill_holes_per_blob(image)
             filled_images.append(filled_image)
         return {'filled_images': filled_images}
-
 
 
 class Dropper(BaseTransformer):
@@ -77,7 +72,6 @@ class Dropper(BaseTransformer):
         return {'labels': labeled_images}
 
 
-
 class NucleiLabeler(BaseTransformer):
     def transform(self, images):
         labeled_images = []
@@ -86,7 +80,6 @@ class NucleiLabeler(BaseTransformer):
             labeled_images.append(labeled_image)
 
         return {'labeled_images': labeled_images}
-
 
 
 class Postprocessor(BaseTransformer):
@@ -99,7 +92,6 @@ class Postprocessor(BaseTransformer):
             labeled_image = postprocess(image, contour)
             labeled_images.append(labeled_image)
         return {'labeled_images': labeled_images}
-
 
 
 class CellSizer(BaseTransformer):

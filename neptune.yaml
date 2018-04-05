@@ -1,14 +1,14 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5, dsb-252]
+tags: [solution_5, unet-multitask, patching]
 
 metric:
   channel: 'Final Validation Score'
   goal: maximize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - .git
@@ -22,20 +22,20 @@ exclude:
 
 parameters:
 # Cloud environment
-#  data_dir:               /public/dsb_2018_data/
-#  meta_dir:               /public/dsb_2018_data/
-#  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
-#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
-#  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
-#  experiment_dir:         /output/dsb/experiments/
+  data_dir:               /public/dsb_2018_data/
+  meta_dir:               /public/dsb_2018_data/
+  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
+  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
+  experiment_dir:         /output/dsb/experiments/
 
-# Local environment
-  data_dir:               /mnt/ml-team/dsb_2018/data
-  meta_dir:               /mnt/ml-team/dsb_2018/files
-  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
-  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir:         /mnt/ml-team/dsb_2018/kamil/dsb-252
+# Local Environment
+#  data_dir:               /path/to/data
+#  meta_dir:               /path/to/data
+#  masks_overlayed_dir:    /path/to/masks_overlayed
+#  contours_overlayed_dir: /path/to/contours_overlayed
+#  centers_overlayed_dir:  /path/to/centers_overlayed
+#  experiment_dir:         /path/to/work/dir
 
 # General parameters
   valid_category_ids: '[0, 1]'

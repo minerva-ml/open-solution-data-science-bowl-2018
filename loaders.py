@@ -1,14 +1,14 @@
-from itertools import product
 import math
+from itertools import product
 
-from attrdict import AttrDict
 import numpy as np
 import pandas as pd
-from PIL import Image
-from sklearn.externals import joblib
-from skimage.transform import resize
 import torch
 import torchvision.transforms as transforms
+from PIL import Image
+from attrdict import AttrDict
+from skimage.transform import resize
+from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
 
 from augmentation import affine_seq, color_seq, patching_seq

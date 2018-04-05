@@ -1,5 +1,3 @@
-import os
-
 from sklearn.externals import joblib
 from sklearn.feature_extraction import text
 

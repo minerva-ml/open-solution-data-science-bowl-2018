@@ -1,12 +1,11 @@
 import glob
 import logging
 import os
+import random
 import sys
 from itertools import product
 
-import random
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 import torch
 import yaml
@@ -235,8 +234,10 @@ def to_pil(*images):
     else:
         return images
 
+
 def clip(lo, x, hi):
     return lo if x <= lo else hi if x >= hi else x
+
 
 def set_seed(seed):
     random.seed(seed)
@@ -244,16 +245,3 @@ def set_seed(seed):
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
-def plot_list(images=[], labels=[]):
-    n_img = len(images)
-    n_lab = len(labels)
-    n = n_lab+n_img
-    plt.figure(figsize=(12,10))
-    for i, image in enumerate(images):
-        plt.subplot(1,n,i+1)
-        plt.imshow(image)
-    for j, label in enumerate(labels):
-        plt.subplot(1,n,n_img+j+1)
-        plt.imshow(label, cmap='nipy_spectral')
-    plt.show()

@@ -1,0 +1,118 @@
+project-key: DSB
+
+name: dsb_open_solution
+tags: [solution_5, unet-multitask, patching]
+
+metric:
+  channel: 'Final Validation Score'
+  goal: maximize
+
+#Comment out if not in Cloud Environment
+#pip-requirements-file: requirements.txt
+
+exclude:
+  - .git
+  - .idea
+  - .ipynb_checkpoints
+  - output
+  - imgs
+  - neptune.log
+  - offline_job.log
+  - notebooks
+
+parameters:
+# Cloud Environment
+#  data_dir:               /public/dsb_2018_data/
+#  meta_dir:               /public/dsb_2018_data/
+#  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
+#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+#  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
+#  experiment_dir:         /output/dsb/experiments/
+
+# Local Environment
+  data_dir:               /mnt/ml-team/dsb_2018/kuba
+  external_data_dirs: /mnt/ml-team/dsb_2018/kuba/external_data
+  meta_dir:               /mnt/ml-team/dsb_2018/kuba
+  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
+  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
+  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
+  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/end_to_end_pipelines/rescaled_patched_unet
+
+  competition_stage: 2
+  valid_category_ids: '[0, 1]'
+  overwrite: 0
+  num_workers: 4
+  load_in_memory: 1
+  pin_memory: 1
+  use_patching: 1
+  patching_stride: 256
+
+# General parameters (size estimator)
+  size_estimator__image_h: 512
+  size_estimator__image_w: 512
+  size_estimator__image_channels: 1
+
+# U-Net parameters (size estimator)
+  size_estimator__nr_unet_outputs: 3
+  size_estimator__n_filters: 16
+  size_estimator__conv_kernel: 3
+  size_estimator__pool_kernel: 3
+  size_estimator__pool_stride: 2
+  size_estimator__repeat_blocks: 4
+
+# U-Net loss weights (size estimator)
+  size_estimator__mask: 0.75
+  size_estimator__contour: 1.0
+  size_estimator__contour_touching: 0.0
+  size_estimator__center: 0.25
+  size_estimator__bce_mask: 1.0
+  size_estimator__dice_mask: 1.0
+  size_estimator__bce_contour: 1.0
+  size_estimator__dice_contour: 1.0
+  size_estimator__bce_center: 1.0
+  size_estimator__dice_center: 1.0
+
+# General parameters (multi-output)
+  image_h: 512
+  image_w: 512
+  image_channels: 1
+
+# U-Net parameters (multi-output)
+  nr_unet_outputs: 3
+  n_filters: 16
+  conv_kernel: 3
+  pool_kernel: 3
+  pool_stride: 2
+  repeat_blocks: 4
+
+# U-Net loss weights (multi-output)
+  mask: 0.75
+  contour: 1.0
+  contour_touching: 0.0
+  center: 0.25
+  bce_mask: 1.0
+  dice_mask: 1.0
+  bce_contour: 1.0
+  dice_contour: 1.0
+  bce_center: 1.0
+  dice_center: 1.0
+
+# Training schedule
+  epochs_nr: 1000
+  batch_size_train: 4
+  batch_size_inference: 4
+  lr: 0.0002
+  momentum: 0.9
+  gamma: 1.0
+  patience: 50
+
+# Regularization
+  use_batch_norm: 1
+  l2_reg_conv: 0.00005
+  l2_reg_dense: 0.0
+  dropout_conv: 0.1
+  dropout_dense: 0.0
+
+# Postprocessing
+  threshold: 0.5
+  min_nuclei_size: 20

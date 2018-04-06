@@ -122,14 +122,16 @@ def generate_metadata(data_dir,
                       masks_overlayed_dir,
                       contours_overlayed_dir,
                       centers_overlayed_dir,
-                      generate_train_only=False):
-    def stage1_generate_metadata(train):
+                      competition_stage=1,
+                      process_train_data=True,
+                      process_test_data=True):
+    def _generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
                                             'is_train', 'width', 'height', 'n_nuclei'])
         if train:
-            tr_te = 'stage1_train'
+            tr_te = 'stage{}_train'.format(competition_stage)
         else:
-            tr_te = 'stage1_test'
+            tr_te = 'stage{}_test'.format(competition_stage)
 
         for image_id in sorted(os.listdir(os.path.join(data_dir, tr_te))):
             p = os.path.join(data_dir, tr_te, image_id, 'images')
@@ -173,13 +175,18 @@ def generate_metadata(data_dir,
                                               'n_nuclei': n_nuclei}, ignore_index=True)
         return df_metadata
 
-    train_metadata = stage1_generate_metadata(train=True)
-    if generate_train_only:
-        return train_metadata
-    else:
-        test_metadata = stage1_generate_metadata(train=False)
+    if process_train_data and process_test_data:
+        train_metadata = _generate_metadata(train=True)
+        test_metadata = _generate_metadata(train=False)
         metadata = train_metadata.append(test_metadata, ignore_index=True)
-        return metadata
+    elif process_train_data and not process_test_data:
+        metadata = _generate_metadata(train=True)
+    elif not process_train_data and process_test_data:
+        metadata = _generate_metadata(train=False)
+    else:
+        raise ValueError('both train_data and test_data cannot be set to False')
+
+    return metadata
 
 
 def squeeze_inputs(inputs):
@@ -255,4 +262,3 @@ def generate_data_frame_chunks(meta, chunk_size):
     for i in tqdm(range(chunk_nr)):
         meta_chunk = meta.iloc[i * chunk_size:(i + 1) * chunk_size]
         yield meta_chunk
-

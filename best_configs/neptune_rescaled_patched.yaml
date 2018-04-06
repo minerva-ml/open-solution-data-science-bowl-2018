@@ -33,7 +33,7 @@ parameters:
 # Local Environment
 #  data_dir:               /path/to/data
 #  meta_dir:               /path/to/data
-#  external_data_dirs:     /path/to/external/data
+#  external_data_dirs:     /mnt/ml-team/kuba/external_data
 #  masks_overlayed_dir:    /path/to/masks_overlayed
 #  contours_overlayed_dir: /path/to/contours_overlayed
 #  centers_overlayed_dir:  /path/to/centers_overlayed

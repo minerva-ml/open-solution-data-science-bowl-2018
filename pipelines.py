@@ -137,7 +137,7 @@ def patched_unet_training(config):
                            'y_valid': ([(deconved_reader_valid.name, 'y')]),
                            },
                   cache_dirpath=config.env.cache_dirpath,
-                  save_output=True, load_saved_output=True)
+                  save_output=True, load_saved_output=False)
 
     unet_multitask = unet_multitask_block(reader, config, config.unet_size_estimator,
                                           loader_mode=None, suffix='_size_estimator')
@@ -631,7 +631,6 @@ def _preprocessing_multitask_generator(config, is_train, use_patching):
     return loader
 
 
-
 def mask_postprocessing(model, config, save_output=True):
     mask_resize = Step(name='mask_resize',
                        transformer=Resizer(),
@@ -651,6 +650,42 @@ def mask_postprocessing(model, config, save_output=True):
                              save_output=save_output)
     return mask_thresholding
 
+
+def postpro_dev(config):
+    reader_train = Step(name='reader',
+                        transformer=ImageReader(**config.reader_multitask),
+                        input_data=['input'],
+                        adapter={'meta': ([('input', 'meta')]),
+                                 'train_mode': ([('input', 'train_mode')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+    deconved_reader_train = add_stain_deconvolution(reader_train, config, cache_output=True, save_output=False,
+                                                    suffix='')
+
+    reader = Step(name='reader_joined',
+                  transformer=Dummy(),
+                  input_steps=[deconved_reader_train],
+                  adapter={'X': ([(deconved_reader_train.name, 'X')]),
+                           'y': ([(deconved_reader_train.name, 'y')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath,
+                  save_output=True, load_saved_output=False)
+
+    unet_multitask = unet_multitask_block(reader, config, config.unet_size_estimator,
+                                          loader_mode=None, suffix='_size_estimator', train_mode=False)
+
+    morphological_postprocessing = postprocessing(unet_multitask, unet_multitask, config,
+                                                  suffix='', save_output=True)
+
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[morphological_postprocessing],
+                  adapter={'y_pred': ([(morphological_postprocessing.name, 'labeled_images')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+
 PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       'inference': partial(unet, train_mode=False),
                       },
@@ -659,6 +694,7 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                                 },
 
              'patched_unet_training': {'train': patched_unet_training},
+             'postpro_dev':{'inference': postpro_dev},
              'scale_adjusted_patched_unet_training': {'train': scale_adjusted_patched_unet_training},
              'scale_adjusted_patched_unet': {'train': scale_adjusted_patched_unet,
                                              'inference': scale_adjusted_patched_unet}

@@ -12,6 +12,7 @@ SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
 Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
+Y_COLUMNS_DCAN = ['file_path_mask', 'file_path_contours', 'file_path_mask', 'file_path_contours']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
@@ -41,6 +42,12 @@ SOLUTION_CONFIG = AttrDict({
     'reader_rescaler': {'min_size': params.image_h,
                         'max_size': 2000,
                         'target_ratio': 200},
+    'reader_dcan': {'x_columns': X_COLUMNS,
+                         'y_columns': Y_COLUMNS_DCAN,
+                         },
+    'xy_splitter_dcan': {'x_columns': X_COLUMNS,
+                              'y_columns': Y_COLUMNS_DCAN
+                              },
     'stain_deconvolution': {'mode': 'hematoxylin_eosin_sum'},
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,

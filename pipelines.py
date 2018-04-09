@@ -510,8 +510,8 @@ def dcan(config, train_mode):
     return output
 
 def preprocessing_dcan_train(config):
-    reader_config = config.reader_multitask
-    splitter_config = config.xy_splitter_multitask
+    reader_config = config.reader_dcan
+    splitter_config = config.xy_splitter_dcan
 
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
@@ -579,8 +579,8 @@ def preprocessing_dcan_train(config):
 
 
 def preprocessing_dcan_inference(config):
-    reader_config = config.reader_multitask
-    splitter_config = config.xy_splitter_multitask
+    reader_config = config.reader_dcan
+    splitter_config = config.xy_splitter_dcan
 
     if config.execution.load_in_memory:
         reader_inference = Step(name='reader_inference',

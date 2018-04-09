@@ -123,6 +123,8 @@ parameters:
   dcan_pool_kernel: 3
   dcan_pool_stride: 2
   dcan_repeat_blocks: 2
+  #possible values: convs, bilinear
+  dcan_upsampling: 'convs'
 
 # DCAN loss weights
   dcan_mask: 0.2

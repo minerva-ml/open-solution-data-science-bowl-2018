@@ -1,7 +1,7 @@
 from functools import partial
 
 import loaders
-from models import PyTorchUNet, PyTorchUNetMultitask
+from models import PyTorchUNet, PyTorchUNetMultitask, PyTorchDCAN
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Postprocessor, CellSizer
 from preprocessing import ImageReaderRescaler, ImageReader, StainDeconvolution
 from steps.base import Step, Dummy, to_dict_inputs
@@ -459,11 +459,11 @@ def dcan(config, train_mode):
     if train_mode:
         save_output = True
         load_saved_output = False
-        preprocessing = preprocessing_multitask_train(config)
+        preprocessing = preprocessing_dcan_train(config)
     else:
         save_output = True
         load_saved_output = False
-        preprocessing = preprocessing_multitask_inference(config)
+        preprocessing = preprocessing_dcan_inference(config)
 
     dcan = Step(name='dcan',
                 transformer=PyTorchDCAN(**config.dcan),
@@ -509,6 +509,118 @@ def dcan(config, train_mode):
                   cache_dirpath=config.env.cache_dirpath)
     return output
 
+def preprocessing_dcan_train(config):
+    reader_config = config.reader_multitask
+    splitter_config = config.xy_splitter_multitask
+
+    if config.execution.load_in_memory:
+        reader_train = Step(name='reader_train',
+                            transformer=ImageReader(**reader_config),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')]),
+                                     },
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=True, load_saved_output=False)
+
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**reader_config),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta_valid')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath,
+                                save_output=True, load_saved_output=False)
+
+        stain_deconvolved_train = add_stain_deconvolution(reader_train, config, cache_output=True, suffix="_train")
+        stain_deconvolved_valid = add_stain_deconvolution(reader_inference, config, cache_output=True, suffix="_valid")
+
+        loader = Step(name='loader',
+                      transformer=loaders.ImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[stain_deconvolved_train, stain_deconvolved_valid],
+                      adapter={'X': ([('reader_with_deconv_train', 'X')]),
+                               'y': ([('reader_with_deconv_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('reader_with_deconv_valid', 'X')]),
+                               'y_valid': ([('reader_with_deconv_valid', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_train = Step(name='xy_train',
+                        transformer=XYSplit(**splitter_config),
+                        input_data=['input'],
+                        adapter={'meta': ([('input', 'meta')]),
+                                 'train_mode': ([('input', 'train_mode')])
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**config.splitter_config),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta_valid')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=loaders.MetadataImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_train, xy_inference],
+                      adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
+                               'y': ([('xy_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y_valid': ([('xy_inference', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+
+    return loader
+
+
+def preprocessing_dcan_inference(config):
+    reader_config = config.reader_multitask
+    splitter_config = config.xy_splitter_multitask
+
+    if config.execution.load_in_memory:
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**reader_config),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
+
+        stain_deconvolved_valid = add_stain_deconvolution(reader_inference, config, cache_output=True, suffix="_valid")
+
+        loader = Step(name='loader',
+                      transformer=loaders.ImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[stain_deconvolved_valid],
+                      adapter={'X': ([('reader_with_deconv_valid', 'X')]),
+                               'y': ([('reader_with_deconv_valid', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**splitter_config),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=loaders.MetadataImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_inference, xy_inference],
+                      adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y': ([('xy_inference', 'y')], squeeze_inputs),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    return loader
 
 def preprocessing_train(config):
     if config.execution.load_in_memory:

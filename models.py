@@ -1,14 +1,16 @@
+from functools import partial
+
 import numpy as np
-import torch.optim as optim
+from torch import optim
 import torch
 
+from callbacks import NeptuneMonitorSegmentation, NeptuneMonitorDCAN
 from steps.pytorch.architectures.unet import UNet, UNetMultitask, DCAN
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping, LossWeightsScheduler
 from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss, list_segmentation_loss
 from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation, DebugNeptuneMonitorDCAN
 
 
 class PyTorchUNet(Model):
@@ -34,13 +36,23 @@ class PyTorchUNetMultitask(Model):
         super().__init__(architecture_config, training_config, callbacks_config)
         self.model = UNetMultitask(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization_unet
-        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
+        self.optimizer = optim.Adam(self.weight_regularization(self.model,
+                                                               **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, architecture_config['loss_weights']['mask']),
-                              ('contour', segmentation_loss, architecture_config['loss_weights']['contour']),
-                              ('contour_touching', segmentation_loss,
-                               architecture_config['loss_weights']['contour_touching']),
-                              ('center', segmentation_loss, architecture_config['loss_weights']['center'])]
+
+        mask_loss = partial(segmentation_loss,
+                            weight_bce=architecture_config['loss_weights']['bce_mask'],
+                            weight_dice=architecture_config['loss_weights']['dice_mask'])
+        contour_loss = partial(segmentation_loss,
+                               weight_bce=architecture_config['loss_weights']['bce_contour'],
+                               weight_dice=architecture_config['loss_weights']['dice_contour'])
+        center_loss = partial(segmentation_loss,
+                              weight_bce=architecture_config['loss_weights']['bce_center'],
+                              weight_dice=architecture_config['loss_weights']['dice_center'])
+
+        self.loss_function = [('mask', mask_loss, architecture_config['loss_weights']['mask']),
+                              ('contour', contour_loss, architecture_config['loss_weights']['contour']),
+                              ('center', center_loss, architecture_config['loss_weights']['center'])]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
@@ -172,7 +184,7 @@ def callbacks_dcan(callbacks_config):
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
     validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
-    neptune_monitor = DebugNeptuneMonitorDCAN(**callbacks_config['neptune_monitor'])
+    neptune_monitor = NeptuneMonitorDCAN(**callbacks_config['neptune_monitor'])
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
     lw_scheduler = LossWeightsScheduler(**callbacks_config['loss_weights_scheduler'])
 

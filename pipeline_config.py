@@ -1,7 +1,7 @@
 import os
 
-from deepsense import neptune
 from attrdict import AttrDict
+from deepsense import neptune
 
 from utils import read_params
 
@@ -11,8 +11,7 @@ params = read_params(ctx)
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_mask']
-Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_contours_touching', 'file_path_centers']
-Y_COLUMNS_SPECIALISTS = ['file_path_mask', 'file_path_contours']
+Y_COLUMNS_MULTITASK = ['file_path_mask', 'file_path_contours', 'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
@@ -33,23 +32,20 @@ SOLUTION_CONFIG = AttrDict({
     'xy_splitter_multitask': {'x_columns': X_COLUMNS,
                               'y_columns': Y_COLUMNS_MULTITASK
                               },
-    'xy_splitter_specialists': {'x_columns': X_COLUMNS,
-                                'y_columns': Y_COLUMNS_SPECIALISTS
-                                },
     'reader_single': {'x_columns': X_COLUMNS,
                       'y_columns': Y_COLUMNS,
-                      'target_shape': GLOBAL_CONFIG['img_H-W']
                       },
     'reader_multitask': {'x_columns': X_COLUMNS,
                          'y_columns': Y_COLUMNS_MULTITASK,
-                         'target_shape': GLOBAL_CONFIG['img_H-W']
                          },
-    'reader_specialists': {'x_columns': X_COLUMNS,
-                           'y_columns': Y_COLUMNS_SPECIALISTS,
-                           'target_shape': GLOBAL_CONFIG['img_H-W']
-                           },
+    'reader_rescaler': {'min_size': params.image_h,
+                        'max_size': 2000,
+                        'target_ratio': 200},
+    'stain_deconvolution': {'mode': 'hematoxylin_eosin_sum'},
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,
+                                  'use_patching': params.use_patching,
+                                  'patching_stride': params.patching_stride
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
@@ -63,37 +59,42 @@ SOLUTION_CONFIG = AttrDict({
                                                },
                                  },
                },
-    'unet': {
-        'architecture_config': {'model_params': {'n_filters': params.n_filters,
-                                                 'conv_kernel': params.conv_kernel,
-                                                 'pool_kernel': params.pool_kernel,
-                                                 'pool_stride': params.pool_stride,
-                                                 'repeat_blocks': params.repeat_blocks,
+    'patch_combiner': {'patching_size': params.image_h,
+                       'patching_stride': params.patching_stride},
+    'unet_size_estimator': {
+        'architecture_config': {'model_params': {'n_filters': params.size_estimator__n_filters,
+                                                 'conv_kernel': params.size_estimator__conv_kernel,
+                                                 'pool_kernel': params.size_estimator__pool_kernel,
+                                                 'pool_stride': params.size_estimator__pool_stride,
+                                                 'repeat_blocks': params.size_estimator__repeat_blocks,
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
-                                                 'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_outputs
+                                                 'in_channels': params.size_estimator__image_channels,
+                                                 'nr_outputs': params.size_estimator__nr_unet_outputs
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },
                                 'regularizer_params': {'regularize': True,
                                                        'weight_decay_conv2d': params.l2_reg_conv,
                                                        },
-                                'weights_init': {'function': 'xavier',
+                                'weights_init': {'function': 'he',
                                                  },
-                                'loss_weights': {'mask': params.mask,
-                                                 'contour': params.contour,
-                                                 'contour_touching': params.contour_touching,
-                                                 'center': params.center,
+                                'loss_weights': {'bce_mask': params.size_estimator__bce_mask,
+                                                 'dice_mask': params.size_estimator__dice_mask,
+                                                 'bce_contour': params.size_estimator__bce_contour,
+                                                 'dice_contour': params.size_estimator__dice_contour,
+                                                 'bce_center': params.size_estimator__bce_center,
+                                                 'dice_center': params.size_estimator__dice_center,
+                                                 'mask': params.size_estimator__mask,
+                                                 'contour': params.size_estimator__contour,
+                                                 'center': params.size_estimator__center,
                                                  },
                                 },
         'training_config': {'epochs': params.epochs_nr,
-                            'shuffle': True,
-                            'batch_size': params.batch_size_train,
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'unet_size_estimator', 'best.torch'),
                 'epoch_every': 1},
             'exp_lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
@@ -112,16 +113,16 @@ SOLUTION_CONFIG = AttrDict({
             'early_stopping': {'patience': params.patience},
         },
     },
-    'unet_mask': {
-        'architecture_config': {'model_params': {'n_filters': params.mask_n_filters,
-                                                 'conv_kernel': params.mask_conv_kernel,
-                                                 'pool_kernel': params.mask_pool_kernel,
-                                                 'pool_stride': params.mask_pool_stride,
-                                                 'repeat_blocks': params.mask_repeat_blocks,
+    'unet': {
+        'architecture_config': {'model_params': {'n_filters': params.n_filters,
+                                                 'conv_kernel': params.conv_kernel,
+                                                 'pool_kernel': params.pool_kernel,
+                                                 'pool_stride': params.pool_stride,
+                                                 'repeat_blocks': params.repeat_blocks,
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.mask_nr_unet_outputs
+                                                 'nr_outputs': params.nr_unet_outputs
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },
@@ -130,19 +131,22 @@ SOLUTION_CONFIG = AttrDict({
                                                        },
                                 'weights_init': {'function': 'xavier',
                                                  },
-                                'loss_weights': {'mask': params.mask_mask,
-                                                 'contour': params.mask_contour,
-                                                 'contour_touching': params.mask_contour_touching,
-                                                 'center': params.mask_center,
+                                'loss_weights': {'bce_mask': params.bce_mask,
+                                                 'dice_mask': params.dice_mask,
+                                                 'bce_contour': params.bce_contour,
+                                                 'dice_contour': params.dice_contour,
+                                                 'bce_center': params.bce_center,
+                                                 'dice_center': params.dice_center,
+                                                 'mask': params.mask,
+                                                 'contour': params.contour,
+                                                 'center': params.center,
                                                  },
                                 },
         'training_config': {'epochs': params.epochs_nr,
-                            'shuffle': True,
-                            'batch_size': params.batch_size_train,
                             },
         'callbacks_config': {
             'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints_mask', 'network', 'best.torch'),
+                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'unet', 'best.torch'),
                 'epoch_every': 1},
             'exp_lr_scheduler': {'gamma': params.gamma,
                              'epoch_every': 1},
@@ -154,56 +158,7 @@ SOLUTION_CONFIG = AttrDict({
             'experiment_timing': {'batch_every': 0,
                                   'epoch_every': 1},
             'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'model_name': 'unet_mask',
-                                'image_nr': 4,
-                                'image_resize': 0.2,
-                                'outputs_to_plot': params.unet_outputs_to_plot},
-            'early_stopping': {'patience': params.patience},
-        },
-    },
-    'unet_contour': {
-        'architecture_config': {'model_params': {'n_filters': params.contour_n_filters,
-                                                 'conv_kernel': params.contour_conv_kernel,
-                                                 'pool_kernel': params.contour_pool_kernel,
-                                                 'pool_stride': params.contour_pool_stride,
-                                                 'repeat_blocks': params.contour_repeat_blocks,
-                                                 'batch_norm': params.use_batch_norm,
-                                                 'dropout': params.dropout_conv,
-                                                 'in_channels': params.image_channels,
-                                                 'nr_outputs': params.contour_nr_unet_outputs
-                                                 },
-                                'optimizer_params': {'lr': params.lr,
-                                                     },
-                                'regularizer_params': {'regularize': True,
-                                                       'weight_decay_conv2d': params.l2_reg_conv,
-                                                       },
-                                'weights_init': {'function': 'xavier',
-                                                 },
-                                'loss_weights': {'mask': params.contour_mask,
-                                                 'contour': params.contour_contour,
-                                                 'contour_touching': params.contour_contour_touching,
-                                                 'center': params.contour_center,
-                                                 },
-                                },
-        'training_config': {'epochs': params.epochs_nr,
-                            'shuffle': True,
-                            'batch_size': params.batch_size_train,
-                            },
-        'callbacks_config': {
-            'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints_contour', 'network', 'best.torch'),
-                'epoch_every': 1},
-            'exp_lr_scheduler': {'gamma': params.gamma,
-                             'epoch_every': 1},
-            'plateau_lr_scheduler': {'lr_factor': params.lr_factor,
-                                     'lr_patience': params.lr_patience,
-                                     'epoch_every': 1},
-            'training_monitor': {'batch_every': 0,
-                                 'epoch_every': 1},
-            'experiment_timing': {'batch_every': 0,
-                                  'epoch_every': 1},
-            'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'model_name': 'unet_contour',
+            'neptune_monitor': {'model_name': 'unet',
                                 'image_nr': 4,
                                 'image_resize': 0.2,
                                 'outputs_to_plot': params.unet_outputs_to_plot},
@@ -265,7 +220,6 @@ SOLUTION_CONFIG = AttrDict({
         },
     },
     'thresholder': {'threshold': params.threshold},
-    'watershed': {},
     'dropper': {'min_size': params.min_nuclei_size},
     'postprocessor': {}
 })

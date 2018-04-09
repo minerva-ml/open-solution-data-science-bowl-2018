@@ -1,9 +1,8 @@
-from PIL import Image
 import numpy as np
 import torch
-from torch.autograd import Variable
+from PIL import Image
 from deepsense import neptune
-
+from torch.autograd import Variable
 
 from steps.pytorch.callbacks import NeptuneMonitor
 from utils import sigmoid
@@ -79,7 +78,7 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
             break
         return prediction_masks
 
-class DebugNeptuneMonitorDCAN(NeptuneMonitor):
+class NeptuneMonitorDCAN(NeptuneMonitor):
     def __init__(self, image_nr, image_resize, model_name, outputs_to_plot):
         super().__init__(model_name)
         self.image_nr = image_nr

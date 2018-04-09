@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5, unet-multitask, patching]
+tags: [solution_5]
 
 metric:
   channel: 'Final Validation Score'
@@ -41,7 +41,7 @@ parameters:
 
 # General parameters
   valid_category_ids: '[0, 1]'
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1
@@ -115,27 +115,3 @@ parameters:
 # Postprocessing
   threshold: 0.5
   min_nuclei_size: 20
-
-# DCAN parameters
-  dcan_n_classifiers: 3
-  dcan_n_filters: 16
-  dcan_conv_kernel: 3
-  dcan_pool_kernel: 3
-  dcan_pool_stride: 2
-  dcan_repeat_blocks: 2
-
-# DCAN loss weights
-  dcan_mask: 0.2
-  dcan_contour: 0.7
-  dcan_mask_auxiliary_classifiers: 0.1
-  dcan_contour_auxiliary_classifiers: 0.1
-
-#DCAN training
-  lr_factor: 0.3
-  lr_patience: 30
-  lw_n_steps: 50
-  weight_transfers: '{"mask_auxiliary_classifiers":["mask",],"contour_auxiliary_classifiers":["contour",]}'
-
-#Neptune monitor
-  dcan_outputs_to_plot: '["mask", "contour"]'
-  unet_outputs_to_plot: '["mask", "contour", "contour_touching", "center"]'

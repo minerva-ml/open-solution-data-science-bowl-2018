@@ -1,12 +1,12 @@
-from functools import partial
+import os
 import shutil
+from functools import partial
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn import init
-from tqdm import tqdm
 
 from steps.base import BaseTransformer
 from steps.utils import get_logger
@@ -39,6 +39,8 @@ class Model(BaseTransformer):
             weights_init_func = partial(init_weights_normal, **weights_init_config['params'])
         elif weights_init_config['function'] == 'xavier':
             weights_init_func = init_weights_xavier
+        elif weights_init_config['function'] == 'he':
+            weights_init_func = init_weights_he
         else:
             raise NotImplementedError
 
@@ -89,6 +91,13 @@ class Model(BaseTransformer):
         outputs_batch = self.model(X)
         partial_batch_losses = {}
 
+        assert len(targets_tensors) == len(outputs_batch) == len(self.loss_function),\
+            '''Number of targets, model outputs and elements of loss function must equal.
+            You have n_targets={0}, n_model_outputs={1}, n_loss_function_elements={2}.
+            The order of elements must also be preserved.'''.format(len(targets_tensors),
+                                                                    len(outputs_batch),
+                                                                    len(self.loss_function))
+
         if len(self.output_names) == 1:
             for (name, loss_function, weight), target in zip(self.loss_function, targets_var):
                 batch_loss = loss_function(outputs_batch, target) * weight
@@ -126,6 +135,7 @@ class Model(BaseTransformer):
                     outputs.setdefault(name, []).append(output_)
             if batch_id == steps:
                 break
+        self.model.train()
         outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 
@@ -148,8 +158,10 @@ class Model(BaseTransformer):
         checkpoint_callback = self.callbacks_config.get('model_checkpoint')
         if checkpoint_callback:
             checkpoint_filepath = checkpoint_callback['filepath']
-            shutil.copyfile(checkpoint_filepath, filepath)
-
+            if os.path.exists(checkpoint_filepath):
+                shutil.copyfile(checkpoint_filepath, filepath)
+            else:
+                save_model(self.model, filepath)
         else:
             save_model(self.model, filepath)
 
@@ -180,3 +192,9 @@ def init_weights_xavier(model):
     if isinstance(model, nn.Conv2d):
         init.xavier_normal(model.weight)
         init.constant(model.bias, 0)
+        
+def init_weights_he(model):
+    if isinstance(model, nn.Conv2d):
+        init.kaiming_normal(model.weight)
+        init.constant(model.bias, 0)
+        

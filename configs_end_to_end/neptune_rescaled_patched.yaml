@@ -1,14 +1,14 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5, unet-multitask, patching]
+tags: [solution_5 stage2]
 
 metric:
   channel: 'Final Validation Score'
   goal: maximize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - .git
@@ -22,22 +22,24 @@ exclude:
 
 parameters:
 # Cloud Environment
-#  data_dir:               /public/dsb_2018_data/
-#  meta_dir:               /public/dsb_2018_data/
-#  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
-#  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
-#  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
-#  experiment_dir:         /output/dsb/experiments/
+  data_dir:               /public/dsb_2018_data/
+  meta_dir:               /public/dsb_2018_data/
+  external_data_dirs:     /public/dsb_2018_data/external_data/
+  masks_overlayed_dir:    /public/dsb_2018_data/masks_overlayed/
+  contours_overlayed_dir: /public/dsb_2018_data/contours_overlayed/
+  centers_overlayed_dir:  /public/dsb_2018_data/centers_overlayed/
+  experiment_dir:         /output/dsb/experiments/
 
 # Local Environment
-  data_dir:               /mnt/ml-team/dsb_2018/kuba
-  external_data_dirs: /mnt/ml-team/dsb_2018/kuba/external_data
-  meta_dir:               /mnt/ml-team/dsb_2018/kuba
-  masks_overlayed_dir:    /mnt/ml-team/dsb_2018/files/masks_overlayed
-  contours_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_overlayed
-  centers_overlayed_dir:  /mnt/ml-team/dsb_2018/files/centers_overlayed
-  experiment_dir:         /mnt/ml-team/dsb_2018/kuba/end_to_end_pipelines/rescaled_patched_unet
+#  data_dir:               /path/to/data
+#  meta_dir:               /path/to/data
+#  external_data_dirs:     /path/to/external/data
+#  masks_overlayed_dir:    /path/to/masks_overlayed
+#  contours_overlayed_dir: /path/to/contours_overlayed
+#  centers_overlayed_dir:  /path/to/centers_overlayed
+#  experiment_dir:         /path/to/work/dir
 
+# General parameters
   competition_stage: 2
   valid_category_ids: '[0, 1]'
   overwrite: 0
@@ -47,7 +49,7 @@ parameters:
   use_patching: 1
   patching_stride: 256
 
-# General parameters (size estimator)
+# Image parameters (size estimator)
   size_estimator__image_h: 512
   size_estimator__image_w: 512
   size_estimator__image_channels: 1
@@ -72,7 +74,7 @@ parameters:
   size_estimator__bce_center: 1.0
   size_estimator__dice_center: 1.0
 
-# General parameters (multi-output)
+# Image parameters (multi-output)
   image_h: 512
   image_w: 512
   image_channels: 1

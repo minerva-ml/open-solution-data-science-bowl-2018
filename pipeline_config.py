@@ -125,7 +125,7 @@ SOLUTION_CONFIG = AttrDict({
                                 'regularizer_params': {'regularize': True,
                                                        'weight_decay_conv2d': params.l2_reg_conv,
                                                        },
-                                'weights_init': {'function': 'xavier',
+                                'weights_init': {'function': 'he',
                                                  },
                                 'loss_weights': {'bce_mask': params.bce_mask,
                                                  'dice_mask': params.dice_mask,

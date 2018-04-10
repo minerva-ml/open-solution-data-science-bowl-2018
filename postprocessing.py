@@ -131,21 +131,19 @@ def watershed_contour(image, contour):
 
 
 def postprocess(image, contour):
-    cleaned_mask = get_clean_mask_basic(image, contour)
-    good_markers = get_markers_basic(cleaned_mask, contour)
+    cleaned_mask = get_clean_mask(image, contour)
+    good_markers = get_markers(cleaned_mask, contour)
     good_distance = get_distance(cleaned_mask)
 
     labels = morph.watershed(-good_distance, good_markers, mask=cleaned_mask)
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    # m_tresh = 0.5 #threshold_otsu(image)
-    # initial_mask_binary = (image > m_tresh).astype(np.uint8)
-    # labels = drop_artifacts_per_label(labels, initial_mask_binary)
+    min_joinable_size = min_blob_size(image > 0.5, percentile=50, fraction_of_percentile=0.2)
+    labels = connect_small(labels, min_cell_size=min_joinable_size)
 
-    labels = connect_small(labels, fraction_of_percentile=0.1)
-    min_size = min_blob_size(labels, fraction_of_percentile=0.1)
-    labels = drop_small(labels, min_size=min_size)
+    min_acceptable_size = min_blob_size(image > 0.5, percentile=50, fraction_of_percentile=0.1)
+    labels = drop_small(labels, min_size=min_acceptable_size)
 
     labels = drop_big_artifacts(labels, scale=0.01)
 
@@ -162,72 +160,64 @@ def drop_artifacts_per_label(labels, initial_mask):
     return labels_cleaned
 
 
-def get_clean_mask_basic(m, c):
-    m_b = m > 0.5 #threshold_otsu(m)
-
-    return m_b
-
-
 def get_clean_mask(m, c):
-    # threshold
-    m_b = m > 0.5 #threshold_otsu(m)
-    c_b = c > 0.5 #threshold_otsu(c)
-
-    # combine contours and masks and fill the cells
+    m_b = m > 0.5
+    c_b = c > 0.5
     m_ = np.where(m_b | c_b, 1, 0)
-    m_ = ndi.binary_fill_holes(m_)
 
-    # close what wasn't closed before
-    area, radius = mean_blob_size(m_b)
-    if radius >= 6:
-        struct_size = int(1.0 * radius)
+    clean_mask = np.zeros_like(m)
+    labels, label_nr = ndi.label(m_)
+    for label in range(1, label_nr + 1):
+        mask_component = np.where(labels == label, m_b, 0)
+        contour_component = np.where(labels == label, c_b, 0)
+
+        component_radius = np.sqrt(mask_component.sum())
+        struct_size = int(max(0.05 * component_radius, 5))
         struct_el = morph.disk(struct_size)
-        m_padded = pad_mask(m_, pad=struct_size)
+        m_padded = pad_mask(mask_component, pad=struct_size)
         m_padded = morph.binary_closing(m_padded, selem=struct_el)
-        m_padded = ndi.binary_fill_holes(m_padded)
-        m_ = crop_mask(m_padded, crop=struct_size)
-
-        # open to cut the real cells from the artifacts
-        area, radius = mean_blob_size(m_b)
-        struct_size = int(1.25 * radius)
-        struct_el = morph.disk(struct_size)
-        m_ = np.where(c_b & (~m_b), 0, m_)
-        m_padded = pad_mask(m_, pad=struct_size)
         m_padded = morph.binary_opening(m_padded, selem=struct_el)
-        m_ = crop_mask(m_padded, crop=struct_size)
+        mask_component_ = crop_mask(m_padded, crop=struct_size)
+        mask_component_ = ndi.binary_fill_holes(mask_component_)
 
-        # join the connected cells with what we had at the beginning
-        m_ = np.where(m_b | m_, 1, 0)
-        m_ = ndi.binary_fill_holes(m_)
+        mask_component_ = np.where(mask_component_ | mask_component | contour_component, 1, 0)
+        clean_mask += mask_component_
 
-        # drop all the cells that weren't present at least in 25% of area in the initial mask
-        m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
-    return m_
-
-
-def get_markers_basic(m_b, c):
-    c_b = c > 0.5 #threshold_otsu(c)
-    m_ = np.where(c_b, 0, m_b)
-    m_, _ = ndi.label(m_)
-    return m_
+    clean_mask = np.where(clean_mask, 1, 0)
+    return clean_mask
 
 
 def get_markers(m_b, c):
-    # threshold
-    area, radius = mean_blob_size(m_b)
-    if radius >= 4:
-        c_b = c > 0.5 #threshold_otsu(c)
-        m_ = np.where(c_b, 0, m_b)
+    c_b = c > 0.75
+    marker_component = np.where(m_b & ~c_b, 1, 0)
+    min_size = min_blob_size(m_b, percentile=50, fraction_of_percentile=0.2)
+    labels, label_nr = ndi.label(marker_component)
+    markers = np.zeros_like(marker_component)
+    for label in range(1, label_nr + 1):
+        mask_component = np.where(labels == label, 1, 0)
 
-        struct_size = int(0.5 * radius)
+        if mask_component.sum() < min_size:
+            continue
+
+        mask_component = ndi.binary_fill_holes(mask_component)
+
+        if mask_component.sum() < min_size * 3:
+            markers += np.where(mask_component, 1, 0)
+            continue
+
+        component_radius = np.sqrt(mask_component.sum())
+        struct_size = int(component_radius * 0.15)
         struct_el = morph.disk(struct_size)
-        m_padded = pad_mask(m_, pad=struct_size)
-        m_padded = morph.erosion(m_padded, selem=struct_el)
-        m_ = crop_mask(m_padded, crop=struct_size)
-    else:
-        m_ = m_b
-    m_, _ = ndi.label(m_)
-    return m_
+        m_padded = pad_mask(mask_component, pad=struct_size)
+        m_padded = morph.binary_erosion(m_padded, selem=struct_el)
+        mask_component = crop_mask(m_padded, crop=struct_size)
+
+        mask_component_labels, _ = ndi.label(mask_component)
+        mask_component = drop_small(mask_component_labels, min_size)
+        markers += np.where(mask_component, 1, 0)
+
+    markers, _ = ndi.label(markers)
+    return markers
 
 
 def get_distance(m_b):
@@ -328,7 +318,7 @@ def min_blob_size(mask, percentile=25, fraction_of_percentile=0.1):
 
 def mean_cell_size(labeled_image):
     blob_sizes = itemfreq(labeled_image)
-    if blob_sizes.shape[0]==1:
+    if blob_sizes.shape[0] == 1:
         return 0
     else:
         blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
@@ -340,13 +330,25 @@ def find_touching_labels(labels, label_id):
     dist = ndi.distance_transform_edt(mask)
     neighbour_labels = np.unique(np.where(dist == 1.0, labels, 0)).tolist()
     neighbour_labels.remove(0)
-    return neighbour_labels
+
+    neighbour_labels_with_sizes = [(neighbor_label, np.where(labels == neighbor_label, 1, 0).sum())
+                                   for neighbor_label in neighbour_labels]
+    neighbour_labels_with_sizes = sorted(neighbour_labels_with_sizes,
+                                         key=lambda x: x[1],
+                                         reverse=False)
+    neighbour_labels_sorted = [neighbor_label for neighbor_label, _ in neighbour_labels_with_sizes]
+    neighbour_labels_sorted
+    return neighbour_labels_sorted
 
 
-def connect_small(labels, fraction_of_percentile):
+def connect_small(labels, min_cell_size=None):
+    labels_with_sizes = [(label_id, np.where(labels == label_id, 1, 0).sum())
+                         for label_id in range(1, labels.max() + 1)]
+    label_ids_sorted_by_size = [lws[0] for lws in sorted(labels_with_sizes,
+                                                         key=lambda x: x[1],
+                                                         reverse=False)]
     touching_cell_was_connected = False
-    min_cell_size = min_blob_size(labels, fraction_of_percentile)
-    for label_id in range(1, labels.max() + 1):
+    for label_id in label_ids_sorted_by_size:
         cell_size = np.sum(labels == label_id)
         touching_labels = find_touching_labels(labels, label_id)
         for touching_label in touching_labels:
@@ -357,7 +359,7 @@ def connect_small(labels, fraction_of_percentile):
                 touching_cell_was_connected = True
     labels = relabel(labels)
     if touching_cell_was_connected:
-        labels = connect_small(labels, fraction_of_percentile)
+        labels = connect_small(labels, min_cell_size)
     return relabel(labels)
 
 
@@ -367,7 +369,7 @@ def is_slim(im, object_ar, area_ar):
     xdiff = np.max(ind[1]) - np.min(ind[1])
     rec_area = xdiff * ydiff
     area = np.sum(im == 1)
-    if xdiff / ydiff < object_ar and xdiff / ydiff > 1.0/object_ar and area / rec_area > area_ar:
+    if xdiff / ydiff < object_ar and xdiff / ydiff > 1.0 / object_ar and area / rec_area > area_ar:
         return False
     return True
 
@@ -393,7 +395,7 @@ def drop_big_artifacts(im, scale):
             continue
         if not is_slim(im == label, 2, 0.5):
             continue
-        if touching_edges(im = im==label, margin=2) < 2:
+        if touching_edges(im=im == label, margin=2) < 2:
             continue
         im_cleaned[im_cleaned == label] = 0
     return im_cleaned

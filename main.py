@@ -13,7 +13,8 @@ from metrics import intersection_over_union, intersection_over_union_thresholds
 from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from pipelines import PIPELINES
 from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
-from utils import init_logger, read_masks, read_params, create_submission, generate_metadata, set_seed, generate_data_frame_chunks
+from utils import init_logger, read_masks, read_params, create_submission, generate_metadata, set_seed, \
+    generate_data_frame_chunks
 
 logger = init_logger()
 ctx = neptune.Context()
@@ -28,34 +29,47 @@ def action():
 
 
 @action.command()
-def prepare_metadata():
+@click.option('-g', '--calculate_vgg_clusters', help='whether vgg clusters should be created', is_flag=True,
+              required=False)
+@click.option('-tr', '--train_data', help='calculate for train data', is_flag=True, required=False)
+@click.option('-te', '--test_data', help='calculate for train data', is_flag=True, required=False)
+def prepare_metadata(calculate_vgg_clusters,train_data, test_data):
     logger.info('creating metadata')
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
                              contours_overlayed_dir=params.contours_overlayed_dir,
-                             centers_overlayed_dir=params.centers_overlayed_dir)
+                             centers_overlayed_dir=params.centers_overlayed_dir,
+                             competition_stage=params.competition_stage,
+                             process_train_data=train_data,
+                             process_test_data=test_data)
     meta['is_external'] = 0
 
-    for external_data_dir in glob.glob('{}/*'.format(params.external_data_dirs)):
-        logger.info('adding external metadata for {}'.format(external_data_dir))
-        meta_external = generate_metadata(data_dir=external_data_dir,
-                                          masks_overlayed_dir=params.masks_overlayed_dir,
-                                          contours_overlayed_dir=params.contours_overlayed_dir,
-                                          centers_overlayed_dir=params.centers_overlayed_dir,
-                                          generate_train_only=True)
-        meta_external['is_external'] = 1
-        meta = pd.concat([meta, meta_external], axis=0)
+    if train_data:
+        for external_data_dir in glob.glob('{}/*'.format(params.external_data_dirs)):
+            logger.info('adding external metadata for {}'.format(external_data_dir))
+            meta_external = generate_metadata(data_dir=external_data_dir,
+                                              masks_overlayed_dir=params.masks_overlayed_dir,
+                                              contours_overlayed_dir=params.contours_overlayed_dir,
+                                              centers_overlayed_dir=params.centers_overlayed_dir,
+                                              competition_stage=params.competition_stage,
+                                              process_train_data=train_data,
+                                              process_test_data=False)
+            meta_external['is_external'] = 1
+            meta = pd.concat([meta, meta_external], axis=0)
 
-    logger.info('calculating clusters')
-    meta_train = meta[meta['is_train'] == 1]
-    meta_test = meta[meta['is_train'] == 0]
+    if calculate_vgg_clusters:
+        logger.info('calculating clusters')
+        meta_train = meta[meta['is_train'] == 1]
+        meta_test = meta[meta['is_train'] == 0]
 
-    vgg_features_clusters = get_vgg_clusters(meta_train)
-    meta_train['vgg_features_clusters'] = vgg_features_clusters
-    meta_test['vgg_features_clusters'] = 'NaN'
-    meta = pd.concat([meta_train, meta_test], axis=0)
+        vgg_features_clusters = get_vgg_clusters(meta_train)
+        meta_train['vgg_features_clusters'] = vgg_features_clusters
+        meta_test['vgg_features_clusters'] = 'NaN'
+        meta = pd.concat([meta_train, meta_test], axis=0)
 
-    meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
+    metadata_filepath = os.path.join(params.meta_dir, 'stage{}_metadata.csv').format(params.competition_stage)
+    logger.info('saving metadata to {}'.format(metadata_filepath))
+    meta.to_csv(metadata_filepath, index=None)
 
 
 @action.command()
@@ -66,11 +80,17 @@ def prepare_masks():
     for data_dir in all_data_dirs:
         logger.info('processing directory {}'.format(data_dir))
         logger.info('overlaying masks')
-        overlay_masks(images_dir=data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
+        overlay_masks(images_dir=data_dir,
+                      subdir_name='stage{}_train'.format(params.competition_stage),
+                      target_dir=params.masks_overlayed_dir)
         logger.info('overlaying contours')
-        overlay_contours(images_dir=data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
+        overlay_contours(images_dir=data_dir,
+                         subdir_name='stage{}_train'.format(params.competition_stage),
+                         target_dir=params.contours_overlayed_dir)
         logger.info('overlaying centers')
-        overlay_centers(images_dir=data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
+        overlay_centers(images_dir=data_dir,
+                        subdir_name='stage{}_train'.format(params.competition_stage),
+                        target_dir=params.centers_overlayed_dir)
 
 
 @action.command()
@@ -86,7 +106,7 @@ def _train_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage{}_metadata.csv'.format(params.competition_stage)))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
 
@@ -123,7 +143,7 @@ def evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
 
 
 def _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage{}_metadata.csv'.format(params.competition_stage)))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
 
@@ -164,7 +184,8 @@ def _evaluate_pipeline(pipeline_name, validation_size, dev_mode, simple_cv):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-d', '--dev_mode', help='if true only a small sample of data will be used', is_flag=True, required=False)
-@click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None, required=False)
+@click.option('-c', '--chunk_size', help='size of the chunks to run prediction on', type=int, default=None,
+              required=False)
 def predict_pipeline(pipeline_name, dev_mode, chunk_size):
     if chunk_size is not None:
         _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size)
@@ -173,7 +194,7 @@ def predict_pipeline(pipeline_name, dev_mode, chunk_size):
 
 
 def _predict_pipeline(pipeline_name, dev_mode):
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage{}_metadata.csv'.format(params.competition_stage)))
     meta_test = meta[meta['is_train'] == 0]
 
     if dev_mode:
@@ -201,7 +222,7 @@ def _predict_pipeline(pipeline_name, dev_mode):
 
 
 def _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size):
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage{}_metadata.csv'.format(params.competition_stage)))
     meta_test = meta[meta['is_train'] == 0]
 
     if dev_mode:
@@ -211,7 +232,6 @@ def _predict_in_chunks_pipeline(pipeline_name, dev_mode, chunk_size):
 
     submission_chunks = []
     for meta_chunk in generate_data_frame_chunks(meta_test, chunk_size):
-
         data = {'input': {'meta': meta_chunk,
                           'meta_valid': None,
                           'train_mode': False,

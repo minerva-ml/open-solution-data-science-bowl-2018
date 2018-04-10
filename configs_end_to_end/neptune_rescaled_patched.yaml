@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5 stage2]
+tags: [solution_5, stage2]
 
 metric:
   channel: 'Final Validation Score'

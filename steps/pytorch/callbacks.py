@@ -126,7 +126,7 @@ class TrainingMonitor(Callback):
 
     def on_batch_end(self, metrics, *args, **kwargs):
         for name, loss in metrics.items():
-            loss = loss.data.cpu().numpy()[0]
+            loss = loss.data.cpu().numpy().item(0)
             if name in self.epoch_loss_averagers.keys():
                 self.epoch_loss_averagers[name].send(loss)
             else:
@@ -157,7 +157,7 @@ class ValidationMonitor(Callback):
                                    self.validation_datagen)
             self.model.train()
             for name, loss in val_loss.items():
-                loss = loss.data.cpu().numpy()[0]
+                loss = loss.data.cpu().numpy().item(0)
                 logger.info('epoch {0} validation {1}:     {2:.5f}'.format(self.epoch_id, name, loss))
         self.epoch_id += 1
 
@@ -284,7 +284,7 @@ class NeptuneMonitor(Callback):
 
     def on_batch_end(self, metrics, *args, **kwargs):
         for name, loss in metrics.items():
-            loss = loss.data.cpu().numpy()[0]
+            loss = loss.data.cpu().numpy().item(0)
 
             if name in self.epoch_loss_averagers.keys():
                 self.epoch_loss_averagers[name].send(loss)
@@ -311,7 +311,7 @@ class NeptuneMonitor(Callback):
                                self.validation_datagen)
         self.model.train()
         for name, loss in val_loss.items():
-            loss = loss.data.cpu().numpy()[0]
+            loss = loss.data.cpu().numpy().item(0)
             self.ctx.channel_send('{} epoch_val {} loss'.format(self.model_name, name), x=self.epoch_id, y=loss)
 
 

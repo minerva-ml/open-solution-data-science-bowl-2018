@@ -1,6 +1,5 @@
 from sklearn.metrics import accuracy_score
 import torch
-from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.nn as nn
 
@@ -43,30 +42,22 @@ def multi_output_cross_entropy(outputs, targets):
 
 
 def score_model(model, loss_function, datagen):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     batch_gen, steps = datagen
     partial_batch_losses = {}
     for batch_id, data in enumerate(batch_gen):
-        X = data[0]
-        targets_tensors = data[1:]
-
-        if torch.cuda.is_available():
-            X = Variable(X, volatile=True).cuda()
-            targets_var = []
-            for target_tensor in targets_tensors:
-                targets_var.append(Variable(target_tensor, volatile=True).cuda())
-        else:
-            X = Variable(X, volatile=True)
-            targets_var = []
-            for target_tensor in targets_tensors:
-                targets_var.append(Variable(target_tensor, volatile=True))
+        with torch.no_grad():
+            X = data[0].to(device)
+            targets_tensors = data[1:].to(device)
 
         outputs = model(X)
         if len(loss_function) == 1:
-            for (name, loss_function_one, weight), target in zip(loss_function, targets_var):
+            for (name, loss_function_one, weight), target in zip(loss_function, targets_tensors):
                 loss_sum = loss_function_one(outputs, target) * weight
         else:
             batch_losses = []
-            for (name, loss_function_one, weight), output, target in zip(loss_function, outputs, targets_var):
+            for (name, loss_function_one, weight), output, target in zip(loss_function, outputs, targets_tensors):
                 loss = loss_function_one(output, target) * weight
                 batch_losses.append(loss)
                 partial_batch_losses.setdefault(name, []).append(loss)
@@ -80,7 +71,7 @@ def score_model(model, loss_function, datagen):
 
 
 def torch_acc_score(output, target):
-    output = output.data.cpu().numpy()
+    output = output.detach().cpu().numpy()
     y_true = target.numpy()
     y_pred = output.argmax(axis=1)
 

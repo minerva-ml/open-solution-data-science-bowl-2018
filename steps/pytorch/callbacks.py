@@ -126,7 +126,7 @@ class TrainingMonitor(Callback):
 
     def on_batch_end(self, metrics, *args, **kwargs):
         for name, loss in metrics.items():
-            loss = loss.data.cpu().numpy().item(0)
+            loss = loss.detach().cpu().numpy().item(0)
             if name in self.epoch_loss_averagers.keys():
                 self.epoch_loss_averagers[name].send(loss)
             else:

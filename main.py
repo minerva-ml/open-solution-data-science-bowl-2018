@@ -27,7 +27,7 @@ def prepare_metadata():
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
                              contours_overlayed_dir=params.contours_overlayed_dir,
-                             contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
+                             contours_touching_overlayed_dir=params.contours_touching_overlayed_dir,
                              centers_overlayed_dir=params.centers_overlayed_dir)
     logger.info('calculating clusters')
 

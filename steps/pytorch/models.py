@@ -71,7 +71,9 @@ class Model(BaseTransformer):
     def _fit_loop(self, data):
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         X = data[0].to(device)
-        targets_tensors = data[1:].to(device)
+        targets_tensors = []
+        for target in data[1:]:
+            targets_tensors.append(target.to(device))
 
         self.optimizer.zero_grad()
         outputs_batch = self.model(X)

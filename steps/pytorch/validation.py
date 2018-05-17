@@ -49,7 +49,9 @@ def score_model(model, loss_function, datagen):
     for batch_id, data in enumerate(batch_gen):
         with torch.no_grad():
             X = data[0].to(device)
-            targets_tensors = data[1:].to(device)
+            targets_tensors = []
+            for target in data[1:]:
+                targets_tensors.append(target.to(device))
 
         outputs = model(X)
         if len(loss_function) == 1:

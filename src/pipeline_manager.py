@@ -54,12 +54,12 @@ def prepare_metadata(logger, params):
 def prepare_masks(logger, params):
     logger.info('overlaying masks')
     overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
-    logger.info('overlaying contours')
-    overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
-    overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',
-                     target_dir=params.contours_touching_overlayed_dir, touching_only=True)
-    logger.info('overlaying centers')
-    overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
+    # logger.info('overlaying contours')
+    # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
+    # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',
+    #                  target_dir=params.contours_touching_overlayed_dir, touching_only=True)
+    # logger.info('overlaying centers')
+    # overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
 
 
 def train(pipeline_name, validation_size, logger, params):

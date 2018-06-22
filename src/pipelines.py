@@ -6,18 +6,19 @@ from .steppy.preprocessing.misc import XYSplit, ImageReader
 from .loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
     ImageSegmentationMultitaskLoader, ImageSegmentationLoader
 from .models import PyTorchUNet, PyTorchUNetMultitask
-from .postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor
-from .utils import squeeze_inputs
+from .postprocessing import Thresholder, NucleiLabeler, Dropper, \
+    WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor, \
+    resize_image, categorize_image, label_multiclass_image
+from .utils import squeeze_inputs, make_apply_transformer
 
 
-def unet(config, train_mode):
+def unet_old(config, train_mode):
     if train_mode:
-        save_output = True
+        save_output = False
         load_saved_output = False
         preprocessing = preprocessing_train(config)
     else:
-        save_output = True
+        save_output = False
         load_saved_output = False
         preprocessing = preprocessing_inference(config)
 
@@ -29,12 +30,10 @@ def unet(config, train_mode):
 
     mask_postprocessed = mask_postprocessing(unet, config, save_output=save_output)
 
-    detached = nuclei_labeler(mask_postprocessed, config, save_output=save_output)
-
     output = Step(name='output',
                   transformer=Dummy(),
-                  input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                  input_steps=[mask_postprocessed],
+                  adapter={'y_pred': ([(mask_postprocessed.name, 'labeled_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -57,7 +56,9 @@ def unet_multitask(config, train_mode):
                           save_output=save_output, load_saved_output=load_saved_output)
 
     mask_resize = Step(name='mask_resize',
-                       transformer=Resizer(),
+                       transformer=make_apply_transformer(resize_image,
+                                                          output_name='resized_images',
+                                                          apply_on=['images', 'target_sizes']),
                        input_data=['input'],
                        input_steps=[unet_multitask],
                        adapter={'images': ([(unet_multitask.name, 'mask_prediction')]),
@@ -67,7 +68,9 @@ def unet_multitask(config, train_mode):
                        save_output=save_output)
 
     contour_resize = Step(name='contour_resize',
-                          transformer=Resizer(),
+                          transformer=make_apply_transformer(resize_image,
+                                                             output_name='resized_images',
+                                                             apply_on=['images', 'target_sizes']),
                           input_data=['input'],
                           input_steps=[unet_multitask],
                           adapter={'images': ([(unet_multitask.name, 'contour_prediction')]),
@@ -297,9 +300,11 @@ def preprocessing_multitask_inference(config):
     return loader
 
 
-def mask_postprocessing(model, config, save_output=True):
+def mask_postprocessing(model, config, save_output=False):
     mask_resize = Step(name='mask_resize',
-                       transformer=Resizer(),
+                       transformer=make_apply_transformer(resize_image,
+                                                          output_name='resized_images',
+                                                          apply_on=['images', 'target_sizes']),
                        input_data=['input'],
                        input_steps=[model],
                        adapter={'images': ([(model.name, 'mask_prediction')]),
@@ -308,20 +313,32 @@ def mask_postprocessing(model, config, save_output=True):
                        cache_dirpath=config.env.cache_dirpath,
                        save_output=save_output)
 
-    mask_thresholding = Step(name='mask_thresholding',
-                             transformer=Thresholder(**config.thresholder),
-                             input_steps=[mask_resize],
-                             adapter={'images': ([('mask_resize', 'resized_images')]),
+    category_mapper = Step(name='category_mapper',
+                           transformer=make_apply_transformer(categorize_image,
+                                                              output_name='categorized_images'),
+                           input_steps=[mask_resize],
+                           adapter={'images': ([('mask_resize', 'resized_images')]),
                                       },
-                             cache_dirpath=config.env.cache_dirpath,
-                             save_output=save_output)
+                           cache_dirpath=config.env.cache_dirpath,
+                           save_output=save_output)
 
-    return mask_thresholding
+    labeler = Step(name='labeler',
+                   transformer=make_apply_transformer(label_multiclass_image,
+                                                      output_name='labeled_images'),
+                   input_steps=[category_mapper],
+                   adapter={'images': ([('category_mapper', 'categorized_images')]),
+                            },
+                   cache_dirpath=config.env.cache_dirpath,
+                   save_output=save_output)
+
+    return labeler
 
 
 def contour_postprocessing(model, config, save_output=True):
     contour_resize = Step(name='contour_resize',
-                          transformer=Resizer(),
+                          transformer=make_apply_transformer(resize_image,
+                                                             output_name='resized_images',
+                                                             apply_on=['images', 'target_sizes']),
                           input_data=['input'],
                           input_steps=[model],
                           adapter={'images': ([(model.name, 'contour_prediction')]),
@@ -342,7 +359,9 @@ def contour_postprocessing(model, config, save_output=True):
 
 def center_postprocessing(model, config, save_output=True):
     center_resize = Step(name='center_resize',
-                         transformer=Resizer(),
+                         transformer=make_apply_transformer(resize_image,
+                                                            output_name='resized_images',
+                                                            apply_on=['images', 'target_sizes']),
                          input_data=['input'],
                          input_steps=[model],
                          adapter={'images': ([(model.name, 'center_prediction')]),

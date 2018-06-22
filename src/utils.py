@@ -2,7 +2,8 @@ import glob
 import logging
 import os
 import sys
-from itertools import product
+from itertools import product, chain
+from collections import Iterable
 
 import numpy as np
 import pandas as pd
@@ -10,6 +11,8 @@ import yaml
 from PIL import Image
 from attrdict import AttrDict
 from tqdm import tqdm
+
+from .steppy.base import BaseTransformer
 
 
 def read_yaml(filepath):
@@ -225,3 +228,53 @@ def from_pil(*images):
 
 def to_pil(*images):
     return [Image.fromarray((image).astype(np.uint8)) for image in images]
+
+
+def make_apply_transformer(func, output_name='output', apply_on=None):
+    class StaticApplyTransformer(BaseTransformer):
+        def transform(self, *args, **kwargs):
+            self.check_input(*args, **kwargs)
+
+            if not apply_on:
+                iterator = zip(*args, *kwargs.values())
+            else:
+                iterator = zip(*args, *[kwargs[key] for key in apply_on])
+
+            output = []
+            for func_args in tqdm(iterator, total=self.get_arg_length(*args, **kwargs)):
+                output.append(func(*func_args))
+            return {output_name: output}
+
+        @staticmethod
+        def check_input(*args, **kwargs):
+            if len(args) and len(kwargs) == 0:
+                raise Exception('Input must not be empty')
+
+            arg_length = None
+            for arg in chain(args, kwargs.values()):
+                if not isinstance(arg, Iterable):
+                    raise Exception('All inputs must be iterable')
+                arg_length_loc = None
+                try:
+                    arg_length_loc = len(arg)
+                except:
+                    pass
+                if arg_length_loc is not None:
+                    if arg_length is None:
+                        arg_length = arg_length_loc
+                    elif arg_length_loc != arg_length:
+                        raise Exception('All inputs must be the same length')
+
+        @staticmethod
+        def get_arg_length(*args, **kwargs):
+            arg_length = None
+            for arg in chain(args, kwargs.values()):
+                if arg_length is None:
+                    try:
+                        arg_length = len(arg)
+                    except:
+                        pass
+                if arg_length is not None:
+                    return arg_length
+
+    return StaticApplyTransformer()

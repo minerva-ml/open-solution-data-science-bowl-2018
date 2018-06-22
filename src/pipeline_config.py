@@ -67,7 +67,8 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_outputs
+                                                 'nr_outputs': params.nr_unet_outputs,
+                                                 'encoder': params.encoder
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },

@@ -12,19 +12,53 @@ from .steppy.base import BaseTransformer
 from .utils import relabel
 
 
-class Resizer(BaseTransformer):
-    def transform(self, images, target_sizes):
-        resized_images = []
-        for image, target_size in tqdm(zip(images, target_sizes)):
-            resized_image = resize(image, target_size, mode='constant')
-            resized_images.append(resized_image)
-        return {'resized_images': resized_images}
+def resize_image(image, target_size):
+    """Resize image to target size
 
-    def load(self, filepath):
-        return self
+    Args:
+        image (numpy.ndarray): Image of shape (C x H x W).
+        target_size (tuple): Target size (H, W).
 
-    def save(self, filepath):
-        joblib.dump({}, filepath)
+    Returns:
+        numpy.ndarray: Resized image of shape (C x H x W).
+
+    """
+    n_channels = image.shape[0]
+    resized_image = resize(image, (n_channels,) + target_size, mode='constant')
+    return resized_image
+
+
+def categorize_image(image, activation='softmax', threshold=0.5):
+    """Maps probability map to categories. Each pixel is assigned with a category with highest probability.
+
+    Args:
+        image (numpy.ndarray): Probability map of shape (C x H x W).
+        activation (string): Activation function, either softmax or sigmoid. Defaults to 'softmax'.
+        threshold (float or list): Single threshold for sigmoid activation or list of per class thresholds.
+
+    Returns:
+        numpy.ndarray: Categorized image of shape (C x H x W).
+
+    """
+    categorized_image = []
+    if activation == 'softmax':
+        class_map = np.argmax(image, axis=0)
+        for class_nr in range(image.shape[0]):
+            categorized_image.append((class_map == class_nr).astype(np.uint8))
+    if activation == 'sigmoid':
+        if isinstance(threshold, float):
+            threshold = [threshold] * image.shape[0]
+        for thrs, class_instance in zip(threshold, image):
+            categorized_image.append((class_instance > thrs).astype(np.uint8))
+
+    return np.stack(categorized_image)
+
+
+def label_multiclass_image(image):
+    labeled_image = []
+    for class_instance in image:
+        labeled_image.append(label(class_instance))
+    return np.stack(labeled_image)
 
 
 class Thresholder(BaseTransformer):

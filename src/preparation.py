@@ -77,6 +77,8 @@ def overlay_centers(images_dir, subdir_name, target_dir):
         overlayed_masks = np.where(np.sum(masks, axis=0) > 128., 255., 0.).astype(np.uint8)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
+        import pdb
+        pdb.set_trace()
         imwrite(target_filepath, overlayed_masks)
 
 

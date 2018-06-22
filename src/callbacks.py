@@ -4,9 +4,9 @@ import torch
 from torch.autograd import Variable
 from deepsense import neptune
 
+from .steppy.pytorch.callbacks import NeptuneMonitor
 
-from steps.pytorch.callbacks import NeptuneMonitor
-from utils import sigmoid
+from .utils import sigmoid
 
 
 class NeptuneMonitorSegmentation(NeptuneMonitor):

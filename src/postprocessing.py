@@ -7,8 +7,9 @@ from skimage.filters import threshold_otsu
 from sklearn.externals import joblib
 from tqdm import tqdm
 
-from steps.base import BaseTransformer
-from utils import relabel
+from .steppy.base import BaseTransformer
+
+from .utils import relabel
 
 
 class Resizer(BaseTransformer):

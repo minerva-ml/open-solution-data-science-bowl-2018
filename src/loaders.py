@@ -6,10 +6,11 @@ from attrdict import AttrDict
 from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
 
-from augmentation import affine_seq, color_seq
-from steps.base import BaseTransformer
-from steps.pytorch.utils import ImgAug
-from utils import from_pil, to_pil
+from .steppy.base import BaseTransformer
+from .steppy.pytorch.utils import ImgAug
+
+from .augmentation import affine_seq, color_seq
+from .utils import from_pil, to_pil
 
 
 class MetadataImageSegmentationDataset(Dataset):

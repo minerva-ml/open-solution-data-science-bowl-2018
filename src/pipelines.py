@@ -1,13 +1,14 @@
 from functools import partial
 
-from loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
+from .steppy.base import Step, Dummy
+from .steppy.preprocessing.misc import XYSplit, ImageReader
+
+from .loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
     ImageSegmentationMultitaskLoader, ImageSegmentationLoader
-from models import PyTorchUNet, PyTorchUNetMultitask
-from postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
+from .models import PyTorchUNet, PyTorchUNetMultitask
+from .postprocessing import Resizer, Thresholder, NucleiLabeler, Dropper, \
     WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor
-from steps.base import Step, Dummy
-from steps.preprocessing import XYSplit, ImageReader
-from utils import squeeze_inputs
+from .utils import squeeze_inputs
 
 
 def unet(config, train_mode):

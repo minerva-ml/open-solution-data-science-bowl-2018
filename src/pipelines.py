@@ -12,7 +12,7 @@ from .postprocessing import Thresholder, NucleiLabeler, Dropper, \
 from .utils import squeeze_inputs, make_apply_transformer
 
 
-def unet_old(config, train_mode):
+def unet(config, train_mode):
     if train_mode:
         save_output = False
         load_saved_output = False
@@ -25,6 +25,7 @@ def unet_old(config, train_mode):
     unet = Step(name='unet',
                 transformer=PyTorchUNet(**config.unet),
                 input_steps=[preprocessing],
+                is_trainable=True,
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output)
 

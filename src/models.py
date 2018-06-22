@@ -5,7 +5,7 @@ from .steppy.pytorch.architectures.unet import UNet, UNetMultitask
 from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from .steppy.pytorch.models import Model
-from .steppy.pytorch.validation import segmentation_loss
+from .steppy.pytorch.validation import segmentation_loss, multiclass_segmentation_loss
 
 from .utils import sigmoid
 from .callbacks import NeptuneMonitorSegmentation
@@ -46,7 +46,7 @@ class PyTorchUNet(Model):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, 1.0)]
+        self.loss_function = [('mask', multiclass_segmentation_loss, 1.0)]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
@@ -62,7 +62,7 @@ class PyTorchUNet(Model):
             self.model = UNet(**self.architecture_config['model_params'])
         else:
             config = PRETRAINED_NETWORKS[encoder]
-            self.model = config['model'](num_classes=self.architecture_config['model_params']['nr_unet_outputs'],
+            self.model = config['model'](num_classes=self.architecture_config['model_params']['nr_outputs'],
                                          **config['model_config'])
             self._initialize_model_weights = lambda: None
 

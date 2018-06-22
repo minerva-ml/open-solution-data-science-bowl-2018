@@ -123,9 +123,10 @@ def read_params(ctx):
 
 def generate_metadata(data_dir,
                       masks_overlayed_dir,
-                      contours_overlayed_dir,
-                      contours_touching_overlayed_dir,
-                      centers_overlayed_dir):
+                      # contours_overlayed_dir,
+                      # contours_touching_overlayed_dir,
+                      # centers_overlayed_dir
+                      ):
     def stage1_generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
                                             'is_train', 'width', 'height', 'n_nuclei'])
@@ -134,7 +135,7 @@ def generate_metadata(data_dir,
         else:
             tr_te = 'stage1_test'
 
-        for image_id in sorted(os.listdir(os.path.join(data_dir, tr_te))):
+        for image_id in tqdm(sorted(os.listdir(os.path.join(data_dir, tr_te)))):
             p = os.path.join(data_dir, tr_te, image_id, 'images')
             if image_id != os.listdir(p)[0][:-4]:
                 ValueError('ImageId mismatch ' + str(image_id))
@@ -146,17 +147,17 @@ def generate_metadata(data_dir,
                 is_train = 1
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
-                file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
-                file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
-                file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
+                # file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
+                # file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
+                # file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
                 is_train = 0
                 file_path_masks = None
                 file_path_mask = None
-                file_path_contours = None
-                file_path_contours_touching = None
-                file_path_centers = None
+                # file_path_contours = None
+                # file_path_contours_touching = None
+                # file_path_centers = None
                 n_nuclei = None
 
             img = Image.open(file_path_image)
@@ -169,9 +170,9 @@ def generate_metadata(data_dir,
                                               'file_path_image': file_path_image,
                                               'file_path_masks': file_path_masks,
                                               'file_path_mask': file_path_mask,
-                                              'file_path_contours': file_path_contours,
-                                              'file_path_contours_touching': file_path_contours_touching,
-                                              'file_path_centers': file_path_centers,
+                                              # 'file_path_contours': file_path_contours,
+                                              # 'file_path_contours_touching': file_path_contours_touching,
+                                              # 'file_path_centers': file_path_centers,
                                               'is_train': is_train,
                                               'width': width,
                                               'height': height,

@@ -37,9 +37,10 @@ def prepare_metadata(logger, params):
     logger.info('creating metadata')
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
-                             contours_overlayed_dir=params.contours_overlayed_dir,
-                             contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
-                             centers_overlayed_dir=params.centers_overlayed_dir)
+                             # contours_overlayed_dir=params.contours_overlayed_dir,
+                             # contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
+                             # centers_overlayed_dir=params.centers_overlayed_dir
+                             )
     logger.info('calculating clusters')
 
     meta_train = meta[meta['is_train'] == 1]

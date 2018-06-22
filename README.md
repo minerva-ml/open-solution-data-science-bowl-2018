@@ -6,6 +6,9 @@ This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/
 1) Deliver open, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
 2) Encourage more Kagglers to start working on the Data Science Bowl, test their ideas and learn advanced data science.
 
+## Disclaimer
+In this open source solution you will find references to the neptune.ml. It is free platform for community Users, which we use daily to keep track of our experiments. Please note that using neptune.ml is not necessary to proceed with this solution. You may run it as plain Python script :wink:.
+
 ## Installation
 Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for instructions.
 

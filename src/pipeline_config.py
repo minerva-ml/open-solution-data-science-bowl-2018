@@ -3,7 +3,7 @@ import os
 from deepsense import neptune
 from attrdict import AttrDict
 
-from utils import read_params
+from .utils import read_params
 
 ctx = neptune.Context()
 params = read_params(ctx)

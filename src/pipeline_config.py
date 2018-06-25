@@ -10,13 +10,13 @@ params = read_params(ctx)
 
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
-Y_COLUMNS = ['file_path_cut_mask']
+Y_COLUMNS = ['file_path_mask_with_borders']
 Y_COLUMNS_MULTITASK = ['file_path_mask',
                        'file_path_contours',
                        'file_path_contours_touching',
                        'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
-CHANNELS = ['background', 'nuclei']
+CHANNELS = ['background', 'nuclei', 'borders']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'load_in_memory': params.load_in_memory,

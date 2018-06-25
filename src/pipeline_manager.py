@@ -8,7 +8,7 @@ from .metrics import intersection_over_union, intersection_over_union_thresholds
 from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from .pipelines import PIPELINES
 from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers,\
-    get_vgg_clusters, overlay_cut_masks
+    get_vgg_clusters, overlay_cut_masks, overlay_masks_with_borders
 from .utils import init_logger, read_masks, read_params, create_submission, generate_metadata
 
 
@@ -39,6 +39,7 @@ def prepare_metadata(logger, params):
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
                              cut_masks_dir=params.cut_masks_dir,
+                             masks_with_borders_dir=params.masks_with_borders_dir,
                              # contours_overlayed_dir=params.contours_overlayed_dir,
                              # contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
                              # centers_overlayed_dir=params.centers_overlayed_dir
@@ -57,9 +58,12 @@ def prepare_metadata(logger, params):
 def prepare_masks(logger, params):
     # logger.info('overlaying masks')
     # overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
-    logger.info('cutting masks')
-    overlay_cut_masks(images_dir=params.data_dir, subdir_name='stage1_train',
-                      target_dir=params.cut_masks_dir, cut_size=2)
+    # logger.info('cutting masks')
+    # overlay_cut_masks(images_dir=params.data_dir, subdir_name='stage1_train',
+    #                   target_dir=params.cut_masks_dir, cut_size=2)
+    logger.info('masks with borders')
+    overlay_masks_with_borders(images_dir=params.data_dir, subdir_name='stage1_train',
+                               target_dir=params.masks_with_borders_dir)
 
     # logger.info('overlaying contours')
     # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)

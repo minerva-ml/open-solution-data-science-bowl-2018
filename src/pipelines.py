@@ -8,7 +8,7 @@ from .loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationM
 from .models import PyTorchUNet, PyTorchUNetMultitask
 from .postprocessing import Thresholder, NucleiLabeler, Dropper, \
     WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor, \
-    resize_image, categorize_image, label_multiclass_image
+    resize_image, categorize_image, label_multiclass_image, get_channel
 from .utils import squeeze_inputs, make_apply_transformer
 
 
@@ -34,7 +34,7 @@ def unet(config, train_mode):
     output = Step(name='output',
                   transformer=Dummy(),
                   input_steps=[mask_postprocessed],
-                  adapter={'y_pred': ([(mask_postprocessed.name, 'labeled_images')]),
+                  adapter={'y_pred': ([(mask_postprocessed.name, 'nuclei_images')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return output
@@ -332,7 +332,17 @@ def mask_postprocessing(model, config, save_output=False):
                    cache_dirpath=config.env.cache_dirpath,
                    save_output=save_output)
 
-    return labeler
+    nuclei_filter = Step(name='nuclei_filter',
+                         transformer=make_apply_transformer(partial(get_channel,
+                                                            channel=config.postprocessor.channels.index('nuclei')),
+                                                            output_name='nuclei_images'),
+                         input_steps=[labeler],
+                         adapter={'images': ([('labeler', 'labeled_images')]),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath,
+                         save_output=save_output)
+
+    return nuclei_filter
 
 
 def contour_postprocessing(model, config, save_output=True):

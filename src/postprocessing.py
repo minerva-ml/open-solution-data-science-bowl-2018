@@ -24,7 +24,7 @@ def resize_image(image, target_size):
 
     """
     n_channels = image.shape[0]
-    resized_image = resize(image, (n_channels,) + target_size, mode='constant')
+    resized_image = resize(image, (n_channels, target_size[0], target_size[1]), mode='constant')
     return resized_image
 
 
@@ -59,6 +59,10 @@ def label_multiclass_image(image):
     for class_instance in image:
         labeled_image.append(label(class_instance))
     return np.stack(labeled_image)
+
+
+def get_channel(image, channel):
+    return image[channel, :, :]
 
 
 class Thresholder(BaseTransformer):

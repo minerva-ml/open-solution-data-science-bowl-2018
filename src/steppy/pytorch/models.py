@@ -127,8 +127,6 @@ class Model(BaseTransformer):
                 X = Variable(X, volatile=True).cuda()
             else:
                 X = Variable(X, volatile=True)
-            import pdb
-            pdb.set_trace()
             outputs_batch = self.model(X)
             if len(self.output_names) == 1:
                 outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())

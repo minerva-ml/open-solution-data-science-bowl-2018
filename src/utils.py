@@ -2,7 +2,8 @@ import glob
 import logging
 import os
 import sys
-from itertools import product
+from itertools import product, chain
+from collections import Iterable
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,8 @@ from PIL import Image
 from attrdict import AttrDict
 from tqdm import tqdm
 
+from .steppy.base import BaseTransformer
+
 
 def read_yaml(filepath):
     with open(filepath) as f:
@@ -18,7 +21,7 @@ def read_yaml(filepath):
     return AttrDict(config)
 
 
-def get_logger():
+def init_logger():
     logger = logging.getLogger('dsb-2018')
     logger.setLevel(logging.INFO)
     message_format = logging.Formatter(fmt='%(asctime)s %(name)s >>> %(message)s',
@@ -34,6 +37,10 @@ def get_logger():
     logger.addHandler(ch_va)
 
     return logger
+
+
+def get_logger():
+    return logging.getLogger('dsb-2018')
 
 
 def decompose(labeled):
@@ -116,9 +123,10 @@ def read_params(ctx):
 
 def generate_metadata(data_dir,
                       masks_overlayed_dir,
-                      contours_overlayed_dir,
-                      contours_touching_overlayed_dir,
-                      centers_overlayed_dir):
+                      # contours_overlayed_dir,
+                      # contours_touching_overlayed_dir,
+                      # centers_overlayed_dir
+                      ):
     def stage1_generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
                                             'is_train', 'width', 'height', 'n_nuclei'])
@@ -127,7 +135,7 @@ def generate_metadata(data_dir,
         else:
             tr_te = 'stage1_test'
 
-        for image_id in sorted(os.listdir(os.path.join(data_dir, tr_te))):
+        for image_id in tqdm(sorted(os.listdir(os.path.join(data_dir, tr_te)))):
             p = os.path.join(data_dir, tr_te, image_id, 'images')
             if image_id != os.listdir(p)[0][:-4]:
                 ValueError('ImageId mismatch ' + str(image_id))
@@ -139,17 +147,17 @@ def generate_metadata(data_dir,
                 is_train = 1
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
-                file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
-                file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
-                file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
+                # file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
+                # file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
+                # file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
                 is_train = 0
                 file_path_masks = None
                 file_path_mask = None
-                file_path_contours = None
-                file_path_contours_touching = None
-                file_path_centers = None
+                # file_path_contours = None
+                # file_path_contours_touching = None
+                # file_path_centers = None
                 n_nuclei = None
 
             img = Image.open(file_path_image)
@@ -162,9 +170,9 @@ def generate_metadata(data_dir,
                                               'file_path_image': file_path_image,
                                               'file_path_masks': file_path_masks,
                                               'file_path_mask': file_path_mask,
-                                              'file_path_contours': file_path_contours,
-                                              'file_path_contours_touching': file_path_contours_touching,
-                                              'file_path_centers': file_path_centers,
+                                              # 'file_path_contours': file_path_contours,
+                                              # 'file_path_contours_touching': file_path_contours_touching,
+                                              # 'file_path_centers': file_path_centers,
                                               'is_train': is_train,
                                               'width': width,
                                               'height': height,
@@ -221,3 +229,53 @@ def from_pil(*images):
 
 def to_pil(*images):
     return [Image.fromarray((image).astype(np.uint8)) for image in images]
+
+
+def make_apply_transformer(func, output_name='output', apply_on=None):
+    class StaticApplyTransformer(BaseTransformer):
+        def transform(self, *args, **kwargs):
+            self.check_input(*args, **kwargs)
+
+            if not apply_on:
+                iterator = zip(*args, *kwargs.values())
+            else:
+                iterator = zip(*args, *[kwargs[key] for key in apply_on])
+
+            output = []
+            for func_args in tqdm(iterator, total=self.get_arg_length(*args, **kwargs)):
+                output.append(func(*func_args))
+            return {output_name: output}
+
+        @staticmethod
+        def check_input(*args, **kwargs):
+            if len(args) and len(kwargs) == 0:
+                raise Exception('Input must not be empty')
+
+            arg_length = None
+            for arg in chain(args, kwargs.values()):
+                if not isinstance(arg, Iterable):
+                    raise Exception('All inputs must be iterable')
+                arg_length_loc = None
+                try:
+                    arg_length_loc = len(arg)
+                except:
+                    pass
+                if arg_length_loc is not None:
+                    if arg_length is None:
+                        arg_length = arg_length_loc
+                    elif arg_length_loc != arg_length:
+                        raise Exception('All inputs must be the same length')
+
+        @staticmethod
+        def get_arg_length(*args, **kwargs):
+            arg_length = None
+            for arg in chain(args, kwargs.values()):
+                if arg_length is None:
+                    try:
+                        arg_length = len(arg)
+                    except:
+                        pass
+                if arg_length is not None:
+                    return arg_length
+
+    return StaticApplyTransformer()

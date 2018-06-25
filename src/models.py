@@ -1,23 +1,52 @@
 import numpy as np
 import torch.optim as optim
 
-from steps.pytorch.architectures.unet import UNet, UNetMultitask
-from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
+from .steppy.pytorch.architectures.unet import UNet, UNetMultitask
+from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping
-from steps.pytorch.models import Model
-from steps.pytorch.validation import segmentation_loss
-from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation
+from .steppy.pytorch.models import Model
+from .steppy.pytorch.validation import segmentation_loss, multiclass_segmentation_loss
+
+from .utils import sigmoid
+from .callbacks import NeptuneMonitorSegmentation
+from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
+
+PRETRAINED_NETWORKS = {'VGG11': {'model': UNet11,
+                                 'model_config': {'pretrained': True},
+                                 'init_weights': False},
+                       'VGG16': {'model': UNetVGG16,
+                                 'model_config': {'pretrained': True,
+                                                  'dropout_2d': 0.0, 'is_deconv': True},
+                                 'init_weights': False},
+                       'AlbuNet': {'model': AlbuNet,
+                                   'model_config': {'pretrained': True, 'is_deconv': True},
+                                   'init_weights': False},
+                       'ResNet34': {'model': UNetResNet,
+                                    'model_config': {'encoder_depth': 34,
+                                                     'num_filters': 32, 'dropout_2d': 0.0,
+                                                     'pretrained': True, 'is_deconv': True, },
+                                    'init_weights': False},
+                       'ResNet101': {'model': UNetResNet,
+                                     'model_config': {'encoder_depth': 101,
+                                                      'num_filters': 32, 'dropout_2d': 0.0,
+                                                      'pretrained': True, 'is_deconv': True, },
+                                     'init_weights': False},
+                       'ResNet152': {'model': UNetResNet,
+                                     'model_config': {'encoder_depth': 152,
+                                                      'num_filters': 32, 'dropout_2d': 0.0,
+                                                      'pretrained': True, 'is_deconv': True, },
+                                     'init_weights': False}
+                       }
 
 
 class PyTorchUNet(Model):
     def __init__(self, architecture_config, training_config, callbacks_config):
         super().__init__(architecture_config, training_config, callbacks_config)
-        self.model = UNet(**architecture_config['model_params'])
+        self.set_model()
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, 1.0)]
+        self.loss_function = [('mask', multiclass_segmentation_loss, 1.0)]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
@@ -26,6 +55,16 @@ class PyTorchUNet(Model):
             prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
             outputs[name] = np.array(prediction_)
         return outputs
+
+    def set_model(self):
+        encoder = self.architecture_config['model_params']['encoder']
+        if encoder == 'from_scratch':
+            self.model = UNet(**self.architecture_config['model_params'])
+        else:
+            config = PRETRAINED_NETWORKS[encoder]
+            self.model = config['model'](num_classes=self.architecture_config['model_params']['nr_outputs'],
+                                         **config['model_config'])
+            self._initialize_model_weights = lambda: None
 
 
 class PyTorchUNetMultitask(Model):

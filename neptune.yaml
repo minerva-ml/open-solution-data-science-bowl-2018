@@ -58,6 +58,7 @@ parameters:
   pool_kernel: 3
   pool_stride: 2
   repeat_blocks: 4
+  encoder: ResNet101
 
 # Training schedule
   epochs_nr: 1000

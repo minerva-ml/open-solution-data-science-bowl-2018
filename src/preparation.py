@@ -8,6 +8,7 @@ import torch
 from PIL import Image
 from imageio import imwrite
 from skimage.transform import resize
+from skimage.morphology import watershed, dilation, rectangle
 from sklearn.cluster import KMeans
 from torchvision import models
 from tqdm import tqdm
@@ -15,12 +16,12 @@ from tqdm import tqdm
 
 def train_valid_split(meta, validation_size, valid_category_ids=None):
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = split_on_column(meta_train,
-                                                         column='vgg_features_clusters',
-                                                         test_size=validation_size,
-                                                         random_state=1234,
-                                                         valid_category_ids=valid_category_ids
-                                                         )
+    np.random.seed(1234)
+    mask = np.random.rand(len(meta_train)) < validation_size
+
+    meta_train_split = meta_train[~mask]
+    meta_valid_split = meta_train[mask]
+
     return meta_train_split, meta_valid_split
 
 
@@ -47,6 +48,31 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
+
+
+def overlay_cut_masks(images_dir, subdir_name, target_dir, cut_size=1):
+    train_dir = os.path.join(images_dir, subdir_name)
+    for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
+        masks = []
+        for ind, image_filepath in enumerate(glob.glob('{}/*'.format(mask_dirname))):
+            image = np.asarray(Image.open(image_filepath))
+            image = np.where(image > 0, ind + 1, 0)
+            masks.append(image)
+        labeled_masks = np.sum(masks, axis=0)
+        overlayed_masks = np.where(labeled_masks, 1, 0)
+
+        watershed_mask = watershed(overlayed_masks.astype(np.bool), labeled_masks, watershed_line=True)
+        if watershed_mask.max() == watershed_mask.min():
+            cut_masks = overlayed_masks
+        else:
+            borders = (watershed_mask == 0) & overlayed_masks
+            selem = rectangle(cut_size, cut_size)
+            dilated_borders = dilation(borders, selem=selem)
+            cut_masks = np.where(dilated_borders, 0, overlayed_masks)
+
+        target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
+        os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
+        imwrite(target_filepath, cut_masks)
 
 
 def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):

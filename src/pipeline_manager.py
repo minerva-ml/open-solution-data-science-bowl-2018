@@ -7,7 +7,8 @@ from deepsense import neptune
 from .metrics import intersection_over_union, intersection_over_union_thresholds
 from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from .pipelines import PIPELINES
-from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
+from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers,\
+    get_vgg_clusters, overlay_cut_masks
 from .utils import init_logger, read_masks, read_params, create_submission, generate_metadata
 
 
@@ -37,24 +38,29 @@ def prepare_metadata(logger, params):
     logger.info('creating metadata')
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
+                             cut_masks_dir=params.cut_masks_dir,
                              # contours_overlayed_dir=params.contours_overlayed_dir,
                              # contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
                              # centers_overlayed_dir=params.centers_overlayed_dir
                              )
-    logger.info('calculating clusters')
-
-    meta_train = meta[meta['is_train'] == 1]
-    meta_test = meta[meta['is_train'] == 0]
-    vgg_features_clusters = get_vgg_clusters(meta_train)
-    meta_train['vgg_features_clusters'] = vgg_features_clusters
-    meta_test['vgg_features_clusters'] = 'NaN'
-    meta = pd.concat([meta_train, meta_test], axis=0)
+    # logger.info('calculating clusters')
+    #
+    # meta_train = meta[meta['is_train'] == 1]
+    # meta_test = meta[meta['is_train'] == 0]
+    # vgg_features_clusters = get_vgg_clusters(meta_train)
+    # meta_train['vgg_features_clusters'] = vgg_features_clusters
+    # meta_test['vgg_features_clusters'] = 'NaN'
+    # meta = pd.concat([meta_train, meta_test], axis=0)
     meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
 
 
 def prepare_masks(logger, params):
-    logger.info('overlaying masks')
-    overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
+    # logger.info('overlaying masks')
+    # overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
+    logger.info('cutting masks')
+    overlay_cut_masks(images_dir=params.data_dir, subdir_name='stage1_train',
+                      target_dir=params.cut_masks_dir, cut_size=2)
+
     # logger.info('overlaying contours')
     # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
     # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',

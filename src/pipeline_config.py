@@ -3,7 +3,7 @@ import os
 from deepsense import neptune
 from attrdict import AttrDict
 
-from utils import read_params
+from .utils import read_params
 
 ctx = neptune.Context()
 params = read_params(ctx)
@@ -16,6 +16,7 @@ Y_COLUMNS_MULTITASK = ['file_path_mask',
                        'file_path_contours_touching',
                        'file_path_centers']
 Y_COLUMNS_SCORING = ['file_path_masks']
+CHANNELS = ['background', 'nuclei']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'load_in_memory': params.load_in_memory,
@@ -67,7 +68,8 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_outputs
+                                                 'nr_outputs': params.nr_unet_outputs,
+                                                 'encoder': params.encoder
                                                  },
                                 'optimizer_params': {'lr': params.lr,
                                                      },
@@ -101,5 +103,5 @@ SOLUTION_CONFIG = AttrDict({
     'thresholder': {'threshold': params.threshold},
     'watershed': {},
     'dropper': {'min_size': params.min_nuclei_size},
-    'postprocessor': {}
+    'postprocessor': {'channels': CHANNELS}
 })

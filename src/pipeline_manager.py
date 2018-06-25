@@ -1,34 +1,46 @@
 import os
 import shutil
 
-import click
 import pandas as pd
 from deepsense import neptune
 
-from metrics import intersection_over_union, intersection_over_union_thresholds
-from pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
-from pipelines import PIPELINES
-from preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
-from utils import get_logger, read_masks, read_params, create_submission, generate_metadata
-
-logger = get_logger()
-ctx = neptune.Context()
-params = read_params(ctx)
+from .metrics import intersection_over_union, intersection_over_union_thresholds
+from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
+from .pipelines import PIPELINES
+from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
+from .utils import init_logger, read_masks, read_params, create_submission, generate_metadata
 
 
-@click.group()
-def action():
-    pass
+class PipelineManager():
+    def __init__(self):
+        self.logger = init_logger()
+        self.ctx = neptune.Context()
+        self.params = read_params(self.ctx)
+
+    def prepare_metadata(self):
+        prepare_metadata(self.logger, self.params)
+
+    def prepare_masks(self):
+        prepare_masks(self.logger, self.params)
+
+    def train(self, pipeline_name, validation_size):
+        train(pipeline_name, validation_size, self.logger, self.params)
+
+    def evaluate(self, pipeline_name, validation_size):
+        evaluate(pipeline_name, validation_size, self.logger, self.params, self.ctx)
+
+    def predict(self, pipeline_name):
+        predict(pipeline_name, self.logger, self.params)
 
 
-@action.command()
-def prepare_metadata():
+def prepare_metadata(logger, params):
     logger.info('creating metadata')
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
-                             contours_overlayed_dir=params.contours_overlayed_dir,
-                             contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
-                             centers_overlayed_dir=params.centers_overlayed_dir)
+                             # contours_overlayed_dir=params.contours_overlayed_dir,
+                             # contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
+                             # centers_overlayed_dir=params.centers_overlayed_dir
+                             )
     logger.info('calculating clusters')
 
     meta_train = meta[meta['is_train'] == 1]
@@ -40,26 +52,19 @@ def prepare_metadata():
     meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
 
 
-@action.command()
-def prepare_masks():
+def prepare_masks(logger, params):
     logger.info('overlaying masks')
     overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
-    logger.info('overlaying contours')
-    overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
-    overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',
-                     target_dir=params.contours_touching_overlayed_dir, touching_only=True)
-    logger.info('overlaying centers')
-    overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
+    # logger.info('overlaying contours')
+    # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
+    # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',
+    #                  target_dir=params.contours_touching_overlayed_dir, touching_only=True)
+    # logger.info('overlaying centers')
+    # overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
 
 
-@action.command()
-@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
-def train_pipeline(pipeline_name, validation_size):
-    _train_pipeline(pipeline_name, validation_size)
-
-
-def _train_pipeline(pipeline_name, validation_size):
+def train(pipeline_name, validation_size, logger, params):
+    logger.info('training')
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
@@ -81,14 +86,8 @@ def _train_pipeline(pipeline_name, validation_size):
     pipeline.clean_cache()
 
 
-@action.command()
-@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
-def evaluate_pipeline(pipeline_name, validation_size):
-    _evaluate_pipeline(pipeline_name, validation_size)
-
-
-def _evaluate_pipeline(pipeline_name, validation_size):
+def evaluate(pipeline_name, validation_size, logger, params, ctx):
+    logger.info('evaluating')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
@@ -119,13 +118,8 @@ def _evaluate_pipeline(pipeline_name, validation_size):
     ctx.channel_send('IOUT Score', 0, iout_score)
 
 
-@action.command()
-@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-def predict_pipeline(pipeline_name):
-    _predict_pipeline(pipeline_name)
-
-
-def _predict_pipeline(pipeline_name):
+def predict(pipeline_name, logger, params):
+    logger.info('predicting')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_test = meta[meta['is_train'] == 0]
 
@@ -143,39 +137,3 @@ def _predict_pipeline(pipeline_name):
     y_pred = output['y_pred']
 
     create_submission(params.experiment_dir, meta_test, y_pred, logger)
-
-
-@action.command()
-@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def train_evaluate_predict_pipeline(pipeline_name, validation_size):
-    logger.info('training')
-    _train_pipeline(pipeline_name, validation_size)
-    logger.info('evaluating')
-    _evaluate_pipeline(pipeline_name, validation_size)
-    logger.info('predicting')
-    _predict_pipeline(pipeline_name)
-
-
-@action.command()
-@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def train_evaluate_pipeline(pipeline_name, validation_size):
-    logger.info('training')
-    _train_pipeline(pipeline_name, validation_size)
-    logger.info('evaluating')
-    _evaluate_pipeline(pipeline_name, validation_size)
-
-
-@action.command()
-@click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def evaluate_predict_pipeline(pipeline_name, validation_size):
-    logger.info('evaluating')
-    _evaluate_pipeline(pipeline_name, validation_size)
-    logger.info('predicting')
-    _predict_pipeline(pipeline_name)
-
-
-if __name__ == "__main__":
-    action()

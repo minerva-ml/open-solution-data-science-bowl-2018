@@ -41,7 +41,7 @@ def overlay_masks(images_dir, subdir_name, target_dir):
         masks = []
         for image_filepath in glob.glob('{}/*'.format(mask_dirname)):
             image = np.asarray(Image.open(image_filepath))
-            image = image / 255.0
+            image = np.where(image > 0, 1, 0)
             masks.append(image)
         overlayed_masks = np.sum(masks, axis=0)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'

@@ -9,7 +9,7 @@ from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
 from .pipelines import PIPELINES
 from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers,\
     get_vgg_clusters, overlay_cut_masks, overlay_masks_with_borders
-from .utils import init_logger, read_masks, read_params, create_submission, generate_metadata
+from .utils import init_logger, read_masks, read_masks_from_csv, read_params, create_submission, generate_metadata
 
 
 class PipelineManager():
@@ -101,8 +101,23 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
-    # meta_valid_split = meta_valid_split.head()
+
+    try:
+        validation_size = float(validation_size)
+    except ValueError:
+        pass
+
+    if isinstance(validation_size, float):
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size,
+                                                               valid_category_ids=valid_ids)
+        y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
+    elif validation_size=='test':
+        meta_valid_split = meta[meta['is_train'] == 0]
+        solution_dir = os.path.join(params.data_dir, 'stage1_solution.csv')
+        image_ids = meta_valid_split['ImageId'].values
+        y_true = read_masks_from_csv(image_ids, solution_dir)
+    else:
+        raise NotImplementedError
 
     data = {'input': {'meta': meta_valid_split,
                       'meta_valid': None,
@@ -110,8 +125,6 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
                       'target_sizes': meta_valid_split[SIZE_COLUMNS].values
                       },
             }
-
-    y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
 
     pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)
     pipeline.clean_cache()

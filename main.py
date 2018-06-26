@@ -27,7 +27,7 @@ def train(pipeline_name, validation_size):
 
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
-@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, required=False)
+@click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.2, type=str, required=False)
 def evaluate(pipeline_name, validation_size):
     pipeline_manager.evaluate(pipeline_name, validation_size)
 

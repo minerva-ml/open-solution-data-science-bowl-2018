@@ -3,11 +3,11 @@ import torch
 import torch.optim as optim
 from functools import partial
 
-from .steppy.pytorch.architectures.unet import UNet, UNetMultitask
+from .steppy.pytorch.architectures.unet import UNet
 from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from .steppy.pytorch.models import Model
-from .steppy.pytorch.validation import segmentation_loss, multiclass_segmentation_loss, DiceLoss
+from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
 from .utils import sigmoid
 from .callbacks import NeptuneMonitorSegmentation
@@ -72,27 +72,6 @@ class PyTorchUNet(Model):
             self.model = config['model'](num_classes=self.architecture_config['model_params']['nr_outputs'],
                                          **config['model_config'])
             self._initialize_model_weights = lambda: None
-
-
-class PyTorchUNetMultitask(Model):
-    def __init__(self, architecture_config, training_config, callbacks_config):
-        super().__init__(architecture_config, training_config, callbacks_config)
-        self.model = UNetMultitask(**architecture_config['model_params'])
-        self.weight_regularization = weight_regularization_unet
-        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
-                                    **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, 0.45),
-                              ('contour', segmentation_loss, 0.45),
-                              ('contour_touching', segmentation_loss, 0.0),
-                              ('center', segmentation_loss, 0.1)]
-        self.callbacks = callbacks_unet(self.callbacks_config)
-
-    def transform(self, datagen, validation_datagen=None):
-        outputs = self._transform(datagen, validation_datagen)
-        for name, prediction in outputs.items():
-            prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
-            outputs[name] = np.array(prediction_)
-        return outputs
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):

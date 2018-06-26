@@ -8,9 +8,13 @@ from .utils import read_params
 ctx = neptune.Context()
 params = read_params(ctx)
 
+
+MEAN = [0.485, 0.456, 0.406]
+STD = [0.229, 0.224, 0.225]
+
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
-Y_COLUMNS = ['file_path_mask_with_borders']
+Y_COLUMNS = ['file_path_mask']
 Y_COLUMNS_MULTITASK = ['file_path_mask',
                        'file_path_contours',
                        'file_path_contours_touching',
@@ -26,6 +30,26 @@ GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'batch_size_train': params.batch_size_train,
                  'batch_size_inference': params.batch_size_inference
                  }
+TRAINING_CONFIG = {'epochs': params.epochs_nr,
+                   'shuffle': True,
+                   'batch_size': params.batch_size_train,
+                   }
+CALLBACKS_CONFIG = {
+                       'model_checkpoint': {
+                           'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
+                           'epoch_every': 1},
+                       'lr_scheduler': {'gamma': params.gamma,
+                                        'epoch_every': 1},
+                       'training_monitor': {'batch_every': 0,
+                                            'epoch_every': 1},
+                       'experiment_timing': {'batch_every': 0,
+                                             'epoch_every': 1},
+                       'validation_monitor': {'epoch_every': 1},
+                       'neptune_monitor': {'model_name': 'unet',
+                                           'image_nr': 4,
+                                           'image_resize': 0.2},
+                       'early_stopping': {'patience': params.patience},
+                   }
 
 SOLUTION_CONFIG = AttrDict({
     'env': {'cache_dirpath': params.experiment_dir},
@@ -59,7 +83,7 @@ SOLUTION_CONFIG = AttrDict({
                                                },
                                  },
                },
-    'unet_simple': {
+    'unet': {
         'architecture_config': {'model_params': {'n_filters': params.n_filters,
                                                  'conv_kernel': params.conv_kernel,
                                                  'pool_kernel': params.pool_kernel,
@@ -68,7 +92,7 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_outputs_simple,
+                                                 'nr_outputs': params.nr_unet_outputs,
                                                  'encoder': params.encoder
                                                  },
                                 'optimizer_params': {'lr': params.lr,
@@ -79,26 +103,31 @@ SOLUTION_CONFIG = AttrDict({
                                 'weights_init': {'function': 'xavier',
                                                  },
                                 },
-        'training_config': {'epochs': params.epochs_nr,
-                            'shuffle': True,
-                            'batch_size': params.batch_size_train,
-                            },
-        'callbacks_config': {
-            'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
-                'epoch_every': 1},
-            'lr_scheduler': {'gamma': params.gamma,
-                             'epoch_every': 1},
-            'training_monitor': {'batch_every': 0,
-                                 'epoch_every': 1},
-            'experiment_timing': {'batch_every': 0,
-                                  'epoch_every': 1},
-            'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'model_name': 'unet',
-                                'image_nr': 4,
-                                'image_resize': 0.2},
-            'early_stopping': {'patience': params.patience},
-        },
+        'training_config': TRAINING_CONFIG,
+        'callbacks_config': CALLBACKS_CONFIG,
+    },
+    'unet_simple': {
+        'architecture_config': {'model_params': {'n_filters': params.n_filters,
+                                                 'conv_kernel': params.conv_kernel,
+                                                 'pool_kernel': params.pool_kernel,
+                                                 'pool_stride': params.pool_stride,
+                                                 'repeat_blocks': params.repeat_blocks,
+                                                 'batch_norm': params.use_batch_norm,
+                                                 'dropout': params.dropout_conv,
+                                                 'in_channels': params.image_channels,
+                                                 'nr_outputs': params.nr_unet_simple_outputs,
+                                                 'encoder': params.encoder
+                                                 },
+                                'optimizer_params': {'lr': params.lr,
+                                                     },
+                                'regularizer_params': {'regularize': True,
+                                                       'weight_decay_conv2d': params.l2_reg_conv,
+                                                       },
+                                'weights_init': {'function': 'xavier',
+                                                 },
+                                },
+        'training_config': TRAINING_CONFIG,
+        'callbacks_config': CALLBACKS_CONFIG,
     },
     'unet_borders': {
         'architecture_config': {'model_params': {'n_filters': params.n_filters,
@@ -109,7 +138,7 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_outputs_borders,
+                                                 'nr_outputs': params.nr_unet_borders_outputs,
                                                  'encoder': params.encoder
                                                  },
                                 'optimizer_params': {'lr': params.lr,
@@ -120,26 +149,8 @@ SOLUTION_CONFIG = AttrDict({
                                 'weights_init': {'function': 'xavier',
                                                  },
                                 },
-        'training_config': {'epochs': params.epochs_nr,
-                            'shuffle': True,
-                            'batch_size': params.batch_size_train,
-                            },
-        'callbacks_config': {
-            'model_checkpoint': {
-                'filepath': os.path.join(GLOBAL_CONFIG['exp_root'], 'checkpoints', 'network', 'best.torch'),
-                'epoch_every': 1},
-            'lr_scheduler': {'gamma': params.gamma,
-                             'epoch_every': 1},
-            'training_monitor': {'batch_every': 0,
-                                 'epoch_every': 1},
-            'experiment_timing': {'batch_every': 0,
-                                  'epoch_every': 1},
-            'validation_monitor': {'epoch_every': 1},
-            'neptune_monitor': {'model_name': 'unet',
-                                'image_nr': 4,
-                                'image_resize': 0.2},
-            'early_stopping': {'patience': params.patience},
-        },
+        'training_config': TRAINING_CONFIG,
+        'callbacks_config': CALLBACKS_CONFIG,
     },
     'thresholder': {'threshold': params.threshold},
     'watershed': {},

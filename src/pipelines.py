@@ -3,12 +3,9 @@ from functools import partial
 from .steppy.base import Step, Dummy
 from .steppy.preprocessing.misc import XYSplit, ImageReader
 
-from .loaders import MetadataImageSegmentationLoader, MetadataImageSegmentationMultitaskLoader, \
-    ImageSegmentationMultitaskLoader, ImageSegmentationLoader
-from .models import PyTorchUNet, PyTorchUNetMultitask
-from .postprocessing import Thresholder, NucleiLabeler, Dropper, \
-    WatershedCenter, WatershedContour, BinaryFillHoles, Postprocessor, \
-    resize_image, categorize_image, label_multiclass_image, get_channel, watershed
+from .loaders import MetadataImageSegmentationLoader, ImageSegmentationLoader
+from .models import PyTorchUNet
+from .postprocessing import resize_image, categorize_image, label_multiclass_image, get_channel, watershed
 from .utils import squeeze_inputs, make_apply_transformer
 
 
@@ -82,66 +79,6 @@ def double_unet(config):
                   cache_dirpath=config.env.cache_dirpath,
                   )
 
-    output.plot_graph('graph.png')
-
-    return output
-
-
-def unet_multitask(config, train_mode):
-    if train_mode:
-        save_output = True
-        load_saved_output = False
-        preprocessing = preprocessing_multitask_train(config)
-    else:
-        save_output = True
-        load_saved_output = False
-        preprocessing = preprocessing_multitask_inference(config)
-
-    unet_multitask = Step(name='unet_multitask',
-                          transformer=PyTorchUNetMultitask(**config.unet),
-                          input_steps=[preprocessing],
-                          cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output, load_saved_output=load_saved_output)
-
-    mask_resize = Step(name='mask_resize',
-                       transformer=make_apply_transformer(resize_image,
-                                                          output_name='resized_images',
-                                                          apply_on=['images', 'target_sizes']),
-                       input_data=['input'],
-                       input_steps=[unet_multitask],
-                       adapter={'images': ([(unet_multitask.name, 'mask_prediction')]),
-                                'target_sizes': ([('input', 'target_sizes')]),
-                                },
-                       cache_dirpath=config.env.cache_dirpath,
-                       save_output=save_output)
-
-    contour_resize = Step(name='contour_resize',
-                          transformer=make_apply_transformer(resize_image,
-                                                             output_name='resized_images',
-                                                             apply_on=['images', 'target_sizes']),
-                          input_data=['input'],
-                          input_steps=[unet_multitask],
-                          adapter={'images': ([(unet_multitask.name, 'contour_prediction')]),
-                                   'target_sizes': ([('input', 'target_sizes')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output)
-
-    detached = Step(name='detached',
-                    transformer=Postprocessor(),
-                    input_steps=[mask_resize, contour_resize],
-                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
-                             'contours': ([(contour_resize.name, 'resized_images')]),
-                             },
-                    cache_dirpath=config.env.cache_dirpath,
-                    save_output=save_output)
-
-    output = Step(name='output',
-                  transformer=Dummy(),
-                  input_steps=[detached],
-                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
-                           },
-                  cache_dirpath=config.env.cache_dirpath)
     return output
 
 
@@ -235,109 +172,6 @@ def preprocessing_inference(config):
 
         loader = Step(name='loader',
                       transformer=MetadataImageSegmentationLoader(**config.loader),
-                      input_data=['input'],
-                      input_steps=[xy_inference, xy_inference],
-                      adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
-                               'y': ([('xy_inference', 'y')], squeeze_inputs),
-                               'train_mode': ([('input', 'train_mode')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
-    return loader
-
-
-def preprocessing_multitask_train(config):
-    if config.execution.load_in_memory:
-        reader_train = Step(name='reader_train',
-                            transformer=ImageReader(**config.reader_multitask),
-                            input_data=['input'],
-                            adapter={'meta': ([('input', 'meta')]),
-                                     'train_mode': ([('input', 'train_mode')]),
-                                     },
-                            cache_dirpath=config.env.cache_dirpath,
-                            save_output=True, load_saved_output=True)
-
-        reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_multitask),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta_valid')]),
-                                         'train_mode': ([('input', 'train_mode')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath,
-                                save_output=True, load_saved_output=True)
-
-        loader = Step(name='loader',
-                      transformer=ImageSegmentationMultitaskLoader(**config.loader),
-                      input_data=['input'],
-                      input_steps=[reader_train, reader_inference],
-                      adapter={'X': ([('reader_train', 'X')]),
-                               'y': ([('reader_train', 'y')]),
-                               'train_mode': ([('input', 'train_mode')]),
-                               'X_valid': ([('reader_inference', 'X')]),
-                               'y_valid': ([('reader_inference', 'y')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
-    else:
-        xy_train = Step(name='xy_train',
-                        transformer=XYSplit(**config.xy_splitter_multitask),
-                        input_data=['input'],
-                        adapter={'meta': ([('input', 'meta')]),
-                                 'train_mode': ([('input', 'train_mode')])
-                                 },
-                        cache_dirpath=config.env.cache_dirpath)
-
-        xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter_multitask),
-                            input_data=['input'],
-                            adapter={'meta': ([('input', 'meta_valid')]),
-                                     'train_mode': ([('input', 'train_mode')])
-                                     },
-                            cache_dirpath=config.env.cache_dirpath)
-
-        loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
-                      input_data=['input'],
-                      input_steps=[xy_train, xy_inference],
-                      adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
-                               'y': ([('xy_train', 'y')]),
-                               'train_mode': ([('input', 'train_mode')]),
-                               'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
-                               'y_valid': ([('xy_inference', 'y')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
-
-    return loader
-
-
-def preprocessing_multitask_inference(config):
-    if config.execution.load_in_memory:
-        reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_multitask),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta')]),
-                                         'train_mode': ([('input', 'train_mode')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath)
-
-        loader = Step(name='loader',
-                      transformer=ImageSegmentationMultitaskLoader(**config.loader),
-                      input_data=['input'],
-                      input_steps=[reader_inference],
-                      adapter={'X': ([('reader_inference', 'X')]),
-                               'y': ([('reader_inference', 'y')]),
-                               'train_mode': ([('input', 'train_mode')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
-    else:
-        xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter),
-                            input_data=['input'],
-                            adapter={'meta': ([('input', 'meta')]),
-                                     'train_mode': ([('input', 'train_mode')])
-                                     },
-                            cache_dirpath=config.env.cache_dirpath)
-
-        loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationMultitaskLoader(**config.loader),
                       input_data=['input'],
                       input_steps=[xy_inference, xy_inference],
                       adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
@@ -462,120 +296,9 @@ def mask_postprocessing_borders(model, config, save_output=False):
     return borders_filter
 
 
-def contour_postprocessing(model, config, save_output=True):
-    contour_resize = Step(name='contour_resize',
-                          transformer=make_apply_transformer(resize_image,
-                                                             output_name='resized_images',
-                                                             apply_on=['images', 'target_sizes']),
-                          input_data=['input'],
-                          input_steps=[model],
-                          adapter={'images': ([(model.name, 'contour_prediction')]),
-                                   'target_sizes': ([('input', 'target_sizes')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output)
-
-    contour_thresholding = Step(name='contour_thresholding',
-                                transformer=Thresholder(**config.thresholder),
-                                input_steps=[contour_resize],
-                                adapter={'images': ([('contour_resize', 'resized_images')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath,
-                                save_output=save_output)
-    return contour_thresholding
-
-
-def center_postprocessing(model, config, save_output=True):
-    center_resize = Step(name='center_resize',
-                         transformer=make_apply_transformer(resize_image,
-                                                            output_name='resized_images',
-                                                            apply_on=['images', 'target_sizes']),
-                         input_data=['input'],
-                         input_steps=[model],
-                         adapter={'images': ([(model.name, 'center_prediction')]),
-                                  'target_sizes': ([('input', 'target_sizes')]),
-                                  },
-                         cache_dirpath=config.env.cache_dirpath,
-                         save_output=save_output)
-
-    center_thresholding = Step(name='center_thresholding',
-                               transformer=Thresholder(**config.thresholder),
-                               input_steps=[center_resize],
-                               adapter={'images': ([('center_resize', 'resized_images')]),
-                                        },
-                               cache_dirpath=config.env.cache_dirpath,
-                               save_output=save_output)
-    return center_thresholding
-
-
-def watershed_centers(mask, center, config, save_output=True):
-    watershed_center = Step(name='watershed_centers',
-                            transformer=WatershedCenter(),
-                            input_steps=[mask, center],
-                            adapter={'images': ([(mask.name, 'binarized_images')]),
-                                     'contours': ([(center.name, 'binarized_images')]),
-                                     },
-                            cache_dirpath=config.env.cache_dirpath,
-                            save_output=save_output)
-
-    drop_smaller = Step(name='drop_smaller',
-                        transformer=Dropper(**config.dropper),
-                        input_steps=[watershed_center],
-                        adapter={'labels': ([('watershed_center', 'detached_images')]),
-                                 },
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output)
-
-    binary_fill = Step(name='binary_fill',
-                       transformer=BinaryFillHoles(),
-                       input_steps=[drop_smaller],
-                       adapter={'images': ([('drop_smaller', 'labels')]),
-                                },
-                       cache_dirpath=config.env.cache_dirpath,
-                       save_output=save_output)
-
-    return binary_fill
-
-
-def watershed_contours(mask, contour, config, save_output=True):
-    watershed_contour = Step(name='watershed_contour',
-                             transformer=WatershedContour(),
-                             input_steps=[mask, contour],
-                             adapter={'images': ([(mask.name, 'binarized_images')]),
-                                      'contours': ([(contour.name, 'binarized_images')]),
-                                      },
-                             cache_dirpath=config.env.cache_dirpath,
-                             save_output=save_output)
-
-    drop_smaller = Step(name='drop_smaller',
-                        transformer=Dropper(**config.dropper),
-                        input_steps=[watershed_contour],
-                        adapter={'labels': ([('watershed_contour', 'detached_images')]),
-                                 },
-
-                        cache_dirpath=config.env.cache_dirpath,
-                        save_output=save_output)
-    return drop_smaller
-
-
-def nuclei_labeler(postprocessed_mask, config, save_output=True):
-    labeler = Step(name='labeler',
-                   transformer=NucleiLabeler(),
-                   input_steps=[postprocessed_mask],
-                   adapter={'images': ([(postprocessed_mask.name, 'binarized_images')]),
-                            },
-                   cache_dirpath=config.env.cache_dirpath,
-                   save_output=save_output)
-    return labeler
-
-
 PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       'inference': partial(unet, train_mode=False),
                       },
-             'unet_multitask': {'train': partial(unet_multitask, train_mode=True),
-                                'inference': partial(unet_multitask, train_mode=False),
-                                },
-
              'double_unet': {'inference': double_unet,
                              }
              }

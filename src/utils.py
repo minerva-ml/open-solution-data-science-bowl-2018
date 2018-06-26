@@ -158,9 +158,6 @@ def generate_metadata(data_dir,
                       masks_overlayed_dir,
                       cut_masks_dir,
                       masks_with_borders_dir,
-                      # contours_overlayed_dir,
-                      # contours_touching_overlayed_dir,
-                      # centers_overlayed_dir
                       ):
     def stage1_generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
@@ -185,9 +182,6 @@ def generate_metadata(data_dir,
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
                 file_path_cut_mask = os.path.join(cut_masks_dir, tr_te, image_id + '.png')
                 file_path_mask_with_borders = os.path.join(masks_with_borders_dir, tr_te, image_id + '.png')
-                # file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
-                # file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
-                # file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
                 is_train = 0
@@ -195,9 +189,6 @@ def generate_metadata(data_dir,
                 file_path_mask = None
                 file_path_cut_mask = None
                 file_path_mask_with_borders = None
-                # file_path_contours = None
-                # file_path_contours_touching = None
-                # file_path_centers = None
                 n_nuclei = None
 
             img = Image.open(file_path_image)
@@ -212,9 +203,6 @@ def generate_metadata(data_dir,
                                               'file_path_mask': file_path_mask,
                                               'file_path_cut_mask': file_path_cut_mask,
                                               'file_path_mask_with_borders': file_path_mask_with_borders,
-                                              # 'file_path_contours': file_path_contours,
-                                              # 'file_path_contours_touching': file_path_contours_touching,
-                                              # 'file_path_centers': file_path_centers,
                                               'is_train': is_train,
                                               'width': width,
                                               'height': height,

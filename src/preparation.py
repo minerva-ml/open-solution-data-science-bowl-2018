@@ -6,21 +6,19 @@ import numpy as np
 import scipy.ndimage as ndi
 import torch
 from PIL import Image
-from imageio import imwrite
+from cv2 import imwrite
 from skimage.transform import resize
 from skimage.morphology import watershed, dilation, rectangle
 from sklearn.cluster import KMeans
 from torchvision import models
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 
-def train_valid_split(meta, validation_size, valid_category_ids=None):
+def train_valid_split(meta, validation_size):
     meta_train = meta[meta['is_train'] == 1]
-    np.random.seed(1234)
-    mask = np.random.rand(len(meta_train)) < validation_size
 
-    meta_train_split = meta_train[~mask]
-    meta_valid_split = meta_train[mask]
+    meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
 
     return meta_train_split, meta_valid_split
 

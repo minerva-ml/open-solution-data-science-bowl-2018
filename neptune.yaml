@@ -1,4 +1,4 @@
-project-key: DSB
+project: Data-Science-Bowl
 
 name: dsb_open_solution
 tags: [solution_4, unet-multitask, touching_edges]

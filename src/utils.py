@@ -88,9 +88,21 @@ def read_masks(masks_filepaths):
             mask_dir = mask_dir[0]
         for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir))):
             blob = np.asarray(Image.open(mask_filepath))
-            blob_binarized = (blob > 128.).astype(np.uint8) * i
+            blob_binarized = (blob > 128.).astype(np.uint8) * (i + 1)
             mask.append(blob_binarized)
         mask = np.sum(np.stack(mask, axis=0), axis=0).astype(np.uint8)
+        masks.append(mask)
+    return masks
+
+
+def read_masks_from_csv(image_ids, solution_file_path):
+    solution = pd.read_csv(solution_file_path)
+    masks = []
+    for image_id in image_ids:
+        mask_shape = (solution[solution['ImageId']==image_id]['Height'].iloc[0], solution[solution['ImageId']==image_id]['Width'].iloc[0])
+        mask = np.zeros(mask_shape, dtype=np.uint8)
+        for i, rle in enumerate(solution[solution['ImageId']==image_id]['EncodedPixels']):
+            mask += (i+1)*run_length_decoding(rle, mask_shape)
         masks.append(mask)
     return masks
 
@@ -110,6 +122,27 @@ def run_length_encoding(x):
         rle[-2] = rle[-2] - 1
 
     return rle
+
+
+def run_length_decoding(mask_rle, shape):
+    """
+    Based on https://www.kaggle.com/msl23518/visualize-the-stage1-test-solution and modified
+    Args:
+        mask_rle: run-length as string formatted (start length)
+        shape: (height, width) of array to return
+
+    Returns:
+        numpy array, 1 - mask, 0 - background
+
+    """
+    s = mask_rle.split()
+    starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
+    starts -= 1
+    ends = starts + lengths
+    img = np.zeros(shape[1]*shape[0], dtype=np.uint8)
+    for lo, hi in zip(starts, ends):
+        img[lo:hi] = 1
+    return img.reshape((shape[1], shape[0])).T
 
 
 def read_params(ctx):

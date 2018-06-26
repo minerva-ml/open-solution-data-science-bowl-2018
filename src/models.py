@@ -69,7 +69,7 @@ class PyTorchUNet(Model):
             self.model = UNet(**self.architecture_config['model_params'])
         else:
             config = PRETRAINED_NETWORKS[encoder]
-            self.model = config['model'](num_classes=self.architecture_config['model_params']['nr_outputs'],
+            self.model = config['model'](num_classes=self.architecture_config['model_params']['out_channels'],
                                          **config['model_config'])
             self._initialize_model_weights = lambda: None
 

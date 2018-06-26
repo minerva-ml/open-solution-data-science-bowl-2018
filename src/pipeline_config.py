@@ -14,7 +14,7 @@ STD = [0.229, 0.224, 0.225]
 
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
-Y_COLUMNS = ['file_path_mask']
+Y_COLUMNS = ['file_path_mask_with_borders']
 Y_COLUMNS_MULTITASK = ['file_path_mask',
                        'file_path_contours',
                        'file_path_contours_touching',
@@ -92,6 +92,7 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
+                                                 'out_channels': params.unet_output_channels,
                                                  'nr_outputs': params.nr_unet_outputs,
                                                  'encoder': params.encoder
                                                  },
@@ -115,7 +116,8 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_simple_outputs,
+                                                 'out_channels': params.image_channels,
+                                                 'nr_outputs': params.unet_simple_output_channels,
                                                  'encoder': params.encoder
                                                  },
                                 'optimizer_params': {'lr': params.lr,
@@ -138,7 +140,8 @@ SOLUTION_CONFIG = AttrDict({
                                                  'batch_norm': params.use_batch_norm,
                                                  'dropout': params.dropout_conv,
                                                  'in_channels': params.image_channels,
-                                                 'nr_outputs': params.nr_unet_borders_outputs,
+                                                 'out_channels': params.unet_borders_output_channels,
+                                                 'nr_outputs': params.nr_unet_outputs,
                                                  'encoder': params.encoder
                                                  },
                                 'optimizer_params': {'lr': params.lr,

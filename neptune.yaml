@@ -49,15 +49,18 @@ parameters:
   image_channels: 3
 
 # U-Net parameters
-  nr_unet_outputs: 2
-  nr_unet_simple_outputs: 2
-  nr_unet_borders_outputs: 3
+  unet_output_channels: 2
+  unet_simple_output_channels: 2
+  unet_borders_output_channels: 3
+  encoder: ResNet101
+
+# U-Net from scratch parameters
+  nr_unet_outputs: 1
   n_filters: 16
   conv_kernel: 3
   pool_kernel: 3
   pool_stride: 2
   repeat_blocks: 4
-  encoder: ResNet101
 
 # Training schedule
   epochs_nr: 1000

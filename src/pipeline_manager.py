@@ -95,20 +95,19 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
     try:
         validation_size = float(validation_size)
     except ValueError:
-        if validation_size=='test':
-            validation_size = 0
-        else:
-            raise NotImplementedError
+        pass
 
-    if validation_size > 0:
+    if isinstance(validation_size, float):
         meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size,
                                                                valid_category_ids=valid_ids)
         y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
-    else:
+    elif validation_size=='test':
         meta_valid_split = meta[meta['is_train'] == 0]
         solution_dir = os.path.join(params.data_dir, 'stage1_solution.csv')
         image_ids = meta_valid_split['ImageId'].values
         y_true = read_masks_from_csv(image_ids, solution_dir)
+    else:
+        raise NotImplementedError
 
     data = {'input': {'meta': meta_valid_split,
                       'meta_valid': None,

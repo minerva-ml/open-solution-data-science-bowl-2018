@@ -65,6 +65,15 @@ def get_channel(image, channel):
     return image[channel, :, :]
 
 
+def watershed(masks, borders):
+    # import pdb
+    # pdb.set_trace()
+    seeds = masks * (1 - borders)
+    markers = label(seeds)
+    labels = morph.watershed(masks, markers, mask=masks)
+    return labels
+
+
 class Thresholder(BaseTransformer):
     def __init__(self, threshold):
         self.threshold = threshold

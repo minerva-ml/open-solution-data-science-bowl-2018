@@ -102,6 +102,7 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
     meta_train = meta[meta['is_train'] == 1]
     valid_ids = eval(params.valid_category_ids)
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
+    # meta_valid_split = meta_valid_split.head()
 
     data = {'input': {'meta': meta_valid_split,
                       'meta_valid': None,

@@ -96,6 +96,15 @@ class ImageSegmentationDataset(Dataset):
                 Xi, Mi = to_pil(Xi, Mi)
 
             if self.mask_transform is not None:
+                # temp = from_pil(Mi)[0]
+                # print(temp)
+                # print(temp.shape)
+                # print(temp.min(), temp.max())
+                # print(np.count_nonzero(temp == 0))
+                # print(np.count_nonzero(temp == 127))
+                # print(np.count_nonzero(temp == 255))
+                # import pdb
+                # pdb.set_trace()
                 Mi = self.mask_transform(Mi)
 
             if self.image_transform is not None:
@@ -218,14 +227,13 @@ class MetadataImageSegmentationLoader(BaseTransformer):
         self.dataset = MetadataImageSegmentationDataset
         self.image_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
                                                                       self.dataset_params.w)),
-                                                   # transforms.Grayscale(),
                                                    transforms.ToTensor(),
                                                    transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                                                         std=[0.2, 0.2, 0.2]),
                                                    ])
         self.mask_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
                                                                      self.dataset_params.w)),
-                                                  transforms.Lambda(binarize),
+                                                  transforms.Lambda(categorize),
                                                   transforms.Lambda(to_tensor),
                                                   ])
         self.image_augment_with_target = ImgAug(affine_seq)
@@ -291,6 +299,14 @@ class ImageSegmentationMultitaskLoader(MetadataImageSegmentationLoader):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
         self.dataset = ImageSegmentationMultitaskDataset
+
+
+def categorize(x):
+    x_ = x.convert('L')  # convert image to monochrome
+    x_ = np.array(x_)
+    categorized = np.where((x_ > 85) & (x_ < 170), 1, 0)
+    categorized = np.where((x_ >= 170), 2, categorized)
+    return categorized
 
 
 def binarize(x):

@@ -88,7 +88,7 @@ def read_masks(masks_filepaths):
             mask_dir = mask_dir[0]
         for i, mask_filepath in enumerate(glob.glob('{}/*'.format(mask_dir))):
             blob = np.asarray(Image.open(mask_filepath))
-            blob_binarized = (blob > 128.).astype(np.uint8) * i
+            blob_binarized = (blob > 128.).astype(np.uint8) * (i + 1)
             mask.append(blob_binarized)
         mask = np.sum(np.stack(mask, axis=0), axis=0).astype(np.uint8)
         masks.append(mask)

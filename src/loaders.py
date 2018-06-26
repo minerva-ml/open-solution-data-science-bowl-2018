@@ -89,12 +89,10 @@ class ImageSegmentationDataset(Dataset):
 
         if self.y is not None:
             Mi = self.y[0][index]
-            max_class = from_pil(Mi)[0].max()
 
             if self.train_mode and self.image_augment_with_target is not None:
                 Xi, Mi = from_pil(Xi, Mi)
                 Xi, Mi = self.image_augment_with_target(Xi, Mi)
-                Mi = np.where(Mi > max_class, max_class, Mi)
                 Xi = self.image_augment(Xi)
                 Xi, Mi = to_pil(Xi, Mi)
 

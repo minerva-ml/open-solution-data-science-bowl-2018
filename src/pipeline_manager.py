@@ -89,7 +89,6 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
 
     if isinstance(validation_size, float):
         meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size)
-        meta_valid_split = meta_valid_split.iloc[[0]]
         y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
     elif validation_size == 'test':
         meta_valid_split = meta[meta['is_train'] == 0]

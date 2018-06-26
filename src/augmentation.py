@@ -1,4 +1,31 @@
+import cv2
+import numpy as np
+import imgaug as ia
 from imgaug import augmenters as iaa
+
+
+class PerspectiveTransform(iaa.PerspectiveTransform):
+    def _augment_images(self, images, random_state, parents, hooks):
+        result = images
+        if not self.keep_size:
+            result = list(result)
+
+        matrices, max_heights, max_widths = self._create_matrices(
+            [image.shape for image in images],
+            random_state
+        )
+
+        for i, (M, max_height, max_width) in enumerate(zip(matrices, max_heights, max_widths)):
+            warped = cv2.warpPerspective(images[i], M, (max_width, max_height))
+            if warped.ndim == 2 and images[i].ndim == 3:
+                warped = np.expand_dims(warped, 2)
+            if self.keep_size:
+                h, w = images[i].shape[0:2]
+                warped = ia.imresize_single_image(warped, (h, w))
+            result[i] = warped
+
+        return result
+
 
 affine_seq = iaa.Sequential([
     # General
@@ -11,7 +38,7 @@ affine_seq = iaa.Sequential([
                 ]),
     # Deformations
     iaa.Sometimes(0.3, iaa.PiecewiseAffine(scale=(0.02, 0.04))),
-    iaa.Sometimes(0.3, iaa.PerspectiveTransform(scale=(0.05, 0.10))),
+    iaa.Sometimes(0.3, PerspectiveTransform(scale=(0.05, 0.10))),
 ], random_order=True)
 
 color_seq = iaa.Sequential([
@@ -139,4 +166,3 @@ color_seq_grey = iaa.Sequential([
         ])
     ])
 ], random_order=False)
-

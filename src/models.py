@@ -9,7 +9,7 @@ from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationM
 from .steppy.pytorch.models import Model
 from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
-from .utils import sigmoid
+from .utils import sigmoid, softmax
 from .callbacks import NeptuneMonitorSegmentation
 from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
 
@@ -59,8 +59,7 @@ class PyTorchUNet(Model):
     def transform(self, datagen, validation_datagen=None):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
-            prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
-            outputs[name] = np.array(prediction_)
+            outputs[name] = softmax(prediction, axis=1)
         return outputs
 
     def set_model(self):

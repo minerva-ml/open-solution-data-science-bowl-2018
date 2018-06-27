@@ -43,8 +43,9 @@ parameters:
   valid_category_ids: '[0, 4]'
   overwrite: 1
   num_workers: 4
-  load_in_memory: 1
+  image_source: memory
   pin_memory: 1
+  loader_mode: resize
 
 # General Params
   image_h: 512

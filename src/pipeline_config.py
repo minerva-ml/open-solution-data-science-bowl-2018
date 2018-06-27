@@ -24,7 +24,8 @@ GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'num_classes': 2,
                  'img_H-W': (params.image_h, params.image_w),
                  'batch_size_train': params.batch_size_train,
-                 'batch_size_inference': params.batch_size_inference
+                 'batch_size_inference': params.batch_size_inference,
+                 'loader_mode': params.loader_mode,
                  }
 
 SOLUTION_CONFIG = AttrDict({
@@ -44,8 +45,11 @@ SOLUTION_CONFIG = AttrDict({
                          'y_columns': Y_COLUMNS_MULTITASK,
                          'target_shape': GLOBAL_CONFIG['img_H-W']
                          },
-    'loader': {'dataset_params': {'h': params.image_h,
+    'loader': {'dataset_params': {'h_pad': params.h_pad,
+                                  'w_pad': params.w_pad,
+                                  'h': params.image_h,
                                   'w': params.image_w,
+                                  'pad_method': params.pad_method
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
@@ -58,6 +62,7 @@ SOLUTION_CONFIG = AttrDict({
                                                'pin_memory': params.pin_memory
                                                },
                                  },
+               'image_source': params.image_source,
                },
     'unet': {
         'architecture_config': {'model_params': {'n_filters': params.n_filters,

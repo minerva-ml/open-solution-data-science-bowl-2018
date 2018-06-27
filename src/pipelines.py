@@ -13,14 +13,14 @@ def unet(config, train_mode):
     if train_mode:
         save_output = False
         load_saved_output = False
-        preprocessing = preprocessing_train(config)
+        preprocessing = preprocessing_train(config, model_name='unet')
     else:
         save_output = False
         load_saved_output = False
         preprocessing = preprocessing_inference(config)
 
     unet = Step(name='unet',
-                transformer=PyTorchUNet(**config.unet),
+                transformer=PyTorchUNet(**config.model['unet']),
                 input_steps=[preprocessing],
                 is_trainable=True,
                 cache_dirpath=config.env.cache_dirpath,
@@ -37,28 +37,56 @@ def unet(config, train_mode):
     return output
 
 
+def unet_masks(config):
+    save_output = False
+    load_saved_output = False
+    preprocessing = preprocessing_train(config, model_name='unet_masks')
+
+    unet_masks = Step(name='unet_masks',
+                      transformer=PyTorchUNet(**config.model['unet_masks']),
+                      input_steps=[preprocessing],
+                      is_trainable=True,
+                      cache_dirpath=config.env.cache_dirpath,
+                      save_output=save_output, load_saved_output=load_saved_output)
+    return unet_masks
+
+
+def unet_borders(config):
+    save_output = False
+    load_saved_output = False
+    preprocessing = preprocessing_train(config, model_name='unet_borders')
+
+    unet_borders = Step(name='unet_borders',
+                        transformer=PyTorchUNet(**config.model['unet_borders']),
+                        input_steps=[preprocessing],
+                        is_trainable=True,
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output, load_saved_output=load_saved_output)
+    return unet_borders
+
+
 def double_unet(config):
     save_output = False
     load_saved_output = False
     preprocessing = preprocessing_inference(config)
 
-    unet_simple = Step(name='unet_simple',
-                       transformer=PyTorchUNet(**config.unet_simple),
-                       input_steps=[preprocessing],
-                       is_trainable=True,
-                       cache_dirpath=config.env.cache_dirpath,
-                       save_output=save_output, load_saved_output=load_saved_output)
+    unet_masks = Step(name='unet_masks',
+                      transformer=PyTorchUNet(**config.model['unet_masks']),
+                      input_steps=[preprocessing],
+                      is_trainable=True,
+                      cache_dirpath=config.env.cache_dirpath,
+                      save_output=save_output, load_saved_output=load_saved_output)
 
-    masks = mask_postprocessing_simple(unet_simple, config, save_output=save_output)
+    masks = postprocessing_masks(unet_masks, config, save_output=save_output)
 
     unet_borders = Step(name='unet_borders',
-                        transformer=PyTorchUNet(**config.unet_borders),
+                        transformer=PyTorchUNet(**config.model['unet_borders']),
                         input_steps=[preprocessing],
                         is_trainable=True,
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output, load_saved_output=load_saved_output)
 
-    borders = mask_postprocessing_borders(unet_borders, config, save_output=save_output)
+    borders = postprocessing_borders(unet_borders, config, save_output=save_output)
 
     watersheder = Step(name='watershed',
                        transformer=make_apply_transformer(watershed,
@@ -82,10 +110,10 @@ def double_unet(config):
     return output
 
 
-def preprocessing_train(config):
+def preprocessing_train(config, model_name='unet'):
     if config.execution.load_in_memory:
         reader_train = Step(name='reader_train',
-                            transformer=ImageReader(**config.reader_single),
+                            transformer=ImageReader(**config.reader[model_name]),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')]),
@@ -93,7 +121,7 @@ def preprocessing_train(config):
                             cache_dirpath=config.env.cache_dirpath)
 
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_single),
+                                transformer=ImageReader(**config.reader[model_name]),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta_valid')]),
                                          'train_mode': ([('input', 'train_mode')]),
@@ -113,7 +141,7 @@ def preprocessing_train(config):
                       cache_dirpath=config.env.cache_dirpath)
     else:
         xy_train = Step(name='xy_train',
-                        transformer=XYSplit(**config.xy_splitter),
+                        transformer=XYSplit(**config.xy_splitter[model_name]),
                         input_data=['input'],
                         adapter={'meta': ([('input', 'meta')]),
                                  'train_mode': ([('input', 'train_mode')])
@@ -121,7 +149,7 @@ def preprocessing_train(config):
                         cache_dirpath=config.env.cache_dirpath)
 
         xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter),
+                            transformer=XYSplit(**config.xy_splitter[model_name]),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta_valid')]),
                                      'train_mode': ([('input', 'train_mode')])
@@ -142,10 +170,10 @@ def preprocessing_train(config):
     return loader
 
 
-def preprocessing_inference(config):
+def preprocessing_inference(config, model_name='unet'):
     if config.execution.load_in_memory:
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader_single),
+                                transformer=ImageReader(**config.reader[model_name]),
                                 input_data=['input'],
                                 adapter={'meta': ([('input', 'meta')]),
                                          'train_mode': ([('input', 'train_mode')]),
@@ -163,7 +191,7 @@ def preprocessing_inference(config):
                       cache_dirpath=config.env.cache_dirpath)
     else:
         xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter),
+                            transformer=XYSplit(**config.xy_splitter[model_name]),
                             input_data=['input'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('input', 'train_mode')])
@@ -226,7 +254,7 @@ def mask_postprocessing(model, config, save_output=False):
     return nuclei_filter
 
 
-def mask_postprocessing_simple(model, config, save_output=False):
+def postprocessing_masks(model, config, save_output=False):
     mask_resize = Step(name='mask_resize_simple',
                        transformer=make_apply_transformer(resize_image,
                                                           output_name='resized_images',
@@ -261,7 +289,7 @@ def mask_postprocessing_simple(model, config, save_output=False):
     return nuclei_filter
 
 
-def mask_postprocessing_borders(model, config, save_output=False):
+def postprocessing_borders(model, config, save_output=False):
     mask_resize = Step(name='mask_resize_borders',
                        transformer=make_apply_transformer(resize_image,
                                                           output_name='resized_images',
@@ -298,6 +326,10 @@ def mask_postprocessing_borders(model, config, save_output=False):
 
 PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       'inference': partial(unet, train_mode=False),
+                      },
+             'unet_masks': {'train': unet_masks,
+                      },
+             'unet_borders': {'train': unet_borders,
                       },
              'double_unet': {'inference': double_unet,
                              }

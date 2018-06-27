@@ -50,7 +50,7 @@ parameters:
 
 # U-Net parameters
   unet_output_channels: 2
-  unet_simple_output_channels: 2
+  unet_masks_output_channels: 2
   unet_borders_output_channels: 3
   encoder: ResNet101
 

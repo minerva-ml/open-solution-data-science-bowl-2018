@@ -5,10 +5,9 @@ import pandas as pd
 from deepsense import neptune
 
 from .metrics import intersection_over_union, intersection_over_union_thresholds
-from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
+from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS, SEED
 from .pipelines import PIPELINES
-from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers,\
-    get_vgg_clusters, overlay_cut_masks, overlay_masks_with_borders
+from .preparation import train_valid_split, overlay_masks, overlay_cut_masks, overlay_masks_with_borders
 from .utils import init_logger, read_masks, read_masks_from_csv, read_params, create_submission, generate_metadata
 
 
@@ -62,7 +61,7 @@ def train(pipeline_name, validation_size, logger, params):
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
@@ -88,7 +87,7 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
         pass
 
     if isinstance(validation_size, float):
-        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size)
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
         y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
     elif validation_size == 'test':
         meta_valid_split = meta[meta['is_train'] == 0]

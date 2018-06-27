@@ -15,10 +15,12 @@ from tqdm import tqdm
 from sklearn.model_selection import train_test_split
 
 
-def train_valid_split(meta, validation_size):
+def train_valid_split(meta, validation_size, random_state=None):
     meta_train = meta[meta['is_train'] == 1]
 
-    meta_train_split, meta_valid_split = train_test_split(meta_train, test_size=validation_size, random_state=1234)
+    meta_train_split, meta_valid_split = train_test_split(meta_train,
+                                                          test_size=validation_size,
+                                                          random_state=random_state)
 
     return meta_train_split, meta_valid_split
 

@@ -11,6 +11,7 @@ import yaml
 from PIL import Image
 from attrdict import AttrDict
 from tqdm import tqdm
+from pycocotools import mask as cocomask
 
 from .steppy.base import BaseTransformer
 
@@ -354,3 +355,19 @@ def make_apply_transformer(func, output_name='output', apply_on=None):
                     return arg_length
 
     return StaticApplyTransformer()
+
+
+def rle_from_binary(prediction):
+    prediction = np.asfortranarray(prediction)
+    return cocomask.encode(prediction)
+
+
+def get_segmentations(labeled):
+    nr_true = labeled.max()
+    segmentations = []
+    for i in range(1, nr_true + 1):
+        msk = labeled == i
+        segmentation = rle_from_binary(msk.astype('uint8'))
+        segmentation['counts'] = segmentation['counts'].decode("UTF-8")
+        segmentations.append(segmentation)
+    return segmentations

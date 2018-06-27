@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.optim as optim
+import torch.nn as nn
 from functools import partial
 
 from .steppy.pytorch.architectures.unet import UNet
@@ -10,7 +11,7 @@ from .steppy.pytorch.models import Model
 from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
 from .utils import sigmoid, softmax
-from .callbacks import NeptuneMonitorSegmentation
+from .callbacks import NeptuneMonitorSegmentation, ValidationMonitorSegmentation, ModelCheckpointSegmentation
 from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
 
 PRETRAINED_NETWORKS = {'VGG11': {'model': UNet11,
@@ -56,6 +57,32 @@ class PyTorchUNet(Model):
         self.loss_function = [('mask', loss_function, 1.0)]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
+    def fit(self, datagen, validation_datagen=None, meta_valid=None):
+        self._initialize_model_weights()
+
+        self.model = nn.DataParallel(self.model)
+
+        if torch.cuda.is_available():
+            self.model = self.model.cuda()
+
+        self.callbacks.set_params(self, validation_datagen=validation_datagen, meta_valid=meta_valid)
+        self.callbacks.on_train_begin()
+
+        batch_gen, steps = datagen
+        for epoch_id in range(self.training_config['epochs']):
+            self.callbacks.on_epoch_begin()
+            for batch_id, data in enumerate(batch_gen):
+                self.callbacks.on_batch_begin()
+                metrics = self._fit_loop(data)
+                self.callbacks.on_batch_end(metrics=metrics)
+                if batch_id == steps:
+                    break
+            self.callbacks.on_epoch_end()
+            if self.callbacks.training_break():
+                break
+        self.callbacks.on_train_end()
+        return self
+
     def transform(self, datagen, validation_datagen=None):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
@@ -94,10 +121,10 @@ def weight_regularization_unet(model, regularize, weight_decay_conv2d):
 
 def callbacks_unet(callbacks_config):
     experiment_timing = ExperimentTiming(**callbacks_config['experiment_timing'])
-    model_checkpoints = ModelCheckpoint(**callbacks_config['model_checkpoint'])
+    model_checkpoints = ModelCheckpointSegmentation(**callbacks_config['model_checkpoint'])
     lr_scheduler = ExponentialLRScheduler(**callbacks_config['lr_scheduler'])
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
-    validation_monitor = ValidationMonitor(**callbacks_config['validation_monitor'])
+    validation_monitor = ValidationMonitorSegmentation(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
     early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
 

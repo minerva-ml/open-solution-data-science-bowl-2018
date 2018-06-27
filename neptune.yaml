@@ -79,5 +79,8 @@ parameters:
   dropout_dense: 0.0
 
 # Postprocessing
-  threshold: 0.5
-  min_nuclei_size: 20
+  threshold_masks: 0.6
+  threshold_seeds: 0.3
+  threshold_borders: 0.3
+  min_mask_size: 20
+  min_seed_size: 8

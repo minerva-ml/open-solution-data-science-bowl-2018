@@ -192,8 +192,13 @@ SOLUTION_CONFIG = AttrDict({
                                   },
         },
     },
-    'thresholder': {'threshold': params.threshold},
+    'thresholder': {'threshold_masks': params.threshold_masks,
+                    'threshold_seeds': params.threshold_seeds,
+                    'threshold_borders': params.threshold_borders,
+                    },
     'watershed': {},
-    'dropper': {'min_size': params.min_nuclei_size},
+    'dropper': {'min_mask_size': params.min_mask_size,
+                'min_seed_size': params.min_seed_size
+                },
     'postprocessor': {'channels': CHANNELS}
 })

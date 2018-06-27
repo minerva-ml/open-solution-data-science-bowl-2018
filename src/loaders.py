@@ -53,10 +53,12 @@ class ImageSegmentationDataset(Dataset):
         if self.y is not None:
             Mi = load_func(self.y, index)
 
-            if self.train_mode and self.image_augment_with_target is not None:
+            if self.image_augment_with_target is not None or self.image_augment is not None:
                 Xi, Mi = from_pil(Xi, Mi)
-                Xi, Mi = self.image_augment_with_target(Xi, Mi)
-                Xi = self.image_augment(Xi)
+                if self.image_augment_with_target is not None:
+                    Xi, Mi = self.image_augment_with_target(Xi, Mi)
+                if self.image_augment is not None:
+                    Xi = self.image_augment(Xi)
                 Xi, Mi = to_pil(Xi, Mi)
 
             if self.mask_transform is not None:

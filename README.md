@@ -1,6 +1,10 @@
 # Data Science Bowl 2018: open solution
 
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/neptune-ml/data-science-bowl-2018/blob/master/LICENSE)
+
 This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018).
+
+[Live preview of our experiments](https://app.neptune.ml/neptune-ml/Data-Science-Bowl-2018) with all code :computer:, parameters :bookmark_tabs: and results :chart_with_upwards_trend:.
 
 ## Goals
 1) Deliver open, ready-to-use and extendable solution to this competition. This solution should - by itself - establish solid benchmark, as well as provide good base for your custom ideas and experiments.
@@ -14,10 +18,10 @@ Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/w
 
 #### Fast track:
 1. get repository, install [PyTorch](http://pytorch.org/) then remaining requirements
-2. register to [Neptune](https://neptune.ml/ 'machine learning lab')
+2. register to [neptune.ml](https://neptune.ml)
 3. run experiment:
 ```bash
-$ neptune login
+$ neptune account login
 $ neptune send main.py --worker gcp-gpu-large --environment pytorch-0.2.0-gpu-py3 -- train_evaluate_predict_pipeline --pipeline_name unet_multitask
 ```
 4. collect submit from `/output/dsb/experiments/submission.csv` directory.

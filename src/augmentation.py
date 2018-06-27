@@ -1,6 +1,32 @@
-from imgaug import augmenters as iaa
-import numpy as np
 import cv2
+import numpy as np
+import imgaug as ia
+from imgaug import augmenters as iaa
+
+
+def _perspective_transform_augment_images(self, images, random_state, parents, hooks):
+    result = images
+    if not self.keep_size:
+        result = list(result)
+
+    matrices, max_heights, max_widths = self._create_matrices(
+        [image.shape for image in images],
+        random_state
+    )
+
+    for i, (M, max_height, max_width) in enumerate(zip(matrices, max_heights, max_widths)):
+        warped = cv2.warpPerspective(images[i], M, (max_width, max_height))
+        if warped.ndim == 2 and images[i].ndim == 3:
+            warped = np.expand_dims(warped, 2)
+        if self.keep_size:
+            h, w = images[i].shape[0:2]
+            warped = ia.imresize_single_image(warped, (h, w))
+        result[i] = warped
+
+    return result
+
+
+iaa.PerspectiveTransform._augment_images = _perspective_transform_augment_images
 
 affine_seq = iaa.Sequential([
     # General

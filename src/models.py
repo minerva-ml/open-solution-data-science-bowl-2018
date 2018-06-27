@@ -1,13 +1,15 @@
 import numpy as np
+import torch
 import torch.optim as optim
+from functools import partial
 
-from .steppy.pytorch.architectures.unet import UNet, UNetMultitask
+from .steppy.pytorch.architectures.unet import UNet
 from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from .steppy.pytorch.models import Model
-from .steppy.pytorch.validation import segmentation_loss, multiclass_segmentation_loss
+from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
-from .utils import sigmoid
+from .utils import sigmoid, softmax
 from .callbacks import NeptuneMonitorSegmentation
 from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
 
@@ -46,14 +48,18 @@ class PyTorchUNet(Model):
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', multiclass_segmentation_loss, 1.0)]
+        dice_loss = partial(multiclass_dice_loss,
+                            excluded_classes=[0])
+        loss_function = partial(mixed_dice_cross_entropy_loss,
+                                dice_loss=dice_loss,
+                                cross_entropy_loss=multiclass_segmentation_loss)
+        self.loss_function = [('mask', loss_function, 1.0)]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
-            prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
-            outputs[name] = np.array(prediction_)
+            outputs[name] = softmax(prediction, axis=1)
         return outputs
 
     def set_model(self):
@@ -62,30 +68,9 @@ class PyTorchUNet(Model):
             self.model = UNet(**self.architecture_config['model_params'])
         else:
             config = PRETRAINED_NETWORKS[encoder]
-            self.model = config['model'](num_classes=self.architecture_config['model_params']['nr_outputs'],
+            self.model = config['model'](num_classes=self.architecture_config['model_params']['out_channels'],
                                          **config['model_config'])
             self._initialize_model_weights = lambda: None
-
-
-class PyTorchUNetMultitask(Model):
-    def __init__(self, architecture_config, training_config, callbacks_config):
-        super().__init__(architecture_config, training_config, callbacks_config)
-        self.model = UNetMultitask(**architecture_config['model_params'])
-        self.weight_regularization = weight_regularization_unet
-        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
-                                    **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, 0.45),
-                              ('contour', segmentation_loss, 0.45),
-                              ('contour_touching', segmentation_loss, 0.0),
-                              ('center', segmentation_loss, 0.1)]
-        self.callbacks = callbacks_unet(self.callbacks_config)
-
-    def transform(self, datagen, validation_datagen=None):
-        outputs = self._transform(datagen, validation_datagen)
-        for name, prediction in outputs.items():
-            prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
-            outputs[name] = np.array(prediction_)
-        return outputs
 
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):
@@ -119,3 +104,52 @@ def callbacks_unet(callbacks_config):
     return CallbackList(
         callbacks=[experiment_timing, training_monitor, validation_monitor,
                    model_checkpoints, lr_scheduler, neptune_monitor, early_stopping])
+
+
+def mixed_dice_cross_entropy_loss(output, target, dice_weight=0.5, dice_loss=None,
+                                  cross_entropy_weight=0.5, cross_entropy_loss=None, smooth=0,
+                                  dice_activation='softmax'):
+    target = target[:, 0, :, :].long()
+    if cross_entropy_loss is None:
+        cross_entropy_loss = torch.nn.CrossEntropyLoss()
+    if dice_loss is None:
+        dice_loss = multiclass_dice_loss
+    return dice_weight * dice_loss(output, target, smooth,
+                                   dice_activation) + cross_entropy_weight * cross_entropy_loss(output,
+                                                                                                target)
+
+
+def multiclass_dice_loss(output, target, smooth=0, activation='softmax', excluded_classes=[]):
+    """Calculate Dice Loss for multiple class output.
+
+    Args:
+        output (torch.Tensor): Model output of shape (N x C x H x W).
+        target (torch.Tensor): Target of shape (N x H x W).
+        smooth (float, optional): Smoothing factor. Defaults to 0.
+        activation (string, optional): Name of the activation function, softmax or sigmoid. Defaults to 'softmax'.
+        excluded_classes (list, optional):
+            List of excluded classes numbers. Dice Loss won't be calculated
+            against these classes. Often used on background when it has separate output class.
+            Defaults to [].
+
+    Returns:
+        torch.Tensor: Loss value.
+
+    """
+    if activation == 'softmax':
+        activation_nn = torch.nn.Softmax2d()
+    elif activation == 'sigmoid':
+        activation_nn = torch.nn.Sigmoid()
+    else:
+        raise NotImplementedError('only sigmoid and softmax are implemented')
+
+    loss = 0
+    dice = DiceLoss(smooth=smooth)
+    output = activation_nn(output)
+    for class_nr in range(output.size(1)):
+        if class_nr in excluded_classes:
+            continue
+        class_target = (target == class_nr)
+        class_target.data = class_target.data.float()
+        loss += dice(output[:, class_nr, :, :], class_target)
+    return loss

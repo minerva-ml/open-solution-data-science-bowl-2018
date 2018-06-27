@@ -5,9 +5,9 @@ import pandas as pd
 from deepsense import neptune
 
 from .metrics import intersection_over_union, intersection_over_union_thresholds
-from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS
+from .pipeline_config import SOLUTION_CONFIG, Y_COLUMNS_SCORING, SIZE_COLUMNS, SEED
 from .pipelines import PIPELINES
-from .preparation import train_valid_split, overlay_masks, overlay_contours, overlay_centers, get_vgg_clusters
+from .preparation import train_valid_split, overlay_masks, overlay_cut_masks, overlay_masks_with_borders
 from .utils import init_logger, read_masks, read_masks_from_csv, read_params, create_submission, generate_metadata
 
 
@@ -37,30 +37,21 @@ def prepare_metadata(logger, params):
     logger.info('creating metadata')
     meta = generate_metadata(data_dir=params.data_dir,
                              masks_overlayed_dir=params.masks_overlayed_dir,
-                             # contours_overlayed_dir=params.contours_overlayed_dir,
-                             # contours_touching_overlayed_dir = params.contours_touching_overlayed_dir,
-                             # centers_overlayed_dir=params.centers_overlayed_dir
+                             cut_masks_dir=params.cut_masks_dir,
+                             masks_with_borders_dir=params.masks_with_borders_dir,
                              )
-    logger.info('calculating clusters')
-
-    meta_train = meta[meta['is_train'] == 1]
-    meta_test = meta[meta['is_train'] == 0]
-    vgg_features_clusters = get_vgg_clusters(meta_train)
-    meta_train['vgg_features_clusters'] = vgg_features_clusters
-    meta_test['vgg_features_clusters'] = 'NaN'
-    meta = pd.concat([meta_train, meta_test], axis=0)
     meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
 
 
 def prepare_masks(logger, params):
     logger.info('overlaying masks')
     overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
-    # logger.info('overlaying contours')
-    # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.contours_overlayed_dir)
-    # overlay_contours(images_dir=params.data_dir, subdir_name='stage1_train',
-    #                  target_dir=params.contours_touching_overlayed_dir, touching_only=True)
-    # logger.info('overlaying centers')
-    # overlay_centers(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.centers_overlayed_dir)
+    logger.info('cutting masks')
+    overlay_cut_masks(images_dir=params.data_dir, subdir_name='stage1_train',
+                      target_dir=params.cut_masks_dir, cut_size=2)
+    logger.info('masks with borders')
+    overlay_masks_with_borders(images_dir=params.data_dir, subdir_name='stage1_train',
+                               target_dir=params.masks_with_borders_dir)
 
 
 def train(pipeline_name, validation_size, logger, params):
@@ -70,8 +61,7 @@ def train(pipeline_name, validation_size, logger, params):
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
-    valid_ids = eval(params.valid_category_ids)
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, valid_category_ids=valid_ids)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
 
     data = {'input': {'meta': meta_train_split,
                       'meta_valid': meta_valid_split,
@@ -90,7 +80,6 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
     logger.info('evaluating')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
-    valid_ids = eval(params.valid_category_ids)
 
     try:
         validation_size = float(validation_size)
@@ -98,10 +87,9 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
         pass
 
     if isinstance(validation_size, float):
-        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size,
-                                                               valid_category_ids=valid_ids)
+        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
         y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
-    elif validation_size=='test':
+    elif validation_size == 'test':
         meta_valid_split = meta[meta['is_train'] == 0]
         solution_dir = os.path.join(params.data_dir, 'stage1_solution.csv')
         image_ids = meta_valid_split['ImageId'].values

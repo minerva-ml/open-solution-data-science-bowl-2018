@@ -156,12 +156,12 @@ def read_params(ctx):
 
 def generate_metadata(data_dir,
                       masks_overlayed_dir,
-                      # contours_overlayed_dir,
-                      # contours_touching_overlayed_dir,
-                      # centers_overlayed_dir
+                      cut_masks_dir,
+                      masks_with_borders_dir,
                       ):
     def stage1_generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
+                                            'file_path_mask_with_borders', 'file_path_cut_mask',
                                             'is_train', 'width', 'height', 'n_nuclei'])
         if train:
             tr_te = 'stage1_train'
@@ -180,17 +180,15 @@ def generate_metadata(data_dir,
                 is_train = 1
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
-                # file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
-                # file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
-                # file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
+                file_path_cut_mask = os.path.join(cut_masks_dir, tr_te, image_id + '.png')
+                file_path_mask_with_borders = os.path.join(masks_with_borders_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
                 is_train = 0
                 file_path_masks = None
                 file_path_mask = None
-                # file_path_contours = None
-                # file_path_contours_touching = None
-                # file_path_centers = None
+                file_path_cut_mask = None
+                file_path_mask_with_borders = None
                 n_nuclei = None
 
             img = Image.open(file_path_image)
@@ -203,9 +201,8 @@ def generate_metadata(data_dir,
                                               'file_path_image': file_path_image,
                                               'file_path_masks': file_path_masks,
                                               'file_path_mask': file_path_mask,
-                                              # 'file_path_contours': file_path_contours,
-                                              # 'file_path_contours_touching': file_path_contours_touching,
-                                              # 'file_path_centers': file_path_centers,
+                                              'file_path_cut_mask': file_path_cut_mask,
+                                              'file_path_mask_with_borders': file_path_mask_with_borders,
                                               'is_train': is_train,
                                               'width': width,
                                               'height': height,
@@ -224,6 +221,51 @@ def squeeze_inputs(inputs):
 
 def sigmoid(x):
     return 1. / (1 + np.exp(-x))
+
+
+def softmax(X, theta=1.0, axis=None):
+    """
+    https://nolanbconaway.github.io/blog/2017/softmax-numpy
+    Compute the softmax of each element along an axis of X.
+
+    Parameters
+    ----------
+    X: ND-Array. Probably should be floats.
+    theta (optional): float parameter, used as a multiplier
+        prior to exponentiation. Default = 1.0
+    axis (optional): axis to compute values along. Default is the
+        first non-singleton axis.
+
+    Returns an array the same size as X. The result will sum to 1
+    along the specified axis.
+    """
+
+    # make X at least 2d
+    y = np.atleast_2d(X)
+
+    # find axis
+    if axis is None:
+        axis = next(j[0] for j in enumerate(y.shape) if j[1] > 1)
+
+    # multiply y against the theta parameter,
+    y = y * float(theta)
+
+    # subtract the max for numerical stability
+    y = y - np.expand_dims(np.max(y, axis=axis), axis)
+
+    # exponentiate y
+    y = np.exp(y)
+
+    # take the sum along the specified axis
+    ax_sum = np.expand_dims(np.sum(y, axis=axis), axis)
+
+    # finally: divide elementwise
+    p = y / ax_sum
+
+    # flatten if X was 1D
+    if len(X.shape) == 1: p = p.flatten()
+
+    return p
 
 
 def relabel(img):

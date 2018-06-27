@@ -217,8 +217,11 @@ def generate_metadata(data_dir,
     return metadata
 
 
-def squeeze_inputs(inputs):
-    return np.squeeze(inputs[0], axis=1)
+def squeeze_inputs_if_needed(inputs):
+    if isinstance(inputs, np.ndarray):
+        return np.squeeze(inputs[0], axis=1)
+    else:
+        return inputs
 
 
 def sigmoid(x):

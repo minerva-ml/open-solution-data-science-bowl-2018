@@ -181,6 +181,10 @@ def padding_seq(pad_size, pad_method):
     return seq
 
 
+def pad_to_fit_net(divisor, pad_mode, rest_of_augs=iaa.Noop()):
+    return iaa.Sequential(PadToFitInNetwork(divisor, pad_mode), rest_of_augs)
+
+
 class PadFixed(iaa.Augmenter):
     PAD_FUNCTION = {'reflect': cv2.BORDER_REFLECT_101,
                     'replicate': cv2.BORDER_REPLICATE,
@@ -256,11 +260,21 @@ class RandomCropFixedSize(iaa.Augmenter):
         height, width = image.shape[:2]
 
         np.random.seed(seed)
-        crop_top = np.random.randint(height - self.px_h)
+        if height > self.px_h:
+            crop_top = np.random.randint(height - self.px_h)
+        elif height == self.px_h:
+            crop_top = 0
+        else:
+            raise ValueError("To big crop height")
         crop_bottom = crop_top + self.px_h
 
         np.random.seed(seed + 1)
-        crop_left = np.random.randint(width - self.px_w)
+        if width > self.px_w:
+            crop_left = np.random.randint(width - self.px_w)
+        elif width == self.px_w:
+            crop_left = 0
+        else:
+            raise ValueError("To big crop width")
         crop_right = crop_left + self.px_w
 
         if len(image.shape) == 2:

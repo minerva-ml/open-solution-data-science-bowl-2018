@@ -1,5 +1,3 @@
-import warnings
-
 import numpy as np
 import torch
 import torchvision.transforms as transforms
@@ -11,9 +9,9 @@ from torch.utils.data import Dataset, DataLoader
 from .steppy.base import BaseTransformer
 from .steppy.pytorch.utils import ImgAug
 
-from .augmentation import affine_seq, color_seq, crop_seq
+from .augmentation import affine_seq, color_seq, crop_seq, pad_to_fit_net
 from .utils import from_pil, to_pil
-from.pipeline_config import MEAN, STD
+from .pipeline_config import MEAN, STD
 
 
 class ImageSegmentationDataset(Dataset):
@@ -37,15 +35,15 @@ class ImageSegmentationDataset(Dataset):
         self.image_source = image_source
 
     def __len__(self):
-        if self.image_source=='memory':
-            return len(self.X[0])
-        elif self.image_source=='disk':
+        if self.image_source == 'memory':
+            return len(self.X[0][0])
+        elif self.image_source == 'disk':
             return self.X.shape[0]
 
     def __getitem__(self, index):
-        if self.image_source=='memory':
+        if self.image_source == 'memory':
             load_func = self.load_from_memory
-        elif self.image_source=='disk':
+        elif self.image_source == 'disk':
             load_func = self.load_from_disk
         else:
             raise NotImplementedError("Possible loading options: 'memory' and 'disk'!")
@@ -73,9 +71,8 @@ class ImageSegmentationDataset(Dataset):
                 Xi = self.image_transform(Xi)
             return Xi
 
-
     def load_from_memory(self, data_source, index):
-        return data_source[0][index]
+        return data_source[0][0][index]
 
     def load_from_disk(self, data_source, index):
         img_filepath = data_source[index]
@@ -87,21 +84,18 @@ class ImageSegmentationDataset(Dataset):
 
 
 class ImageSegmentationLoaderBasic(BaseTransformer):
-    def __init__(self, loader_params, dataset_params, image_source):
+    def __init__(self, loader_params, dataset_params):
         super().__init__()
         self.loader_params = AttrDict(loader_params)
         self.dataset_params = AttrDict(dataset_params)
-        self.image_source = image_source
 
         self.mask_transform = None
         self.image_transform = None
-        self.image_transform_train = None
-        self.image_transform_inference = None
 
-        self.image_augment = None
         self.image_augment_train = None
         self.image_augment_inference = None
-        self.image_augment_with_target = None
+        self.image_augment_with_target_train = None
+        self.image_augment_with_target_inference = None
 
         self.dataset = ImageSegmentationDataset
 
@@ -120,23 +114,22 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
                 'validation_datagen': (valid_flow, valid_steps)}
 
     def get_datagen(self, X, y, train_mode, loader_params):
-        self.set_proper_transforms()
         if train_mode:
             dataset = self.dataset(X, y,
                                    train_mode=True,
                                    image_augment=self.image_augment_train,
-                                   image_augment_with_target=self.image_augment_with_target,
+                                   image_augment_with_target=self.image_augment_with_target_train,
                                    mask_transform=self.mask_transform,
-                                   image_transform=self.image_transform_train,
-                                   image_source=self.image_source)
+                                   image_transform=self.image_transform,
+                                   image_source=self.dataset_params.image_source)
         else:
             dataset = self.dataset(X, y,
                                    train_mode=False,
                                    image_augment=self.image_augment_inference,
-                                   image_augment_with_target=None,
+                                   image_augment_with_target=self.image_augment_with_target_inference,
                                    mask_transform=self.mask_transform,
-                                   image_transform=self.image_transform_inference,
-                                   image_source=self.image_source)
+                                   image_transform=self.image_transform,
+                                   image_source=self.dataset_params.image_source)
 
         datagen = DataLoader(dataset, **loader_params)
         steps = len(datagen)
@@ -151,18 +144,6 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         params = {'loader_params': self.loader_params}
         joblib.dump(params, filepath)
 
-    def set_proper_transforms(self):
-        if self.image_augment_train is None and self.image_augment_inference is None:
-            self.image_augment_train = self.image_augment
-            self.image_augment_inference = self.image_augment
-        elif self.image_augment_train is not None and self.image_augment is not None:
-            self.image_augment_inference = self.image_augment
-            warnings.warn("image_augment_train defined together with image_augment. Using image_augment for inference", UserWarning)
-        elif self.image_augment_inference is not None and self.image_augment is not None:
-            self.image_augment_train = self.image_augment
-            warnings.warn("image_augment_inference defined together with image_augment. Using image_augment for training", UserWarning)
-        return
-
 
 class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
@@ -171,30 +152,29 @@ class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
         self.image_transform = transforms.Compose([transforms.ToTensor(),
                                                    transforms.Normalize(mean=MEAN, std=STD),
                                                    ])
-        self.mask_transform = transforms.Compose([#transforms.Lambda(to_monochrome),
+        self.mask_transform = transforms.Compose([transforms.Lambda(to_array),
                                                   transforms.Lambda(to_tensor),
                                                   ])
-        self.image_augment = ImgAug(color_seq)
-        self.image_augment_with_target = ImgAug(crop_seq(crop_size=(self.dataset_params.h,
-                                                                          self.dataset_params.w)))
+        self.image_augment_train = ImgAug(color_seq)
+        self.image_augment_with_target_train = ImgAug(crop_seq(crop_size=(self.dataset_params.h, self.dataset_params.w)))
+        self.image_augment_with_target_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
 
 class ImageSegmentationLoaderResize(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
         super().__init__(loader_params, dataset_params)
 
-        self.image_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
-                                                                      self.dataset_params.w)),
+        self.image_transform = transforms.Compose([transforms.Resize((self.dataset_params.h, self.dataset_params.w)),
                                                    transforms.ToTensor(),
                                                    transforms.Normalize(mean=MEAN, std=STD),
                                                    ])
-        self.mask_transform = transforms.Compose([transforms.Resize((self.dataset_params.h,
-                                                                     self.dataset_params.w)),
-                                                  #transforms.Lambda(to_monochrome),
+        self.mask_transform = transforms.Compose([transforms.Resize((self.dataset_params.h, self.dataset_params.w),
+                                                                    interpolation=0),
+                                                  transforms.Lambda(to_array),
                                                   transforms.Lambda(to_tensor),
                                                   ])
-        self.image_augment = ImgAug(color_seq)
-        self.image_augment_with_target = ImgAug(affine_seq)
+        self.image_augment_train = ImgAug(color_seq)
+        self.image_augment_with_target_train = ImgAug(affine_seq)
 
         self.dataset = ImageSegmentationDataset
 

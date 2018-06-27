@@ -61,9 +61,9 @@ def get_channel(image, channel):
     return image[channel, :, :]
 
 
-def watershed(masks, borders):
-    seeds = masks * (1 - borders)
-    markers = label(seeds)
+def watershed(masks, seeds, borders):
+    seeds_detached = seeds * (1 - borders)
+    markers = label(seeds_detached)
     labels = morph.watershed(masks, markers, mask=masks)
     return labels
 
@@ -205,6 +205,11 @@ def crop_mask(mask, crop):
     h, w = mask.shape
     mask_cropped = mask[crop:h - crop, crop:w - crop]
     return mask_cropped
+
+
+def drop_small_unlabeled(img, min_size):
+    img = morph.remove_small_objects(img.astype(np.bool), min_size=min_size)
+    return img.astype(np.uint8)
 
 
 def drop_small(img, min_size):

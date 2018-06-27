@@ -5,7 +5,8 @@ from .steppy.preprocessing.misc import XYSplit, ImageReader
 
 from .loaders import MetadataImageSegmentationLoader, ImageSegmentationLoader
 from .models import PyTorchUNet
-from .postprocessing import resize_image, categorize_image, label_multiclass_image, get_channel, watershed
+from .postprocessing import resize_image, categorize_image, label_multiclass_image, get_channel, watershed,\
+    drop_small_unlabeled, drop_small
 from .utils import squeeze_inputs, make_apply_transformer
 
 
@@ -77,7 +78,7 @@ def double_unet(config):
                       cache_dirpath=config.env.cache_dirpath,
                       save_output=save_output, load_saved_output=load_saved_output)
 
-    masks = postprocessing_masks(unet_masks, config, save_output=save_output)
+    masks, seeds = postprocessing_masks(unet_masks, config, save_output=save_output)
 
     unet_borders = Step(name='unet_borders',
                         transformer=PyTorchUNet(**config.model['unet_borders']),
@@ -91,11 +92,8 @@ def double_unet(config):
     watersheder = Step(name='watershed',
                        transformer=make_apply_transformer(watershed,
                                                           output_name='watersheded_images',
-                                                          apply_on=['masks', 'borders']),
-                       input_steps=[masks, borders],
-                       adapter={'masks': ([(masks.name, 'nuclei_images')]),
-                                'borders': ([(borders.name, 'nuclei_images')]),
-                                },
+                                                          apply_on=['masks', 'seeds', 'borders']),
+                       input_steps=[masks, seeds, borders],
                        cache_dirpath=config.env.cache_dirpath,
                        save_output=save_output, load_saved_output=load_saved_output)
 
@@ -224,19 +222,33 @@ def mask_postprocessing(model, config, save_output=False):
                        save_output=save_output)
 
     category_mapper = Step(name='category_mapper',
-                           transformer=make_apply_transformer(categorize_image,
-                                                              output_name='categorized_images'),
+                           transformer=make_apply_transformer(
+                                     partial(categorize_image,
+                                             activation='sigmoid',
+                                             threshold=[0.5, config.thresholder.threshold_masks]
+                                             ),
+                                     output_name='categorized_images'),
                            input_steps=[mask_resize],
                            adapter={'images': ([('mask_resize', 'resized_images')]),
                                       },
                            cache_dirpath=config.env.cache_dirpath,
                            save_output=save_output)
 
+    dropper = Step(name='dropper',
+                   transformer=make_apply_transformer(partial(drop_small_unlabeled,
+                                                              min_size=config.dropper.min_mask_size),
+                                                      output_name='cleaned_images'),
+                   input_steps=[category_mapper],
+                   adapter={'images': ([('category_mapper', 'categorized_images')]),
+                            },
+                   cache_dirpath=config.env.cache_dirpath,
+                   save_output=save_output)
+
     labeler = Step(name='labeler',
                    transformer=make_apply_transformer(label_multiclass_image,
                                                       output_name='labeled_images'),
-                   input_steps=[category_mapper],
-                   adapter={'images': ([('category_mapper', 'categorized_images')]),
+                   input_steps=[dropper],
+                   adapter={'images': ([('dropper', 'cleaned_images')]),
                             },
                    cache_dirpath=config.env.cache_dirpath,
                    save_output=save_output)
@@ -255,7 +267,7 @@ def mask_postprocessing(model, config, save_output=False):
 
 
 def postprocessing_masks(model, config, save_output=False):
-    mask_resize = Step(name='mask_resize_simple',
+    mask_resize = Step(name='mask_resize_masks',
                        transformer=make_apply_transformer(resize_image,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
@@ -267,26 +279,74 @@ def postprocessing_masks(model, config, save_output=False):
                        cache_dirpath=config.env.cache_dirpath,
                        save_output=save_output)
 
-    category_mapper = Step(name='category_mapper_simple',
-                           transformer=make_apply_transformer(categorize_image,
-                                                              output_name='categorized_images'),
-                           input_steps=[mask_resize],
-                           adapter={'images': ([('mask_resize_simple', 'resized_images')]),
-                                      },
-                           cache_dirpath=config.env.cache_dirpath,
-                           save_output=save_output)
+    category_mapper_masks = Step(name='category_mapper_masks',
+                                 transformer=make_apply_transformer(
+                                     partial(categorize_image,
+                                             activation='sigmoid',
+                                             threshold=[0.5, config.thresholder.threshold_masks]
+                                             ),
+                                     output_name='categorized_images'),
+                                 input_steps=[mask_resize],
+                                 adapter={'images': ([('mask_resize_masks', 'resized_images')]),
+                                          },
+                                 cache_dirpath=config.env.cache_dirpath,
+                                 save_output=save_output)
 
-    nuclei_filter = Step(name='nuclei_filter_simple',
-                         transformer=make_apply_transformer(partial(get_channel,
-                                                            channel=config.postprocessor.channels.index('nuclei')),
-                                                            output_name='nuclei_images'),
-                         input_steps=[category_mapper],
-                         adapter={'images': ([('category_mapper_simple', 'categorized_images')]),
+    dropper_masks = Step(name='dropper_masks',
+                         transformer=make_apply_transformer(partial(drop_small_unlabeled,
+                                                                    min_size=config.dropper.min_mask_size),
+                                                            output_name='cleaned_images'),
+                         input_steps=[category_mapper_masks],
+                         adapter={'images': ([('category_mapper_masks', 'categorized_images')]),
                                   },
                          cache_dirpath=config.env.cache_dirpath,
                          save_output=save_output)
 
-    return nuclei_filter
+    masks_filter = Step(name='masks_filter',
+                        transformer=make_apply_transformer(partial(get_channel,
+                                                                   channel=config.postprocessor.channels.index('nuclei')),
+                                                           output_name='masks'),
+                        input_steps=[dropper_masks],
+                        adapter={'images': ([('dropper_masks', 'cleaned_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+
+    category_mapper_seeds = Step(name='category_mapper_seeds',
+                                 transformer=make_apply_transformer(
+                                     partial(categorize_image,
+                                             activation='sigmoid',
+                                             threshold=[0.5, config.thresholder.threshold_seeds]
+                                             ),
+                                     output_name='categorized_images'),
+                                 input_steps=[mask_resize],
+                                 adapter={'images': ([('mask_resize_masks', 'resized_images')]),
+                                          },
+                                 cache_dirpath=config.env.cache_dirpath,
+                                 save_output=save_output)
+
+    dropper_seeds = Step(name='dropper_seeds',
+                         transformer=make_apply_transformer(partial(drop_small_unlabeled,
+                                                            min_size=config.dropper.min_seed_size),
+                                                            output_name='cleaned_images'),
+                         input_steps=[category_mapper_seeds],
+                         adapter={'images': ([('category_mapper_seeds', 'categorized_images')]),
+                                  },
+                         cache_dirpath=config.env.cache_dirpath,
+                         save_output=save_output)
+
+    seeds_filter = Step(name='seeds_filter',
+                        transformer=make_apply_transformer(
+                            partial(get_channel,
+                                    channel=config.postprocessor.channels.index('nuclei')),
+                            output_name='seeds'),
+                        input_steps=[dropper_seeds],
+                        adapter={'images': ([('dropper_seeds', 'cleaned_images')]),
+                                 },
+                        cache_dirpath=config.env.cache_dirpath,
+                        save_output=save_output)
+
+    return masks_filter, seeds_filter
 
 
 def postprocessing_borders(model, config, save_output=False):
@@ -303,8 +363,12 @@ def postprocessing_borders(model, config, save_output=False):
                        save_output=save_output)
 
     category_mapper = Step(name='category_mapper_borders',
-                           transformer=make_apply_transformer(categorize_image,
-                                                              output_name='categorized_images'),
+                           transformer=make_apply_transformer(
+                                     partial(categorize_image,
+                                             activation='sigmoid',
+                                             threshold=[0.5, 0.5, config.thresholder.threshold_borders]
+                                             ),
+                                     output_name='categorized_images'),
                            input_steps=[mask_resize],
                            adapter={'images': ([('mask_resize_borders', 'resized_images')]),
                                       },
@@ -314,7 +378,7 @@ def postprocessing_borders(model, config, save_output=False):
     borders_filter = Step(name='borders_filter_borders',
                           transformer=make_apply_transformer(partial(get_channel,
                                                              channel=config.postprocessor.channels.index('borders')),
-                                                             output_name='nuclei_images'),
+                                                             output_name='borders'),
                           input_steps=[category_mapper],
                           adapter={'images': ([('category_mapper_borders', 'categorized_images')]),
                                    },

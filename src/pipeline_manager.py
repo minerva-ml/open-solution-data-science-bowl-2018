@@ -64,10 +64,9 @@ def train(pipeline_name, validation_size, logger, params):
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
 
     data = {'input': {'meta': meta_train_split,
-                      'meta_valid': meta_valid_split,
-                      'train_mode': True,
-                      'target_sizes': meta_train_split[SIZE_COLUMNS].values,
-                      },
+                      'target_sizes': meta_train_split[SIZE_COLUMNS].values},
+            'specs': {'train_mode': True},
+            'callback_input': {'meta_valid': meta_valid_split}
             }
 
     pipeline = PIPELINES[pipeline_name]['train'](SOLUTION_CONFIG)
@@ -98,10 +97,9 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
         raise NotImplementedError
 
     data = {'input': {'meta': meta_valid_split,
-                      'meta_valid': None,
-                      'train_mode': False,
-                      'target_sizes': meta_valid_split[SIZE_COLUMNS].values
-                      },
+                      'target_sizes': meta_valid_split[SIZE_COLUMNS].values},
+            'specs': {'train_mode': False},
+            'callback_input': {'meta_valid': None}
             }
 
     pipeline = PIPELINES[pipeline_name]['inference'](SOLUTION_CONFIG)

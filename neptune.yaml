@@ -70,6 +70,8 @@ parameters:
   momentum: 0.9
   gamma: 0.99
   patience: 100
+  validation_metric_name: 'sum'
+  minimize_validation_metric: 1
 
 # Regularization
   use_batch_norm: 1

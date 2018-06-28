@@ -83,7 +83,7 @@ class PyTorchUNet(Model):
         self.callbacks.on_train_end()
         return self
 
-    def transform(self, datagen, validation_datagen=None):
+    def transform(self, datagen, validation_datagen=None, *args, **kwargs):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
             outputs[name] = softmax(prediction, axis=1)

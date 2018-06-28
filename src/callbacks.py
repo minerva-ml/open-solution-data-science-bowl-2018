@@ -161,9 +161,15 @@ class ValidationMonitorSegmentation(ValidationMonitor):
                 break
         self.model.train()
         average_losses = sum(partial_batch_losses) / steps
-        outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
+        try:
+            outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
+        except:
+            outputs = {'{}_prediction'.format(name): outputs_ for name, outputs_ in outputs.items()}
         for name, prediction in outputs.items():
-            outputs[name] = softmax(prediction, axis=1)
+            if isinstance(outputs[name], np.ndarray):
+                outputs[name] = softmax(prediction, axis=1)
+            else:
+                outputs[name] = [softmax(single_prediction, axis=1)[0] for single_prediction in prediction]
 
         return outputs, average_losses
 

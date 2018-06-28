@@ -22,6 +22,7 @@ def unet(config, train_mode):
 
     unet = Step(name='unet',
                 transformer=PyTorchUNet(**config.model['unet']),
+                input_data=['callback_input'],
                 input_steps=[preprocessing],
                 is_trainable=True,
                 cache_dirpath=config.env.cache_dirpath,
@@ -48,6 +49,7 @@ def unet_masks(config):
 
     unet_masks = Step(name='unet_masks',
                       transformer=PyTorchUNet(**config.model['unet_masks']),
+                      input_data=['callback_input'],
                       input_steps=[preprocessing],
                       is_trainable=True,
                       cache_dirpath=config.env.cache_dirpath,
@@ -62,6 +64,7 @@ def unet_borders(config):
 
     unet_borders = Step(name='unet_borders',
                         transformer=PyTorchUNet(**config.model['unet_borders']),
+                        input_data=['callback_input'],
                         input_steps=[preprocessing],
                         is_trainable=True,
                         cache_dirpath=config.env.cache_dirpath,
@@ -76,6 +79,7 @@ def double_unet(config):
 
     unet_masks = Step(name='unet_masks',
                       transformer=PyTorchUNet(**config.model['unet_masks']),
+                      input_data=['callback_input'],
                       input_steps=[preprocessing],
                       is_trainable=True,
                       cache_dirpath=config.env.cache_dirpath,
@@ -85,6 +89,7 @@ def double_unet(config):
 
     unet_borders = Step(name='unet_borders',
                         transformer=PyTorchUNet(**config.model['unet_borders']),
+                        input_data=['callback_input'],
                         input_steps=[preprocessing],
                         is_trainable=True,
                         cache_dirpath=config.env.cache_dirpath,
@@ -122,34 +127,34 @@ def preprocessing_train(config, model_name='unet'):
     if config.loader.dataset_params.image_source == 'memory':
         reader_train = Step(name='reader_train',
                             transformer=ImageReader(**config.reader[model_name]),
-                            input_data=['input'],
+                            input_data=['input', 'specs'],
                             adapter={'meta': ([('input', 'meta')]),
-                                     'train_mode': ([('input', 'train_mode')]),
+                                     'train_mode': ([('specs', 'train_mode')]),
                                      },
                             cache_dirpath=config.env.cache_dirpath)
 
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader[model_name]),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta_valid')]),
-                                         'train_mode': ([('input', 'train_mode')]),
+                                input_data=['callback_input', 'specs'],
+                                adapter={'meta': ([('callback_input', 'meta_valid')]),
+                                         'train_mode': ([('specs', 'train_mode')]),
                                          },
                                 cache_dirpath=config.env.cache_dirpath)
 
     elif config.loader.dataset_params.image_source == 'disk':
         reader_train = Step(name='xy_train',
                             transformer=XYSplit(**config.xy_splitter[model_name]),
-                            input_data=['input'],
+                            input_data=['input', 'specs'],
                             adapter={'meta': ([('input', 'meta')]),
-                                     'train_mode': ([('input', 'train_mode')])
+                                     'train_mode': ([('specs', 'train_mode')])
                                      },
                             cache_dirpath=config.env.cache_dirpath)
 
         reader_inference = Step(name='xy_inference',
                                 transformer=XYSplit(**config.xy_splitter[model_name]),
-                                input_data=['input'],
-                                adapter={'meta': ([('input', 'meta_valid')]),
-                                         'train_mode': ([('input', 'train_mode')])
+                                input_data=['callback_input', 'specs'],
+                                adapter={'meta': ([('callback_input', 'meta_valid')]),
+                                         'train_mode': ([('specs', 'train_mode')])
                                          },
                                 cache_dirpath=config.env.cache_dirpath)
     else:
@@ -157,11 +162,11 @@ def preprocessing_train(config, model_name='unet'):
 
     loader = Step(name='loader',
                   transformer=Loader(**config.loader),
-                  input_data=['input'],
+                  input_data=['specs'],
                   input_steps=[reader_train, reader_inference],
                   adapter={'X': ([(reader_train.name, 'X')], squeeze_inputs_if_needed),
                            'y': ([(reader_train.name, 'y')], squeeze_inputs_if_needed),
-                           'train_mode': ([('input', 'train_mode')]),
+                           'train_mode': ([('specs', 'train_mode')]),
                            'X_valid': ([(reader_inference.name, 'X')], squeeze_inputs_if_needed),
                            'y_valid': ([(reader_inference.name, 'y')], squeeze_inputs_if_needed),
                            },
@@ -180,18 +185,18 @@ def preprocessing_inference(config, model_name='unet'):
     if config.loader.dataset_params.image_source == 'memory':
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader[model_name]),
-                                input_data=['input'],
+                                input_data=['input', 'specs'],
                                 adapter={'meta': ([('input', 'meta')]),
-                                         'train_mode': ([('input', 'train_mode')]),
+                                         'train_mode': ([('specs', 'train_mode')]),
                                          },
                                 cache_dirpath=config.env.cache_dirpath)
 
     elif config.loader.dataset_params.image_source == 'disk':
         reader_inference = Step(name='xy_inference',
                                 transformer=XYSplit(**config.xy_splitter[model_name]),
-                                input_data=['input'],
+                                input_data=['specs'],
                                 adapter={'meta': ([('input', 'meta')]),
-                                         'train_mode': ([('input', 'train_mode')])
+                                         'train_mode': ([('specs', 'train_mode')])
                                          },
                                 cache_dirpath=config.env.cache_dirpath)
     else:
@@ -199,11 +204,11 @@ def preprocessing_inference(config, model_name='unet'):
 
     loader = Step(name='loader',
                   transformer=Loader(**config.loader),
-                  input_data=['input'],
+                  input_data=['specs'],
                   input_steps=[reader_inference],
                   adapter={'X': ([(reader_inference.name, 'X')], squeeze_inputs_if_needed),
                            'y': ([(reader_inference.name, 'y')], squeeze_inputs_if_needed),
-                           'train_mode': ([('input', 'train_mode')]),
+                           'train_mode': ([('specs', 'train_mode')]),
                            },
                   cache_dirpath=config.env.cache_dirpath)
     return loader

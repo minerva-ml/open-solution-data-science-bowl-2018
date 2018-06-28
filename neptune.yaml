@@ -1,7 +1,7 @@
 project: Data-Science-Bowl
 
 name: dsb_open_solution
-tags: [solution_4, unet-multitask, touching_edges]
+tags: [winning_solution]
 
 metric:
   channel: 'Final Validation Score'
@@ -42,7 +42,8 @@ parameters:
   num_workers: 4
   image_source: memory
   pin_memory: 1
-  loader_mode: resize
+  loader_mode: crop_and_pad
+  pad_method: symmetric
 
 # General Params
   image_h: 512
@@ -66,7 +67,7 @@ parameters:
 # Training schedule
   epochs_nr: 1000
   batch_size_train: 4
-  batch_size_inference: 4
+  batch_size_inference: 1
   lr: 0.0001
   momentum: 0.9
   gamma: 0.99

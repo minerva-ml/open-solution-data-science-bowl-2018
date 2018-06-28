@@ -24,6 +24,23 @@ def resize_image(image, target_size):
     return resized_image
 
 
+def crop_image(image, target_size):
+    """Crop image to target size. Image cropped symmetrically.
+
+    Args:
+        image (numpy.ndarray): Image of shape (C x H x W).
+        target_size (tuple): Target size (H, W).
+
+    Returns:
+        numpy.ndarray: Cropped image of shape (C x H x W).
+
+    """
+    top_crop, right_crop, bottom_crop, left_crop = _get_crop_sequence(image.shape[1] - target_size[0],
+                                                                      image.shape[2] - target_size[1])
+    cropped_image = image[:, top_crop:image.shape[1] - bottom_crop, left_crop:image.shape[2] - right_crop]
+    return cropped_image
+
+
 def categorize_image(image, activation='softmax', threshold=0.5):
     """Maps probability map to categories. Each pixel is assigned with a category with highest probability.
 
@@ -220,3 +237,11 @@ def drop_small(img, min_size):
 def label(mask):
     labeled, nr_true = ndi.label(mask)
     return labeled
+
+
+def _get_crop_sequence(crop_vertical, crop_horizontal):
+    top_crop = int(crop_vertical / 2)
+    bottom_crop = crop_vertical - top_crop
+    right_crop = int(crop_horizontal / 2)
+    left_crop = crop_horizontal - right_crop
+    return (top_crop, right_crop, bottom_crop, left_crop)

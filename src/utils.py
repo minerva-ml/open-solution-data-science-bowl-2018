@@ -305,11 +305,19 @@ def relabel_random_colors(img, max_colours=1000):
 
 
 def from_pil(*images):
-    return [np.array(image) for image in images]
+    images = [np.array(image) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
 
 
 def to_pil(*images):
-    return [Image.fromarray((image).astype(np.uint8)) for image in images]
+    images = [Image.fromarray((image).astype(np.uint8)) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
 
 
 def make_apply_transformer(func, output_name='output', apply_on=None):

@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.optim as optim
+from torch.autograd import Variable
 from functools import partial
 
 from .steppy.pytorch.architectures.unet import UNet
@@ -59,7 +60,41 @@ class PyTorchUNet(Model):
     def transform(self, datagen, validation_datagen=None):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
-            outputs[name] = softmax(prediction, axis=1)
+            if isinstance(outputs[name], np.ndarray):
+                outputs[name] = softmax(prediction, axis=1)
+            else:
+                outputs[name] = [softmax(single_prediction, axis=1)[0] for single_prediction in prediction]
+        return outputs
+
+    def _transform(self, datagen, validation_datagen=None):
+        self.model.eval()
+
+        batch_gen, steps = datagen
+        outputs = {}
+        for batch_id, data in enumerate(batch_gen):
+            if isinstance(data, list):
+                X = data[0]
+            else:
+                X = data
+
+            if torch.cuda.is_available():
+                X = Variable(X, volatile=True).cuda()
+            else:
+                X = Variable(X, volatile=True)
+            outputs_batch = self.model(X)
+            if len(self.output_names) == 1:
+                outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
+            else:
+                for name, output in zip(self.output_names, outputs_batch):
+                    output_ = output.data.cpu().numpy()
+                    outputs.setdefault(name, []).append(output_)
+            if batch_id == steps:
+                break
+        self.model.train()
+        try:
+            outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
+        except:
+            outputs = {'{}_prediction'.format(name): outputs_ for name, outputs_ in outputs.items()}
         return outputs
 
     def set_model(self):

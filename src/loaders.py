@@ -69,6 +69,11 @@ class ImageSegmentationDataset(Dataset):
 
             return Xi, Mi
         else:
+            if self.image_augment is not None:
+                Xi = from_pil(Xi)
+                Xi = self.image_augment(Xi)
+                Xi = to_pil(Xi)
+
             if self.image_transform is not None:
                 Xi = self.image_transform(Xi)
             return Xi
@@ -159,6 +164,7 @@ class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
                                                   ])
         self.image_augment_train = ImgAug(color_seq)
         self.image_augment_with_target_train = ImgAug(crop_seq(crop_size=(self.dataset_params.h, self.dataset_params.w)))
+        self.image_augment_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
         self.image_augment_with_target_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
 

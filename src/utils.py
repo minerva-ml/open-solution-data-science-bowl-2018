@@ -4,6 +4,7 @@ import os
 import sys
 from itertools import product, chain
 from collections import Iterable
+import time
 
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ import yaml
 from PIL import Image
 from attrdict import AttrDict
 from tqdm import tqdm
+import imgaug as ia
 from pycocotools import mask as cocomask
 
 from .steppy.base import BaseTransformer
@@ -216,8 +218,11 @@ def generate_metadata(data_dir,
     return metadata
 
 
-def squeeze_inputs(inputs):
-    return np.squeeze(inputs[0], axis=1)
+def squeeze_inputs_if_needed(inputs):
+    if isinstance(inputs, np.ndarray):
+        return np.squeeze(inputs[0], axis=1)
+    else:
+        return inputs
 
 
 def sigmoid(x):
@@ -300,11 +305,19 @@ def relabel_random_colors(img, max_colours=1000):
 
 
 def from_pil(*images):
-    return [np.array(image) for image in images]
+    images = [np.array(image) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
 
 
 def to_pil(*images):
-    return [Image.fromarray((image).astype(np.uint8)) for image in images]
+    images = [Image.fromarray((image).astype(np.uint8)) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
 
 
 def make_apply_transformer(func, output_name='output', apply_on=None):
@@ -357,6 +370,19 @@ def make_apply_transformer(func, output_name='output', apply_on=None):
     return StaticApplyTransformer()
 
 
+def get_seed():
+    seed = int(time.time()) + int(os.getpid())
+    return seed
+
+
+def reseed(augmenter_sequence, deterministic=True):
+    for aug in augmenter_sequence:
+        aug.random_state = ia.new_random_state(get_seed())
+        if deterministic:
+            aug.deterministic = True
+    return augmenter_sequence
+
+
 def rle_from_binary(prediction):
     prediction = np.asfortranarray(prediction)
     return cocomask.encode(prediction)
@@ -371,3 +397,18 @@ def get_segmentations(labeled):
         segmentation['counts'] = segmentation['counts'].decode("UTF-8")
         segmentations.append(segmentation)
     return segmentations
+
+
+def get_crop_pad_sequence(vertical, horizontal):
+    top = int(vertical / 2)
+    bottom = vertical - top
+    right = int(horizontal / 2)
+    left = horizontal - right
+    return (top, right, bottom, left)
+
+
+def get_list_of_image_predictions(batch_predictions):
+    image_predictions = []
+    for batch_pred in batch_predictions:
+        image_predictions.extend(list(batch_pred))
+    return image_predictions

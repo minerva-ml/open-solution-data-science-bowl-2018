@@ -41,7 +41,7 @@ def predict(pipeline_name):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def train_evaluate_predict_pipeline(pipeline_name, validation_size):
+def train_evaluate_predict(pipeline_name, validation_size):
     pipeline_manager.train(pipeline_name, validation_size)
     pipeline_manager.evaluate(pipeline_name, validation_size)
     pipeline_manager.predict(pipeline_name)
@@ -50,7 +50,7 @@ def train_evaluate_predict_pipeline(pipeline_name, validation_size):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def train_evaluate_pipeline(pipeline_name, validation_size):
+def train_evaluate(pipeline_name, validation_size):
     pipeline_manager.train(pipeline_name, validation_size)
     pipeline_manager.evaluate(pipeline_name, validation_size)
 
@@ -58,7 +58,7 @@ def train_evaluate_pipeline(pipeline_name, validation_size):
 @action.command()
 @click.option('-p', '--pipeline_name', help='pipeline to be trained', required=True)
 @click.option('-v', '--validation_size', help='percentage of training used for validation', default=0.1, required=False)
-def evaluate_predict_pipeline(pipeline_name, validation_size):
+def evaluate_predict(pipeline_name, validation_size):
     pipeline_manager.evaluate(pipeline_name, validation_size)
     pipeline_manager.predict(pipeline_name)
 

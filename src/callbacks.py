@@ -12,7 +12,7 @@ from .steppy.pytorch.utils import save_model
 from .steppy.pytorch.callbacks import NeptuneMonitor, ValidationMonitor, ModelCheckpoint
 
 from . import postprocessing as post
-from .utils import sigmoid, softmax, make_apply_transformer, read_masks
+from .utils import sigmoid, softmax, make_apply_transformer, read_masks, get_list_of_image_predictions
 from .pipeline_config import Y_COLUMNS_SCORING, CHANNELS, SIZE_COLUMNS
 from .metrics import intersection_over_union, intersection_over_union_thresholds
 
@@ -86,10 +86,11 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
 
 
 class ValidationMonitorSegmentation(ValidationMonitor):
-    def __init__(self, data_dir, *args, **kwargs):
+    def __init__(self, data_dir, loader_mode, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_dir = data_dir
         self.validation_pipeline = postprocessing__pipeline_simplified
+        self.loader_mode = loader_mode
         self.validation_loss = None
         self.meta_valid = None
         self.y_true = None
@@ -160,9 +161,9 @@ class ValidationMonitorSegmentation(ValidationMonitor):
                 break
         self.model.train()
         average_losses = sum(partial_batch_losses) / steps
-        outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
+        outputs = {'{}_prediction'.format(name): get_list_of_image_predictions(outputs_) for name, outputs_ in outputs.items()}
         for name, prediction in outputs.items():
-            outputs[name] = softmax(prediction, axis=1)
+            outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
 
         return outputs, average_losses
 
@@ -174,7 +175,7 @@ class ValidationMonitorSegmentation(ValidationMonitor):
                 'unet_output': {**outputs}
                 }
         with TemporaryDirectory() as cache_dirpath:
-            pipeline = self.validation_pipeline(cache_dirpath)
+            pipeline = self.validation_pipeline(cache_dirpath, self.loader_mode)
             output = pipeline.transform(data)
         y_pred = output['y_pred']
 
@@ -207,10 +208,16 @@ class ModelCheckpointSegmentation(ModelCheckpoint):
         self.epoch_id += 1
 
 
-def postprocessing__pipeline_simplified(cache_dirpath):
+def postprocessing__pipeline_simplified(cache_dirpath, loader_mode):
+    if loader_mode == 'crop_and_pad':
+        size_adjustment_function = post.crop_image
+    elif loader_mode == 'resize':
+        size_adjustment_function = post.resize_image
+    else:
+        raise NotImplementedError
 
     mask_resize = Step(name='mask_resize',
-                       transformer=make_apply_transformer(post.resize_image,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['unet_output', 'callback_input'],

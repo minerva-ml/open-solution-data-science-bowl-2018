@@ -21,7 +21,9 @@ def iou(gt, pred):
 def compute_ious(gt, predictions):
     gt_ = get_segmentations(gt)
     predictions_ = get_segmentations(predictions)
-    iscrowd = [0 for _ in gt]
+    if len(predictions_) == 0:
+        return np.zeros((1, 1))
+    iscrowd = [0 for _ in predictions_]
     ious = cocomask.iou(gt_, predictions_, iscrowd)
     return ious
 

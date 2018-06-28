@@ -86,10 +86,11 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
 
 
 class ValidationMonitorSegmentation(ValidationMonitor):
-    def __init__(self, data_dir, *args, **kwargs):
+    def __init__(self, data_dir, loader_mode, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.data_dir = data_dir
         self.validation_pipeline = postprocessing__pipeline_simplified
+        self.loader_mode = loader_mode
         self.validation_loss = None
         self.meta_valid = None
         self.y_true = None
@@ -174,7 +175,7 @@ class ValidationMonitorSegmentation(ValidationMonitor):
                 'unet_output': {**outputs}
                 }
         with TemporaryDirectory() as cache_dirpath:
-            pipeline = self.validation_pipeline(cache_dirpath)
+            pipeline = self.validation_pipeline(cache_dirpath, self.loader_mode)
             output = pipeline.transform(data)
         y_pred = output['y_pred']
 
@@ -207,10 +208,16 @@ class ModelCheckpointSegmentation(ModelCheckpoint):
         self.epoch_id += 1
 
 
-def postprocessing__pipeline_simplified(cache_dirpath):
+def postprocessing__pipeline_simplified(cache_dirpath, loader_mode):
+    if loader_mode == 'crop_and_pad':
+        resize_function = post.crop_image
+    elif loader_mode == 'resize':
+        resize_function = post.resize_image
+    else:
+        raise NotImplementedError
 
     mask_resize = Step(name='mask_resize',
-                       transformer=make_apply_transformer(post.resize_image,
+                       transformer=make_apply_transformer(resize_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['unet_output', 'callback_input'],

@@ -397,3 +397,18 @@ def get_segmentations(labeled):
         segmentation['counts'] = segmentation['counts'].decode("UTF-8")
         segmentations.append(segmentation)
     return segmentations
+
+
+def get_crop_pad_sequence(vertical, horizontal):
+    top = int(vertical / 2)
+    bottom = vertical - top
+    right = int(horizontal / 2)
+    left = horizontal - right
+    return (top, right, bottom, left)
+
+
+def get_list_of_image_predictions(batch_predictions):
+    image_predictions = []
+    for batch_pred in batch_predictions:
+        image_predictions.extend(list(batch_pred))
+    return image_predictions

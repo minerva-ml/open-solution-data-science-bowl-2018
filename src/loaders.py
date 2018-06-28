@@ -5,6 +5,7 @@ from PIL import Image
 from attrdict import AttrDict
 from sklearn.externals import joblib
 from torch.utils.data import Dataset, DataLoader
+from imgaug import augmenters as iaa
 
 from .steppy.base import BaseTransformer
 from .steppy.pytorch.utils import ImgAug
@@ -29,8 +30,8 @@ class ImageSegmentationDataset(Dataset):
         self.train_mode = train_mode
         self.image_transform = image_transform
         self.mask_transform = mask_transform
-        self.image_augment = image_augment
-        self.image_augment_with_target = image_augment_with_target
+        self.image_augment = image_augment if image_augment is not None else iaa.Noop()
+        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else iaa.Noop()
 
         self.image_source = image_source
 
@@ -53,13 +54,10 @@ class ImageSegmentationDataset(Dataset):
         if self.y is not None:
             Mi = load_func(self.y, index)
 
-            if self.image_augment_with_target is not None or self.image_augment is not None:
-                Xi, Mi = from_pil(Xi, Mi)
-                if self.image_augment_with_target is not None:
-                    Xi, Mi = self.image_augment_with_target(Xi, Mi)
-                if self.image_augment is not None:
-                    Xi = self.image_augment(Xi)
-                Xi, Mi = to_pil(Xi, Mi)
+            Xi, Mi = from_pil(Xi, Mi)
+            Xi, Mi = self.image_augment_with_target(Xi, Mi)
+            Xi = self.image_augment(Xi)
+            Xi, Mi = to_pil(Xi, Mi)
 
             if self.mask_transform is not None:
                 Mi = self.mask_transform(Mi)
@@ -69,10 +67,9 @@ class ImageSegmentationDataset(Dataset):
 
             return Xi, Mi
         else:
-            if self.image_augment is not None:
-                Xi = from_pil(Xi)
-                Xi = self.image_augment(Xi)
-                Xi = to_pil(Xi)
+            Xi = from_pil(Xi)
+            Xi = self.image_augment(Xi)
+            Xi = to_pil(Xi)
 
             if self.image_transform is not None:
                 Xi = self.image_transform(Xi)

@@ -11,7 +11,7 @@ from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationM
 from .steppy.pytorch.models import Model
 from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
-from .utils import sigmoid, softmax
+from .utils import sigmoid, softmax, get_list_of_image_predictions
 from .callbacks import NeptuneMonitorSegmentation, ValidationMonitorSegmentation, ModelCheckpointSegmentation
 from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
 
@@ -87,10 +87,7 @@ class PyTorchUNet(Model):
     def transform(self, datagen, validation_datagen=None, *args, **kwargs):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
-            if isinstance(outputs[name], np.ndarray):
-                outputs[name] = softmax(prediction, axis=1)
-            else:
-                outputs[name] = [softmax(single_prediction, axis=1)[0] for single_prediction in prediction]
+            outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
         return outputs
 
     def _transform(self, datagen, validation_datagen=None):
@@ -118,10 +115,7 @@ class PyTorchUNet(Model):
             if batch_id == steps:
                 break
         self.model.train()
-        try:
-            outputs = {'{}_prediction'.format(name): np.vstack(outputs_) for name, outputs_ in outputs.items()}
-        except:
-            outputs = {'{}_prediction'.format(name): outputs_ for name, outputs_ in outputs.items()}
+        outputs = {'{}_prediction'.format(name): get_list_of_image_predictions(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 
     def set_model(self):

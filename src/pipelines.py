@@ -216,14 +216,14 @@ def preprocessing_inference(config, model_name='unet'):
 
 def mask_postprocessing(model, config, save_output=False):
     if config.execution.loader_mode == 'crop_and_pad':
-        resize_function = crop_image
+        size_adjustment_function = crop_image
     elif config.execution.loader_mode == 'resize':
-        resize_function = resize_image
+        size_adjustment_function = resize_image
     else:
         raise NotImplementedError
 
     mask_resize = Step(name='mask_resize',
-                       transformer=make_apply_transformer(resize_function,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['input'],
@@ -282,14 +282,14 @@ def mask_postprocessing(model, config, save_output=False):
 
 def postprocessing_masks(model, config, save_output=False):
     if config.execution.loader_mode == 'crop_and_pad':
-        resize_function = crop_image
+        size_adjustment_function = crop_image
     elif config.execution.loader_mode == 'resize':
-        resize_function = resize_image
+        size_adjustment_function = resize_image
     else:
         raise NotImplementedError
 
     mask_resize = Step(name='mask_resize_masks',
-                       transformer=make_apply_transformer(resize_function,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['input'],
@@ -372,14 +372,14 @@ def postprocessing_masks(model, config, save_output=False):
 
 def postprocessing_borders(model, config, save_output=False):
     if config.execution.loader_mode == 'crop_and_pad':
-        resize_function = crop_image
+        size_adjustment_function = crop_image
     elif config.execution.loader_mode == 'resize':
-        resize_function = resize_image
+        size_adjustment_function = resize_image
     else:
         raise NotImplementedError
 
     mask_resize = Step(name='mask_resize_borders',
-                       transformer=make_apply_transformer(resize_function,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['input'],

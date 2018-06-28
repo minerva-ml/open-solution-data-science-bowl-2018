@@ -3,6 +3,8 @@ import numpy as np
 import imgaug as ia
 from imgaug import augmenters as iaa
 
+from .utils import get_crop_pad_sequence
+
 
 def _perspective_transform_augment_images(self, images, random_state, parents, hooks):
     result = images
@@ -182,7 +184,7 @@ def padding_seq(pad_size, pad_method):
 
 
 def pad_to_fit_net(divisor, pad_mode, rest_of_augs=iaa.Noop()):
-    return iaa.Sequential(PadToFitInNetwork(divisor, pad_mode), rest_of_augs)
+    return iaa.Sequential(InferencePad(divisor, pad_mode), rest_of_augs)
 
 
 class PadFixed(iaa.Augmenter):
@@ -287,9 +289,9 @@ class RandomCropFixedSize(iaa.Augmenter):
         return []
 
 
-class PadToFitInNetwork(iaa.Augmenter):
+class InferencePad(iaa.Augmenter):
     def __init__(self, divisor=2, pad_mode='symmetric', name=None, deterministic=False, random_state=None):
-        super(PadToFitInNetwork, self).__init__(name=name, deterministic=deterministic, random_state=random_state)
+        super(InferencePad, self).__init__(name=name, deterministic=deterministic, random_state=random_state)
         self.divisor = divisor
         self.pad_mode = pad_mode
 
@@ -308,24 +310,20 @@ class PadToFitInNetwork(iaa.Augmenter):
         height = image.shape[0]
         width = image.shape[1]
 
-        pad_vertical = self._get_pad(height)
-        pad_horizontal = self._get_pad(width)
-        pad_sequence = self._get_pad_sequence(pad_vertical, pad_horizontal)
+        pad_sequence = self._get_pad_sequence(height, width)
         augmenter = iaa.Pad(px=pad_sequence, keep_size=False, pad_mode=self.pad_mode)
         return augmenter.augment_image(image)
+
+    def _get_pad_sequence(self, height, width):
+        pad_vertical = self._get_pad(height)
+        pad_horizontal = self._get_pad(width)
+        return get_crop_pad_sequence(pad_vertical, pad_horizontal)
 
     def _get_pad(self, dim):
         if dim % self.divisor == 0:
             return 0
         else:
             return self.divisor - dim % self.divisor
-
-    def _get_pad_sequence(self, pad_vertical, pad_horizontal):
-        top_pad = int(pad_vertical / 2)
-        bottom_pad = pad_vertical - top_pad
-        right_pad = int(pad_horizontal / 2)
-        left_pad = pad_horizontal - right_pad
-        return (top_pad, right_pad, bottom_pad, left_pad)
 
     def get_parameters(self):
         return [self.divisor, self.pad_mode]

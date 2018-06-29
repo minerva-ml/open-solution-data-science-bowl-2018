@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 import torch.optim as optim
+from torch.autograd import Variable
 import torch.nn as nn
 from functools import partial
 
@@ -10,7 +11,7 @@ from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationM
 from .steppy.pytorch.models import Model
 from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
-from .utils import sigmoid, softmax
+from .utils import sigmoid, softmax, get_list_of_image_predictions
 from .callbacks import NeptuneMonitorSegmentation, ValidationMonitorSegmentation, ModelCheckpointSegmentation
 from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
 
@@ -83,10 +84,38 @@ class PyTorchUNet(Model):
         self.callbacks.on_train_end()
         return self
 
-    def transform(self, datagen, validation_datagen=None):
+    def transform(self, datagen, validation_datagen=None, *args, **kwargs):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
-            outputs[name] = softmax(prediction, axis=1)
+            outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
+        return outputs
+
+    def _transform(self, datagen, validation_datagen=None):
+        self.model.eval()
+
+        batch_gen, steps = datagen
+        outputs = {}
+        for batch_id, data in enumerate(batch_gen):
+            if isinstance(data, list):
+                X = data[0]
+            else:
+                X = data
+
+            if torch.cuda.is_available():
+                X = Variable(X, volatile=True).cuda()
+            else:
+                X = Variable(X, volatile=True)
+            outputs_batch = self.model(X)
+            if len(self.output_names) == 1:
+                outputs.setdefault(self.output_names[0], []).append(outputs_batch.data.cpu().numpy())
+            else:
+                for name, output in zip(self.output_names, outputs_batch):
+                    output_ = output.data.cpu().numpy()
+                    outputs.setdefault(name, []).append(output_)
+            if batch_id == steps:
+                break
+        self.model.train()
+        outputs = {'{}_prediction'.format(name): get_list_of_image_predictions(outputs_) for name, outputs_ in outputs.items()}
         return outputs
 
     def set_model(self):

@@ -3,11 +3,11 @@ from functools import partial
 from .steppy.base import Step, Dummy
 from .steppy.preprocessing.misc import XYSplit, ImageReader
 
-from .loaders import MetadataImageSegmentationLoader, ImageSegmentationLoader
+from . import loaders
 from .models import PyTorchUNet
+from .utils import squeeze_inputs_if_needed, make_apply_transformer
 from .postprocessing import resize_image, categorize_image, label_multiclass_image, get_channel, watershed,\
-    drop_small_unlabeled, drop_small
-from .utils import squeeze_inputs, make_apply_transformer
+    drop_small_unlabeled, drop_small, crop_image
 
 
 def unet(config, train_mode):
@@ -27,6 +27,9 @@ def unet(config, train_mode):
                 is_trainable=True,
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output)
+
+    if train_mode:
+        return unet
 
     mask_postprocessed = mask_postprocessing(unet, config, save_output=save_output)
 
@@ -114,7 +117,14 @@ def double_unet(config):
 
 
 def preprocessing_train(config, model_name='unet'):
-    if config.execution.load_in_memory:
+    if config.execution.loader_mode == 'crop_and_pad':
+        Loader = loaders.ImageSegmentationLoaderCropPad
+    elif config.execution.loader_mode == 'resize':
+        Loader = loaders.ImageSegmentationLoaderResize
+    else:
+        raise NotImplementedError
+
+    if config.loader.dataset_params.image_source == 'memory':
         reader_train = Step(name='reader_train',
                             transformer=ImageReader(**config.reader[model_name]),
                             input_data=['input', 'specs'],
@@ -131,50 +141,48 @@ def preprocessing_train(config, model_name='unet'):
                                          },
                                 cache_dirpath=config.env.cache_dirpath)
 
-        loader = Step(name='loader',
-                      transformer=ImageSegmentationLoader(**config.loader),
-                      input_data=['specs'],
-                      input_steps=[reader_train, reader_inference],
-                      adapter={'X': ([('reader_train', 'X')]),
-                               'y': ([('reader_train', 'y')]),
-                               'train_mode': ([('specs', 'train_mode')]),
-                               'X_valid': ([('reader_inference', 'X')]),
-                               'y_valid': ([('reader_inference', 'y')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
-    else:
-        xy_train = Step(name='xy_train',
-                        transformer=XYSplit(**config.xy_splitter[model_name]),
-                        input_data=['input', 'specs'],
-                        adapter={'meta': ([('input', 'meta')]),
-                                 'train_mode': ([('specs', 'train_mode')])
-                                 },
-                        cache_dirpath=config.env.cache_dirpath)
-
-        xy_inference = Step(name='xy_inference',
+    elif config.loader.dataset_params.image_source == 'disk':
+        reader_train = Step(name='xy_train',
                             transformer=XYSplit(**config.xy_splitter[model_name]),
-                            input_data=['callback_input', 'specs'],
-                            adapter={'meta': ([('callback_input', 'meta_valid')]),
+                            input_data=['input', 'specs'],
+                            adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('specs', 'train_mode')])
                                      },
                             cache_dirpath=config.env.cache_dirpath)
 
-        loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoader(**config.loader),
-                      input_data=['specs'],
-                      input_steps=[xy_train, xy_inference],
-                      adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
-                               'y': ([('xy_train', 'y')], squeeze_inputs),
-                               'train_mode': ([('specs', 'train_mode')]),
-                               'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
-                               'y_valid': ([('xy_inference', 'y')], squeeze_inputs),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
+        reader_inference = Step(name='xy_inference',
+                                transformer=XYSplit(**config.xy_splitter[model_name]),
+                                input_data=['callback_input', 'specs'],
+                                adapter={'meta': ([('callback_input', 'meta_valid')]),
+                                         'train_mode': ([('specs', 'train_mode')])
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
+    else:
+        raise NotImplementedError
+
+    loader = Step(name='loader',
+                  transformer=Loader(**config.loader),
+                  input_data=['specs'],
+                  input_steps=[reader_train, reader_inference],
+                  adapter={'X': ([(reader_train.name, 'X')], squeeze_inputs_if_needed),
+                           'y': ([(reader_train.name, 'y')], squeeze_inputs_if_needed),
+                           'train_mode': ([('specs', 'train_mode')]),
+                           'X_valid': ([(reader_inference.name, 'X')], squeeze_inputs_if_needed),
+                           'y_valid': ([(reader_inference.name, 'y')], squeeze_inputs_if_needed),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
     return loader
 
 
 def preprocessing_inference(config, model_name='unet'):
-    if config.execution.load_in_memory:
+    if config.execution.loader_mode == 'crop_and_pad':
+        Loader = loaders.ImageSegmentationLoaderCropPad
+    elif config.execution.loader_mode == 'resize':
+        Loader = loaders.ImageSegmentationLoaderResize
+    else:
+        raise NotImplementedError
+
+    if config.loader.dataset_params.image_source == 'memory':
         reader_inference = Step(name='reader_inference',
                                 transformer=ImageReader(**config.reader[model_name]),
                                 input_data=['input', 'specs'],
@@ -183,39 +191,39 @@ def preprocessing_inference(config, model_name='unet'):
                                          },
                                 cache_dirpath=config.env.cache_dirpath)
 
-        loader = Step(name='loader',
-                      transformer=ImageSegmentationLoader(**config.loader),
-                      input_data=['specs'],
-                      input_steps=[reader_inference],
-                      adapter={'X': ([('reader_inference', 'X')]),
-                               'y': ([('reader_inference', 'y')]),
-                               'train_mode': ([('specs', 'train_mode')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
+    elif config.loader.dataset_params.image_source == 'disk':
+        reader_inference = Step(name='xy_inference',
+                                transformer=XYSplit(**config.xy_splitter[model_name]),
+                                input_data=['specs'],
+                                adapter={'meta': ([('input', 'meta')]),
+                                         'train_mode': ([('specs', 'train_mode')])
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
     else:
-        xy_inference = Step(name='xy_inference',
-                            transformer=XYSplit(**config.xy_splitter[model_name]),
-                            input_data=['input', 'specs'],
-                            adapter={'meta': ([('input', 'meta')]),
-                                     'train_mode': ([('specs', 'train_mode')])
-                                     },
-                            cache_dirpath=config.env.cache_dirpath)
+        raise NotImplementedError
 
-        loader = Step(name='loader',
-                      transformer=MetadataImageSegmentationLoader(**config.loader),
-                      input_data=['specs'],
-                      input_steps=[xy_inference, xy_inference],
-                      adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
-                               'y': ([('xy_inference', 'y')], squeeze_inputs),
-                               'train_mode': ([('specs', 'train_mode')]),
-                               },
-                      cache_dirpath=config.env.cache_dirpath)
+    loader = Step(name='loader',
+                  transformer=Loader(**config.loader),
+                  input_data=['specs'],
+                  input_steps=[reader_inference],
+                  adapter={'X': ([(reader_inference.name, 'X')], squeeze_inputs_if_needed),
+                           'y': ([(reader_inference.name, 'y')], squeeze_inputs_if_needed),
+                           'train_mode': ([('specs', 'train_mode')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
     return loader
 
 
 def mask_postprocessing(model, config, save_output=False):
+    if config.execution.loader_mode == 'crop_and_pad':
+        size_adjustment_function = crop_image
+    elif config.execution.loader_mode == 'resize':
+        size_adjustment_function = resize_image
+    else:
+        raise NotImplementedError
+
     mask_resize = Step(name='mask_resize',
-                       transformer=make_apply_transformer(resize_image,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['input'],
@@ -235,7 +243,7 @@ def mask_postprocessing(model, config, save_output=False):
                                      output_name='categorized_images'),
                            input_steps=[mask_resize],
                            adapter={'images': ([('mask_resize', 'resized_images')]),
-                                      },
+                                    },
                            cache_dirpath=config.env.cache_dirpath,
                            save_output=save_output)
 
@@ -260,7 +268,8 @@ def mask_postprocessing(model, config, save_output=False):
 
     nuclei_filter = Step(name='nuclei_filter',
                          transformer=make_apply_transformer(partial(get_channel,
-                                                            channel=config.postprocessor.channels.index('nuclei')),
+                                                                    channel=config.postprocessor.channels.index(
+                                                                        'nuclei')),
                                                             output_name='nuclei_images'),
                          input_steps=[labeler],
                          adapter={'images': ([('labeler', 'labeled_images')]),
@@ -272,8 +281,15 @@ def mask_postprocessing(model, config, save_output=False):
 
 
 def postprocessing_masks(model, config, save_output=False):
+    if config.execution.loader_mode == 'crop_and_pad':
+        size_adjustment_function = crop_image
+    elif config.execution.loader_mode == 'resize':
+        size_adjustment_function = resize_image
+    else:
+        raise NotImplementedError
+
     mask_resize = Step(name='mask_resize_masks',
-                       transformer=make_apply_transformer(resize_image,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['input'],
@@ -355,8 +371,15 @@ def postprocessing_masks(model, config, save_output=False):
 
 
 def postprocessing_borders(model, config, save_output=False):
+    if config.execution.loader_mode == 'crop_and_pad':
+        size_adjustment_function = crop_image
+    elif config.execution.loader_mode == 'resize':
+        size_adjustment_function = resize_image
+    else:
+        raise NotImplementedError
+
     mask_resize = Step(name='mask_resize_borders',
-                       transformer=make_apply_transformer(resize_image,
+                       transformer=make_apply_transformer(size_adjustment_function,
                                                           output_name='resized_images',
                                                           apply_on=['images', 'target_sizes']),
                        input_data=['input'],
@@ -376,7 +399,7 @@ def postprocessing_borders(model, config, save_output=False):
                                      output_name='categorized_images'),
                            input_steps=[mask_resize],
                            adapter={'images': ([('mask_resize_borders', 'resized_images')]),
-                                      },
+                                    },
                            cache_dirpath=config.env.cache_dirpath,
                            save_output=save_output)
 
@@ -397,9 +420,9 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
                       'inference': partial(unet, train_mode=False),
                       },
              'unet_masks': {'train': unet_masks,
-                      },
+                            },
              'unet_borders': {'train': unet_borders,
-                      },
+                              },
              'double_unet': {'inference': double_unet,
                              }
              }

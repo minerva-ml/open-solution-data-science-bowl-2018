@@ -23,12 +23,12 @@ Y_COLUMNS_SCORING = ['file_path_masks']
 CHANNELS = ['background', 'nuclei', 'borders']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
-                 'load_in_memory': params.load_in_memory,
                  'num_workers': params.num_workers,
                  'num_classes': 2,
                  'img_H-W': (params.image_h, params.image_w),
                  'batch_size_train': params.batch_size_train,
-                 'batch_size_inference': params.batch_size_inference
+                 'batch_size_inference': params.batch_size_inference,
+                 'loader_mode': params.loader_mode,
                  }
 
 TRAINING_CONFIG = {'epochs': params.epochs_nr,
@@ -53,19 +53,19 @@ SOLUTION_CONFIG = AttrDict({
     'reader': {
         'unet': {'x_columns': X_COLUMNS,
                  'y_columns': Y_COLUMNS,
-                 'target_shape': GLOBAL_CONFIG['img_H-W']
                  },
         'unet_masks': {'x_columns': X_COLUMNS,
                        'y_columns': Y_COLUMNS_MASKS,
-                       'target_shape': GLOBAL_CONFIG['img_H-W']
                        },
         'unet_borders': {'x_columns': X_COLUMNS,
                          'y_columns': Y_COLUMNS_BORDERS,
-                         'target_shape': GLOBAL_CONFIG['img_H-W']
                          },
     },
     'loader': {'dataset_params': {'h': params.image_h,
                                   'w': params.image_w,
+                                  'pad_method': params.pad_method,
+                                  'image_source': params.image_source,
+                                  'divisor': 64,
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
@@ -79,7 +79,7 @@ SOLUTION_CONFIG = AttrDict({
                                                },
                                  },
                },
-    'model':{
+    'model': {
         'unet': {
             'architecture_config': {'model_params': {'n_filters': params.n_filters,
                                                      'conv_kernel': params.conv_kernel,
@@ -113,7 +113,8 @@ SOLUTION_CONFIG = AttrDict({
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},
                                   'validation_monitor': {'epoch_every': 1,
-                                                         'data_dir': params.data_dir},
+                                                         'data_dir': params.data_dir,
+                                                         'loader_mode': params.loader_mode},
                                   'neptune_monitor': {'model_name': 'unet',
                                                       'image_nr': 4,
                                                       'image_resize': 0.2},

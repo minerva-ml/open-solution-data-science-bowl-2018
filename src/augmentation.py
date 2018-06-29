@@ -23,6 +23,7 @@ def _perspective_transform_augment_images(self, images, random_state, parents, h
         if self.keep_size:
             h, w = images[i].shape[0:2]
             warped = ia.imresize_single_image(warped, (h, w))
+
         result[i] = warped
 
     return result
@@ -127,8 +128,8 @@ color_seq = iaa.Sequential([
             ]),
             iaa.OneOf([
                 iaa.Noop(),
-                iaa.CoarseSaltAndPepper(p=(0, 0.1), size_px=(64, 1024), per_channel=True),
-                iaa.CoarseSaltAndPepper(p=(0, 0.1), size_px=(64, 1024), per_channel=False)
+                # iaa.CoarseSaltAndPepper(p=(0, 0.1), size_px=(64, 1024), per_channel=True),
+                # iaa.CoarseSaltAndPepper(p=(0, 0.1), size_px=(64, 1024), per_channel=False)
             ])
         ]),
         iaa.OneOf([

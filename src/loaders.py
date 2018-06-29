@@ -160,9 +160,12 @@ class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
                                                   transforms.Lambda(to_tensor),
                                                   ])
         self.image_augment_train = ImgAug(color_seq)
-        self.image_augment_with_target_train = ImgAug(crop_seq(crop_size=(self.dataset_params.h, self.dataset_params.w)))
-        self.image_augment_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
-        self.image_augment_with_target_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
+        self.image_augment_with_target_train = ImgAug(
+            crop_seq(crop_size=(self.dataset_params.h, self.dataset_params.w)))
+        self.image_augment_inference = ImgAug(
+            pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
+        self.image_augment_with_target_inference = ImgAug(
+            pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
 
 class ImageSegmentationLoaderResize(ImageSegmentationLoaderBasic):

@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import imgaug as ia
 from imgaug import augmenters as iaa
-import scipy.ndimage as ndi
 
 from .utils import get_crop_pad_sequence
 

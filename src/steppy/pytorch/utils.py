@@ -1,7 +1,11 @@
+import os
+import time
+
 import cv2
 import numpy as np
 import torch
 from imgaug import augmenters as iaa
+import imgaug as ia
 
 
 def denormalize_img(img):
@@ -114,8 +118,8 @@ class ImgAug:
 
     def _pre_call_hook(self):
         seq = iaa.Sequential(self.augmenters)
-        seq.reseed()
-        self.seq_det = seq.to_deterministic()
+        seq = reseed(seq, deterministic=True)
+        self.seq_det = seq
 
     def transform(self, *images):
         images = [self.seq_det.augment_image(image) for image in images]
@@ -127,3 +131,18 @@ class ImgAug:
     def __call__(self, *args):
         self._pre_call_hook()
         return self.transform(*args)
+
+
+def get_seed():
+    seed = int(time.time()) + int(os.getpid())
+    return seed
+
+
+def reseed(augmenter_sequence, deterministic=True):
+    for aug in augmenter_sequence:
+        print(aug.random_state, aug.deterministic)
+        aug.random_state = ia.new_random_state(get_seed())
+        if deterministic:
+            aug.deterministic = True
+        aug = reseed(augmenter_sequence, deterministic=deterministic)
+    return augmenter_sequence

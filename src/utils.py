@@ -4,7 +4,6 @@ import os
 import sys
 from itertools import product, chain
 from collections import Iterable
-import time
 
 import numpy as np
 import pandas as pd
@@ -12,7 +11,6 @@ import yaml
 from PIL import Image
 from attrdict import AttrDict
 from tqdm import tqdm
-import imgaug as ia
 from pycocotools import mask as cocomask
 
 from .steppy.base import BaseTransformer
@@ -102,10 +100,11 @@ def read_masks_from_csv(image_ids, solution_file_path):
     solution = pd.read_csv(solution_file_path)
     masks = []
     for image_id in image_ids:
-        mask_shape = (solution[solution['ImageId']==image_id]['Height'].iloc[0], solution[solution['ImageId']==image_id]['Width'].iloc[0])
+        mask_shape = (solution[solution['ImageId'] == image_id]['Height'].iloc[0],
+                      solution[solution['ImageId'] == image_id]['Width'].iloc[0])
         mask = np.zeros(mask_shape, dtype=np.uint8)
-        for i, rle in enumerate(solution[solution['ImageId']==image_id]['EncodedPixels']):
-            mask += (i+1)*run_length_decoding(rle, mask_shape)
+        for i, rle in enumerate(solution[solution['ImageId'] == image_id]['EncodedPixels']):
+            mask += (i + 1) * run_length_decoding(rle, mask_shape)
         masks.append(mask)
     return masks
 
@@ -142,7 +141,7 @@ def run_length_decoding(mask_rle, shape):
     starts, lengths = [np.asarray(x, dtype=int) for x in (s[0:][::2], s[1:][::2])]
     starts -= 1
     ends = starts + lengths
-    img = np.zeros(shape[1]*shape[0], dtype=np.uint8)
+    img = np.zeros(shape[1] * shape[0], dtype=np.uint8)
     for lo, hi in zip(starts, ends):
         img[lo:hi] = 1
     return img.reshape((shape[1], shape[0])).T
@@ -368,19 +367,6 @@ def make_apply_transformer(func, output_name='output', apply_on=None):
                     return arg_length
 
     return StaticApplyTransformer()
-
-
-def get_seed():
-    seed = int(time.time()) + int(os.getpid())
-    return seed
-
-
-def reseed(augmenter_sequence, deterministic=True):
-    for aug in augmenter_sequence:
-        aug.random_state = ia.new_random_state(get_seed())
-        if deterministic:
-            aug.deterministic = True
-    return augmenter_sequence
 
 
 def rle_from_binary(prediction):

@@ -59,6 +59,10 @@ class ImageSegmentationDataset(Dataset):
             Xi = self.image_augment(Xi)
             Xi, Mi = to_pil(Xi, Mi)
 
+            import random
+            print('SAVING')
+            joblib.dump(Xi, '/mnt/ml-team/minerva/debug/dsb/{}.pkl'.format(random.randint(1, 1000000)))
+
             if self.mask_transform is not None:
                 Mi = self.mask_transform(Mi)
 
@@ -160,9 +164,12 @@ class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
                                                   transforms.Lambda(to_tensor),
                                                   ])
         self.image_augment_train = ImgAug(color_seq)
-        self.image_augment_with_target_train = ImgAug(crop_seq(crop_size=(self.dataset_params.h, self.dataset_params.w)))
-        self.image_augment_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
-        self.image_augment_with_target_inference = ImgAug(pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
+        self.image_augment_with_target_train = ImgAug(
+            crop_seq(crop_size=(self.dataset_params.h, self.dataset_params.w)))
+        self.image_augment_inference = ImgAug(
+            pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
+        self.image_augment_with_target_inference = ImgAug(
+            pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
 
 class ImageSegmentationLoaderResize(ImageSegmentationLoaderBasic):

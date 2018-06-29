@@ -9,7 +9,7 @@ from tempfile import TemporaryDirectory
 from .steppy.base import Step, Dummy
 from .steppy.utils import get_logger
 from .steppy.pytorch.utils import save_model
-from .steppy.pytorch.callbacks import NeptuneMonitor, ValidationMonitor, ModelCheckpoint
+from .steppy.pytorch.callbacks import NeptuneMonitor, ValidationMonitor, ModelCheckpoint, EarlyStopping
 
 from . import postprocessing as post
 from .utils import sigmoid, softmax, make_apply_transformer, read_masks, get_list_of_image_predictions
@@ -205,6 +205,33 @@ class ModelCheckpointSegmentation(ModelCheckpoint):
                 save_model(self.model, self.filepath)
                 logger.info('epoch {0} model saved to {1}'.format(self.epoch_id, self.filepath))
 
+        self.epoch_id += 1
+
+
+class EarlyStoppingSegmentation(EarlyStopping):
+    def __init__(self, metric_name='sum', *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.metric_name = metric_name
+
+    def on_epoch_end(self, *args, **kwargs):
+        self.model.eval()
+        val_loss = self.get_validation_loss()
+        loss_sum = val_loss[self.metric_name]
+        loss_sum = loss_sum.data.cpu().numpy()[0]
+
+        self.model.train()
+
+        if not self.best_score:
+            self.best_score = loss_sum
+
+        if (self.minimize and loss_sum < self.best_score) or (not self.minimize and loss_sum > self.best_score):
+            self.best_score = loss_sum
+            self.epoch_since_best = 0
+        else:
+            self.epoch_since_best += 1
+
+        if self.epoch_since_best > self.patience:
+            self._training_break = True
         self.epoch_id += 1
 
 

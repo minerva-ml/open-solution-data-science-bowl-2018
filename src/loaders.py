@@ -30,8 +30,8 @@ class ImageSegmentationDataset(Dataset):
         self.train_mode = train_mode
         self.image_transform = image_transform
         self.mask_transform = mask_transform
-        self.image_augment = image_augment if image_augment is not None else iaa.Noop()
-        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else iaa.Noop()
+        self.image_augment = image_augment if image_augment is not None else ImgAug(iaa.Noop())
+        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else ImgAug(iaa.Noop())
 
         self.image_source = image_source
 

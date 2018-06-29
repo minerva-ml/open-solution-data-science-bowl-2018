@@ -118,7 +118,9 @@ SOLUTION_CONFIG = AttrDict({
                                   'neptune_monitor': {'model_name': 'unet',
                                                       'image_nr': 4,
                                                       'image_resize': 0.2},
-                                  'early_stopping': {'patience': params.patience},
+                                  'early_stopping': {'patience': params.patience,
+                                                     'metric_name': params.validation_metric_name,
+                                                     'minimize': params.minimize_validation_metric},
                                   }
         },
         'unet_masks': {
@@ -155,11 +157,13 @@ SOLUTION_CONFIG = AttrDict({
                                                         'epoch_every': 1},
                                   'validation_monitor': {'epoch_every': 1,
                                                          'data_dir': params.data_dir,
-                                                         'loader_mode':params.loader_mode},
+                                                         'loader_mode': params.loader_mode},
                                   'neptune_monitor': {'model_name': 'unet',
                                                       'image_nr': 4,
                                                       'image_resize': 0.2},
-                                  'early_stopping': {'patience': params.patience}
+                                  'early_stopping': {'patience': params.patience,
+                                                     'metric_name': params.validation_metric_name,
+                                                     'minimize': params.minimize_validation_metric}
                                   },
         },
         'unet_borders': {
@@ -196,11 +200,13 @@ SOLUTION_CONFIG = AttrDict({
                                                         'epoch_every': 1},
                                   'validation_monitor': {'epoch_every': 1,
                                                          'data_dir': params.data_dir,
-                                                         'loader_mode':params.loader_mode},
+                                                         'loader_mode': params.loader_mode},
                                   'neptune_monitor': {'model_name': 'unet',
                                                       'image_nr': 4,
                                                       'image_resize': 0.2},
-                                  'early_stopping': {'patience': params.patience},
+                                  'early_stopping': {'patience': params.patience,
+                                                     'metric_name': params.validation_metric_name,
+                                                     'minimize': params.minimize_validation_metric},
                                   },
         },
     },

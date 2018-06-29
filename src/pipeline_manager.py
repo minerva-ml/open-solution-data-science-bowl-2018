@@ -63,9 +63,6 @@ def train(pipeline_name, validation_size, logger, params):
     meta_train = meta[meta['is_train'] == 1]
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
 
-    meta_train_split = meta_train_split.sample(1)
-    meta_valid_split = meta_valid_split.sample(1)
-
     data = {'input': {'meta': meta_train_split,
                       'target_sizes': meta_train_split[SIZE_COLUMNS].values},
             'specs': {'train_mode': True},

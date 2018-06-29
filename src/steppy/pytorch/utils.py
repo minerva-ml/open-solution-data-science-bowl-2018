@@ -138,11 +138,12 @@ def get_seed():
     return seed
 
 
-def reseed(augmenter_sequence, deterministic=True):
-    for aug in augmenter_sequence:
-        print(aug.random_state, aug.deterministic)
-        aug.random_state = ia.new_random_state(get_seed())
-        if deterministic:
-            aug.deterministic = True
-        aug = reseed(augmenter_sequence, deterministic=deterministic)
-    return augmenter_sequence
+def reseed(augmenter, deterministic=True):
+    augmenter.random_state = ia.new_random_state(get_seed())
+    if deterministic:
+        augmenter.deterministic = True
+
+    for lists in augmenter.get_children_lists():
+        for aug in lists:
+            aug = reseed(aug, deterministic=True)
+    return augmenter

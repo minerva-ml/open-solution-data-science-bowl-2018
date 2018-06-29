@@ -6,13 +6,13 @@ import torch.nn as nn
 from functools import partial
 
 from .steppy.pytorch.architectures.unet import UNet
-from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
-    ExperimentTiming, ExponentialLRScheduler, EarlyStopping
+from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ExperimentTiming, ExponentialLRScheduler
 from .steppy.pytorch.models import Model
 from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
 
 from .utils import sigmoid, softmax, get_list_of_image_predictions
-from .callbacks import NeptuneMonitorSegmentation, ValidationMonitorSegmentation, ModelCheckpointSegmentation
+from .callbacks import NeptuneMonitorSegmentation, ValidationMonitorSegmentation, ModelCheckpointSegmentation, \
+    EarlyStoppingSegmentation
 from .unet_models import AlbuNet, UNet11, UNetVGG16, UNetResNet
 
 PRETRAINED_NETWORKS = {'VGG11': {'model': UNet11,
@@ -155,7 +155,7 @@ def callbacks_unet(callbacks_config):
     training_monitor = TrainingMonitor(**callbacks_config['training_monitor'])
     validation_monitor = ValidationMonitorSegmentation(**callbacks_config['validation_monitor'])
     neptune_monitor = NeptuneMonitorSegmentation(**callbacks_config['neptune_monitor'])
-    early_stopping = EarlyStopping(**callbacks_config['early_stopping'])
+    early_stopping = EarlyStoppingSegmentation(**callbacks_config['early_stopping'])
 
     return CallbackList(
         callbacks=[experiment_timing, training_monitor, validation_monitor,

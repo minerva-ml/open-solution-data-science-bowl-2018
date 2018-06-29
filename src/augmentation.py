@@ -36,8 +36,8 @@ affine_seq = iaa.Sequential([
                [iaa.Fliplr(0.5),
                 iaa.Flipud(0.5),
                 iaa.Affine(rotate=(0, 360),
-                           translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}),
-                iaa.CropAndPad(percent=(-0.25, 0.25), pad_mode='reflect')
+                           translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}, mode='symmetric'),
+                iaa.CropAndPad(percent=(-0.25, 0.25), pad_mode='symmetric')
                 ]),
     # Deformations
     iaa.Sometimes(0.3, iaa.PiecewiseAffine(scale=(0.02, 0.04))),

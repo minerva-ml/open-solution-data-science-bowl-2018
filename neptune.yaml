@@ -46,8 +46,8 @@ parameters:
   pad_method: symmetric
 
 # General Params
-  image_h: 512
-  image_w: 512
+  image_h: 256
+  image_w: 256
   image_channels: 3
 
 # U-Net parameters
@@ -83,8 +83,8 @@ parameters:
   dropout_dense: 0.0
 
 # Postprocessing
-  threshold_masks: 0.6
-  threshold_seeds: 0.3
-  threshold_borders: 0.3
+  threshold_masks: 0.2
+  threshold_seeds: 0.6
+  threshold_borders: 0.7
   min_mask_size: 20
-  min_seed_size: 8
+  min_seed_size: 15

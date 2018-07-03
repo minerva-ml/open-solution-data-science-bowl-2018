@@ -28,6 +28,7 @@ parameters:
   masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
   cut_masks_dir:                   /public/dsb_2018_data/cut_masks/
   masks_with_borders_dir:          /public/dsb_2018_data/masks_with_borders/
+  external_data_dirs:              /public/dsb_2018_data/external_data/
   experiment_dir:                  /output/dsb/experiments/
 
 # Local Environment
@@ -36,6 +37,7 @@ parameters:
 #  masks_overlayed_dir:             /path/to/masks_overlayed
 #  cut_masks_dir:                   /path/to/cut_masks
 #  masks_with_borders_dir:          /path/to/masks_with_borders/
+#  external_data_dirs:              /path/to/external_data/
 #  experiment_dir:                  /path/to/work/dir
 
   overwrite: 1

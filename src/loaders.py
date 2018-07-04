@@ -10,13 +10,88 @@ from functools import partial
 from itertools import product
 import multiprocessing as mp
 from scipy.stats import gmean
+import json
 
 from .steppy.base import BaseTransformer
 from .steppy.pytorch.utils import ImgAug, reseed
 
 from .augmentation import affine_seq, color_seq, crop_seq, pad_to_fit_net
-from .utils import from_pil, to_pil
+from .utils import from_pil, to_pil, binary_from_rle
 from .pipeline_config import MEAN, STD
+
+
+class ImageSegmentationRLEDataset(Dataset):
+    def __init__(self, X, y, train_mode,
+                 image_transform, image_augment_with_target,
+                 mask_transform, image_augment,
+                 image_source='memory'):
+        super().__init__()
+        self.X = X
+        if y is not None:
+            self.y = y
+        else:
+            self.y = None
+
+        self.train_mode = train_mode
+        self.image_transform = image_transform
+        self.mask_transform = mask_transform
+        self.image_augment = image_augment if image_augment is not None else ImgAug(iaa.Noop())
+        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else ImgAug(iaa.Noop())
+
+        self.image_source = image_source
+
+    def __len__(self):
+        if self.image_source == 'memory':
+            return len(self.X[0])
+        elif self.image_source == 'disk':
+            return self.X.shape[0]
+
+    def __getitem__(self, index):
+        if self.image_source == 'memory':
+            load_func = self.load_from_memory
+        elif self.image_source == 'disk':
+            load_func = self.load_from_disk
+        else:
+            raise NotImplementedError("Possible loading options: 'memory' and 'disk'!")
+
+        Xi = load_func(self.X, index)
+
+        if self.y is not None:
+            Mi = load_func(self.y, index)
+
+            Xi, *Mi = from_pil(Xi, *Mi)
+            Xi, *Mi = self.image_augment_with_target(Xi, *Mi)
+            Xi = self.image_augment(Xi)
+            Xi, *Mi = to_pil(Xi, *Mi)
+
+            if self.mask_transform is not None:
+                Mi = [self.mask_transform(m) for m in Mi]
+
+            if self.image_transform is not None:
+                Xi = self.image_transform(Xi)
+
+            Mi = torch.cat(Mi, dim=0)
+
+            return Xi, Mi
+        else:
+            Xi = from_pil(Xi)
+            Xi = self.image_augment(Xi)
+            Xi = to_pil(Xi)
+
+            if self.image_transform is not None:
+                Xi = self.image_transform(Xi)
+            return Xi
+
+    def load_from_memory(self, data_source, index):
+        return data_source[0][index]
+
+    def load_from_disk(self, data_source, index):
+        json_filepath = data_source[index]
+        return read_json(json_filepath)
+
+    def load_image(self, img_filepath):
+        image = Image.open(img_filepath, 'r')
+        return image.convert('RGB')
 
 
 class ImageSegmentationDataset(Dataset):
@@ -501,3 +576,10 @@ def to_tensor(x):
     x_ = np.expand_dims(x, axis=0)
     x_ = torch.from_numpy(x_)
     return x_
+
+
+def read_json(path):
+    with open(path, 'r') as file:
+        data = json.load(file)
+    masks = [to_pil(binary_from_rle(rle)) for rle in data]
+    return masks

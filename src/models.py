@@ -8,7 +8,7 @@ from functools import partial
 from .steppy.pytorch.architectures.unet import UNet
 from .steppy.pytorch.callbacks import CallbackList, TrainingMonitor, ExperimentTiming, ExponentialLRScheduler
 from .steppy.pytorch.models import Model
-from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss
+from .steppy.pytorch.validation import multiclass_segmentation_loss, DiceLoss, segmentation_loss
 
 from .utils import sigmoid, softmax, get_list_of_image_predictions
 from .callbacks import NeptuneMonitorSegmentation, ValidationMonitorSegmentation, ModelCheckpointSegmentation, \
@@ -165,7 +165,10 @@ def callbacks_unet(callbacks_config):
 def mixed_dice_cross_entropy_loss(output, target, dice_weight=0.5, dice_loss=None,
                                   cross_entropy_weight=0.5, cross_entropy_loss=None, smooth=0,
                                   dice_activation='softmax'):
-    target = target[:, 0, :, :].long()
+    target = target[:, :output.size(1), :, :].long()
+    cross_entropy_target = torch.zeros_like(target[:, 0, :, :])
+    for class_nr in range(target.size(1)):
+        cross_entropy_target = where(target[:, class_nr, :, :], class_nr + 1, cross_entropy_target)
     if cross_entropy_loss is None:
         cross_entropy_loss = torch.nn.CrossEntropyLoss()
     if dice_loss is None:
@@ -202,10 +205,25 @@ def multiclass_dice_loss(output, target, smooth=0, activation='softmax', exclude
     loss = 0
     dice = DiceLoss(smooth=smooth)
     output = activation_nn(output)
+    target.data = target.data.float()
     for class_nr in range(output.size(1)):
         if class_nr in excluded_classes:
             continue
-        class_target = (target == class_nr)
-        class_target.data = class_target.data.float()
-        loss += dice(output[:, class_nr, :, :], class_target)
+        loss += dice(output[:, class_nr, :, :], target[:, class_nr, :, :])
     return loss
+
+
+def mixed_dice_bce_loss(output, target, dice_weight=0.5, dice_loss=None,
+                        bce_weight=0.5, bce_loss=None,
+                        smooth=0, dice_activation='softmax'):
+    target = target[:, :output.size(1), :, :].long()
+    if bce_loss is None:
+        bce_loss = torch.nn.BCEWithLogitsLoss()
+    if dice_loss is None:
+        dice_loss = multiclass_dice_loss
+    return dice_weight * dice_loss(output, target, smooth, dice_activation) + bce_weight * bce_loss(output, target)
+
+
+def where(cond, x_1, x_2):
+    cond = cond.float()
+    return (cond * x_1) + ((1-cond) * x_2)

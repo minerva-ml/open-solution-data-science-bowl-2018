@@ -91,7 +91,8 @@ SOLUTION_CONFIG = AttrDict({
                                                      'in_channels': params.image_channels,
                                                      'out_channels': params.unet_output_channels,
                                                      'nr_outputs': params.nr_unet_outputs,
-                                                     'encoder': params.encoder
+                                                     'encoder': params.encoder,
+                                                     'activation': params.unet_activation
                                                      },
                                     'optimizer_params': {'lr': params.lr,
                                                          },
@@ -134,7 +135,8 @@ SOLUTION_CONFIG = AttrDict({
                                                      'in_channels': params.image_channels,
                                                      'out_channels': params.unet_masks_output_channels,
                                                      'nr_outputs': params.nr_unet_outputs,
-                                                     'encoder': params.encoder
+                                                     'encoder': params.encoder,
+                                                     'activation': params.unet_masks_activation
                                                      },
                                     'optimizer_params': {'lr': params.lr,
                                                          },
@@ -177,7 +179,8 @@ SOLUTION_CONFIG = AttrDict({
                                                      'in_channels': params.image_channels,
                                                      'out_channels': params.unet_borders_output_channels,
                                                      'nr_outputs': params.nr_unet_outputs,
-                                                     'encoder': params.encoder
+                                                     'encoder': params.encoder,
+                                                     'activation': params.unet_borders_activation
                                                      },
                                     'optimizer_params': {'lr': params.lr,
                                                          },

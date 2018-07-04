@@ -374,6 +374,10 @@ def rle_from_binary(prediction):
     return cocomask.encode(prediction)
 
 
+def binary_from_rle(rle):
+    return cocomask.decode(rle)
+
+
 def get_segmentations(labeled):
     nr_true = labeled.max()
     segmentations = []

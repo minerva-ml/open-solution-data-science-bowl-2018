@@ -210,6 +210,13 @@ SOLUTION_CONFIG = AttrDict({
                                   },
         },
     },
+    'tta_generator': {'flip_ud': True,
+                      'flip_lr': True,
+                      'rotation': True,
+                      'color_shift_runs': False},
+    'tta_aggregator': {'method': params.tta_aggregation_method,
+                       'nthreads': params.num_threads
+                       },
     'thresholder': {'threshold_masks': params.threshold_masks,
                     'threshold_seeds': params.threshold_seeds,
                     'threshold_borders': params.threshold_borders,

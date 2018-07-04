@@ -163,7 +163,7 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         self.image_augment_with_target_train = None
         self.image_augment_with_target_inference = None
 
-        self.dataset = ImageSegmentationDataset
+        self.dataset = None
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode and y is not None:
@@ -223,7 +223,7 @@ class ImageSegmentationLoaderBasicTTA(BaseTransformer):
         self.image_augment = None
         self.image_augment_with_target = None
 
-        self.dataset = ImageSegmentationTTADataset
+        self.dataset = None
 
     def transform(self, X, tta_params, **kwargs):
         flow, steps = self.get_datagen(X, tta_params, self.loader_params.inference)

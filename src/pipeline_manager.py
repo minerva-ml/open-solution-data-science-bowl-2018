@@ -49,7 +49,8 @@ def prepare_metadata(logger, params):
                                           cut_masks_dir=os.path.join(params.cut_masks_dir,
                                                                      os.path.basename(external_data_dir)),
                                           masks_with_borders_dir=os.path.join(params.masks_with_borders_dir,
-                                                                              os.path.basename(external_data_dir)))
+                                                                              os.path.basename(external_data_dir)),
+                                          generate_test=False)
         external_meta['is_external'] = 1
         meta = meta.append(external_meta)
     meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
@@ -84,7 +85,8 @@ def train(pipeline_name, validation_size, dev_mode, logger, params):
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train.query('is_external==0'), validation_size, random_state=SEED)
+    meta_train_split = meta_train_split.append(meta_train.query('is_external==1'))
 
     if dev_mode:
         meta_train_split = meta_train_split.sample(20, random_state=SEED)
@@ -113,7 +115,7 @@ def evaluate(pipeline_name, validation_size, dev_mode, logger, params, ctx):
         pass
 
     if isinstance(validation_size, float):
-        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
+        meta_train_split, meta_valid_split = train_valid_split(meta_train.query('is_external==0'), validation_size, random_state=SEED)
         y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
     elif validation_size == 'test':
         meta_valid_split = meta[meta['is_train'] == 0]

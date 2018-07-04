@@ -160,6 +160,7 @@ def generate_metadata(data_dir,
                       masks_overlayed_dir,
                       cut_masks_dir,
                       masks_with_borders_dir,
+                      generate_test=True,
                       ):
     def stage1_generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
@@ -212,8 +213,11 @@ def generate_metadata(data_dir,
         return df_metadata
 
     train_metadata = stage1_generate_metadata(train=True)
-    test_metadata = stage1_generate_metadata(train=False)
-    metadata = train_metadata.append(test_metadata, ignore_index=True)
+    if generate_test:
+        test_metadata = stage1_generate_metadata(train=False)
+        metadata = train_metadata.append(test_metadata, ignore_index=True)
+    else:
+        metadata = train_metadata
     return metadata
 
 

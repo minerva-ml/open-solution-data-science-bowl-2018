@@ -45,6 +45,7 @@ def overlay_masks(images_dir, subdir_name, target_dir):
             image = np.where(image > 0, 1, 0)
             masks.append(image)
         overlayed_masks = np.sum(masks, axis=0)
+        overlayed_masks = np.where(overlayed_masks > 0, 1, 0)
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, overlayed_masks)
@@ -73,7 +74,7 @@ def overlay_cut_masks(images_dir, subdir_name, target_dir, cut_size=1):
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, cut_masks)
-        
+
 
 def overlay_masks_with_borders(images_dir, subdir_name, target_dir, borders_size=3, dilation_size=5):
     train_dir = os.path.join(images_dir, subdir_name)

@@ -23,14 +23,14 @@ class PipelineManager():
     def prepare_masks(self):
         prepare_masks(self.logger, self.params)
 
-    def train(self, pipeline_name, validation_size):
-        train(pipeline_name, validation_size, self.logger, self.params)
+    def train(self, pipeline_name, validation_size, dev_mode):
+        train(pipeline_name, validation_size, dev_mode, self.logger, self.params)
 
-    def evaluate(self, pipeline_name, validation_size):
-        evaluate(pipeline_name, validation_size, self.logger, self.params, self.ctx)
+    def evaluate(self, pipeline_name, validation_size, dev_mode):
+        evaluate(pipeline_name, validation_size, dev_mode, self.logger, self.params, self.ctx)
 
-    def predict(self, pipeline_name):
-        predict(pipeline_name, self.logger, self.params)
+    def predict(self, pipeline_name, dev_mode):
+        predict(pipeline_name, dev_mode, self.logger, self.params)
 
 
 def prepare_metadata(logger, params):
@@ -54,7 +54,7 @@ def prepare_masks(logger, params):
                                target_dir=params.masks_with_borders_dir)
 
 
-def train(pipeline_name, validation_size, logger, params):
+def train(pipeline_name, validation_size, dev_mode, logger, params):
     logger.info('training')
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
@@ -62,6 +62,10 @@ def train(pipeline_name, validation_size, logger, params):
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(params.dev_mode_size, random_state=SEED)
+        meta_valid_split = meta_valid_split.sample(int(params.dev_mode_size/2), random_state=SEED)
 
     data = {'input': {'meta': meta_train_split,
                       'target_sizes': meta_train_split[SIZE_COLUMNS].values},
@@ -75,7 +79,7 @@ def train(pipeline_name, validation_size, logger, params):
     pipeline.clean_cache()
 
 
-def evaluate(pipeline_name, validation_size, logger, params, ctx):
+def evaluate(pipeline_name, validation_size, dev_mode, logger, params, ctx):
     logger.info('evaluating')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
@@ -95,6 +99,9 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
         y_true = read_masks_from_csv(image_ids, solution_dir)
     else:
         raise NotImplementedError
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(params.dev_mode_size, random_state=SEED)
 
     data = {'input': {'meta': meta_valid_split,
                       'target_sizes': meta_valid_split[SIZE_COLUMNS].values},
@@ -118,10 +125,13 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
     ctx.channel_send('IOUT Score', 0, iout_score)
 
 
-def predict(pipeline_name, logger, params):
+def predict(pipeline_name, dev_mode, logger, params):
     logger.info('predicting')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_test = meta[meta['is_train'] == 0]
+
+    if dev_mode:
+        meta_test = meta_test.sample(params.dev_mode_size, random_state=SEED)
 
     data = {'input': {'meta': meta_test,
                       'meta_valid': None,

@@ -64,8 +64,8 @@ def train(pipeline_name, validation_size, dev_mode, logger, params):
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(20, random_state=SEED)
-        meta_valid_split = meta_valid_split.sample(10, random_state=SEED)
+        meta_train_split = meta_train_split.sample(params.dev_mode_size, random_state=SEED)
+        meta_valid_split = meta_valid_split.sample(int(params.dev_mode_size/2), random_state=SEED)
 
     data = {'input': {'meta': meta_train_split,
                       'target_sizes': meta_train_split[SIZE_COLUMNS].values},
@@ -101,7 +101,7 @@ def evaluate(pipeline_name, validation_size, dev_mode, logger, params, ctx):
         raise NotImplementedError
 
     if dev_mode:
-        meta_valid_split = meta_valid_split.sample(10, random_state=SEED)
+        meta_valid_split = meta_valid_split.sample(params.dev_mode_size, random_state=SEED)
 
     data = {'input': {'meta': meta_valid_split,
                       'target_sizes': meta_valid_split[SIZE_COLUMNS].values},
@@ -131,7 +131,7 @@ def predict(pipeline_name, dev_mode, logger, params):
     meta_test = meta[meta['is_train'] == 0]
 
     if dev_mode:
-        meta_test = meta_test.sample(10, random_state=SEED)
+        meta_test = meta_test.sample(params.dev_mode_size, random_state=SEED)
 
     data = {'input': {'meta': meta_test,
                       'meta_valid': None,

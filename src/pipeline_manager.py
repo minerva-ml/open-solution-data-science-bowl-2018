@@ -89,10 +89,6 @@ def train(pipeline_name, validation_size, dev_mode, logger, params):
     meta_train_split = meta_train_split.append(meta_train.query('is_external==1'))
 
     if dev_mode:
-        meta_train_split = meta_train_split.sample(20, random_state=SEED)
-        meta_valid_split = meta_valid_split.sample(10, random_state=SEED)
-
-    if dev_mode:
         meta_train_split = meta_train_split.sample(params.dev_mode_size, random_state=SEED)
         meta_valid_split = meta_valid_split.sample(int(params.dev_mode_size/2), random_state=SEED)
 

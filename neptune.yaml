@@ -42,6 +42,7 @@ parameters:
 
   overwrite: 1
   num_workers: 4
+  num_threads: 4
   image_source: memory
   pin_memory: 1
   loader_mode: crop_and_pad
@@ -91,3 +92,4 @@ parameters:
   threshold_borders: 0.7
   min_mask_size: 20
   min_seed_size: 15
+  tta_aggregation_method: gmean

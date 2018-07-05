@@ -16,7 +16,7 @@ SEED = 1234
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_cut_mask']
-Y_COLUMNS_MASKS = ['file_path_mask']
+Y_COLUMNS_MASKS = ['file_path_mask_with_borders']
 Y_COLUMNS_BORDERS = ['file_path_mask_with_borders']
 
 Y_COLUMNS_SCORING = ['file_path_masks']
@@ -109,7 +109,7 @@ SOLUTION_CONFIG = AttrDict({
                                                         'minimize': params.minimize_validation_metric},
                                   'lr_scheduler': {'gamma': params.gamma,
                                                    'epoch_every': 1},
-                                  'training_monitor': {'batch_every': 0,
+                                  'training_monitor': {'batch_every': 1,
                                                        'epoch_every': 1},
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},
@@ -153,7 +153,7 @@ SOLUTION_CONFIG = AttrDict({
                                                         'minimize': params.minimize_validation_metric},
                                   'lr_scheduler': {'gamma': params.gamma,
                                                    'epoch_every': 1},
-                                  'training_monitor': {'batch_every': 0,
+                                  'training_monitor': {'batch_every': 1,
                                                        'epoch_every': 1},
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},

@@ -46,16 +46,12 @@ PRETRAINED_NETWORKS = {'VGG11': {'model': UNet11,
 class PyTorchUNet(Model):
     def __init__(self, architecture_config, training_config, callbacks_config):
         super().__init__(architecture_config, training_config, callbacks_config)
+        self.activation_func = self.architecture_config['model_params']['activation']
         self.set_model()
+        self.set_loss()
         self.weight_regularization = weight_regularization_unet
         self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        dice_loss = partial(multiclass_dice_loss,
-                            excluded_classes=[0])
-        loss_function = partial(mixed_dice_cross_entropy_loss,
-                                dice_loss=dice_loss,
-                                cross_entropy_loss=multiclass_segmentation_loss)
-        self.loss_function = [('mask', loss_function, 1.0)]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def fit(self, datagen, validation_datagen=None, meta_valid=None):
@@ -87,7 +83,13 @@ class PyTorchUNet(Model):
     def transform(self, datagen, validation_datagen=None, *args, **kwargs):
         outputs = self._transform(datagen, validation_datagen)
         for name, prediction in outputs.items():
-            outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
+            if self.activation_func == 'softmax':
+                outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
+            elif self.activation_func == 'sigmoid':
+                prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
+                outputs[name] = np.array(prediction_)
+            else:
+                raise Exception('Only softmax and sigmoid activations are allowed')
         return outputs
 
     def _transform(self, datagen, validation_datagen=None):
@@ -128,6 +130,21 @@ class PyTorchUNet(Model):
                                          **config['model_config'])
             self._initialize_model_weights = lambda: None
 
+    def set_loss(self):
+        if self.activation_func == 'softmax':
+            loss_function = partial(mixed_dice_cross_entropy_loss,
+                                    dice_loss=multiclass_dice_loss,
+                                    cross_entropy_loss=nn.CrossEntropyLoss(),
+                                    dice_activation='softmax')
+        elif self.activation_func == 'sigmoid':
+            loss_function = partial(mixed_dice_bce_loss,
+                                    dice_loss=multiclass_dice_loss,
+                                    bce_loss=nn.BCEWithLogitsLoss(),
+                                    dice_activation='sigmoid')
+        else:
+            raise Exception('Only softmax and sigmoid activations are allowed')
+        self.loss_function = [('mask', loss_function, 1.0)]
+
 
 def weight_regularization(model, regularize, weight_decay_conv2d, weight_decay_linear):
     if regularize:
@@ -165,21 +182,22 @@ def callbacks_unet(callbacks_config):
 def mixed_dice_cross_entropy_loss(output, target, dice_weight=0.5, dice_loss=None,
                                   cross_entropy_weight=0.5, cross_entropy_loss=None, smooth=0,
                                   dice_activation='softmax'):
-    target = target[:, :output.size(1), :, :].long()
-    target_ = torch.zeros_like(target[:, 0, :, :]).long()
-    # print(target.size(), cross_entropy_target.size(), output.size())
-    for class_nr in range(target.size(1)):
-        target_ = where(target[:, class_nr, :, :], class_nr + 1, target_)
+    num_classes_without_background = output.size(1) - 1
+    dice_output = output[:, 1:, :, :]
+    dice_target = target[:, :num_classes_without_background, :, :].long()
+    cross_entropy_target = torch.zeros_like(target[:, 0, :, :]).long()
+    for class_nr in range(num_classes_without_background):
+        cross_entropy_target = where(target[:, class_nr, :, :], class_nr + 1, cross_entropy_target)
     if cross_entropy_loss is None:
-        cross_entropy_loss = torch.nn.CrossEntropyLoss()
+        cross_entropy_loss = nn.CrossEntropyLoss()
     if dice_loss is None:
         dice_loss = multiclass_dice_loss
-    return dice_weight * dice_loss(output, target_, smooth,
+    return dice_weight * dice_loss(dice_output, dice_target, smooth,
                                    dice_activation) + cross_entropy_weight * cross_entropy_loss(output,
-                                                                                                target_)
+                                                                                                cross_entropy_target)
 
 
-def multiclass_dice_loss(output, target, smooth=0, activation='softmax', excluded_classes=[]):
+def multiclass_dice_loss(output, target, smooth=0, activation='softmax'):
     """Calculate Dice Loss for multiple class output.
 
     Args:
@@ -187,10 +205,6 @@ def multiclass_dice_loss(output, target, smooth=0, activation='softmax', exclude
         target (torch.Tensor): Target of shape (N x H x W).
         smooth (float, optional): Smoothing factor. Defaults to 0.
         activation (string, optional): Name of the activation function, softmax or sigmoid. Defaults to 'softmax'.
-        excluded_classes (list, optional):
-            List of excluded classes numbers. Dice Loss won't be calculated
-            against these classes. Often used on background when it has separate output class.
-            Defaults to [].
 
     Returns:
         torch.Tensor: Loss value.
@@ -206,21 +220,20 @@ def multiclass_dice_loss(output, target, smooth=0, activation='softmax', exclude
     loss = 0
     dice = DiceLoss(smooth=smooth)
     output = activation_nn(output)
-    for class_nr in range(output.size(1)):
-        if class_nr in excluded_classes:
-            continue
-        class_target = (target == class_nr)
-        class_target.data = class_target.data.float()
-        loss += dice(output[:, class_nr, :, :], class_target)
-    return loss
+    num_classes = output.size(1)
+    target.data = target.data.float()
+    for class_nr in range(num_classes):
+        loss += dice(output[:, class_nr, :, :], target[:, class_nr, :, :])
+    return loss / num_classes
 
 
 def mixed_dice_bce_loss(output, target, dice_weight=0.5, dice_loss=None,
                         bce_weight=0.5, bce_loss=None,
-                        smooth=0, dice_activation='softmax'):
-    target = target[:, :output.size(1), :, :].long()
+                        smooth=0, dice_activation='sigmoid'):
+    num_classes = output.size(1)
+    target = target[:, :num_classes, :, :].long()
     if bce_loss is None:
-        bce_loss = torch.nn.BCEWithLogitsLoss()
+        bce_loss = nn.BCEWithLogitsLoss()
     if dice_loss is None:
         dice_loss = multiclass_dice_loss
     return dice_weight * dice_loss(output, target, smooth, dice_activation) + bce_weight * bce_loss(output, target)

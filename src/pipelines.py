@@ -253,7 +253,7 @@ def preprocessing_train(config, model_name='unet'):
 
     if config.loader.dataset_params.image_source == 'memory':
         reader_train = Step(name='reader_train',
-                            transformer=ImageReader(**config.reader[model_name]),
+                            transformer=loaders.ImageReaderRLE(**config.reader[model_name]),
                             input_data=['input', 'specs'],
                             adapter={'meta': ([('input', 'meta')]),
                                      'train_mode': ([('specs', 'train_mode')]),
@@ -261,7 +261,7 @@ def preprocessing_train(config, model_name='unet'):
                             cache_dirpath=config.env.cache_dirpath)
 
         reader_inference = Step(name='reader_inference',
-                                transformer=ImageReader(**config.reader[model_name]),
+                                transformer=loaders.ImageReaderRLE(**config.reader[model_name]),
                                 input_data=['callback_input', 'specs'],
                                 adapter={'meta': ([('callback_input', 'meta_valid')]),
                                          'train_mode': ([('specs', 'train_mode')]),

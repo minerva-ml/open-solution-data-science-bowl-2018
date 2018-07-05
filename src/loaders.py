@@ -10,6 +10,7 @@ from functools import partial
 from itertools import product
 import multiprocessing as mp
 from scipy.stats import gmean
+from tqdm import tqdm
 import json
 
 from .steppy.base import BaseTransformer
@@ -18,6 +19,63 @@ from .steppy.pytorch.utils import ImgAug, reseed
 from .augmentation import affine_seq, color_seq, crop_seq, pad_to_fit_net
 from .utils import from_pil, to_pil, binary_from_rle
 from .pipeline_config import MEAN, STD
+
+
+class ImageReaderRLE(BaseTransformer):
+    def __init__(self, x_columns, y_columns):
+        self.x_columns = x_columns
+        self.y_columns = y_columns
+
+    def transform(self, meta, train_mode):
+        X_ = meta[self.x_columns].values
+
+        X = self.load_images(X_, filetype='png')
+        if train_mode:
+            y_ = meta[self.y_columns].values
+            y = self.load_images(y_, filetype='json')
+        else:
+            y = None
+
+        return {'X': X,
+                'y': y}
+
+    def load_images(self, filepaths, filetype):
+        X = []
+        for i in range(filepaths.shape[1]):
+            column = filepaths[:, i]
+            X.append([])
+            for filepath in tqdm(column):
+                if filetype == 'png':
+                    data = self.load_image(filepath)
+                elif filetype == 'json':
+                    data = self.read_json(filepath)
+                else:
+                    raise Exception('files must be png or json')
+                X[i].append(data)
+        return X
+
+    def load_image(self, img_filepath):
+        image = Image.open(img_filepath, 'r')
+        image = image.convert('RGB')
+        return image
+
+    def load(self, filepath):
+        params = joblib.load(filepath)
+        self.columns_to_get = params['x_columns']
+        self.target_columns = params['y_columns']
+        return self
+
+    def save(self, filepath):
+        params = {'x_columns': self.x_columns,
+                  'y_columns': self.y_columns
+                  }
+        joblib.dump(params, filepath)
+
+    def read_json(self, path):
+        with open(path, 'r') as file:
+            data = json.load(file)
+        masks = [to_pil(binary_from_rle(rle)) for rle in data]
+        return masks
 
 
 class ImageSegmentationRLEDataset(Dataset):
@@ -82,7 +140,7 @@ class ImageSegmentationRLEDataset(Dataset):
                 Xi = self.image_transform(Xi)
             return Xi
 
-    def load_from_memory(self, data_source, index):
+    def load_from_memory(self, data_source, index, *args, **kwargs):
         return data_source[0][index]
 
     def load_from_disk(self, data_source, index, filetype):
@@ -92,6 +150,8 @@ class ImageSegmentationRLEDataset(Dataset):
         elif filetype == 'json':
             json_filepath = data_source[index]
             return self.read_json(json_filepath)
+        else:
+            raise Exception('files must be png or json')
 
     def load_image(self, img_filepath):
         image = Image.open(img_filepath, 'r')

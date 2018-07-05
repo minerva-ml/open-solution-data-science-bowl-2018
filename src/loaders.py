@@ -91,27 +91,10 @@ class ImageSegmentationDataset(Dataset):
         return image.convert('RGB')
 
 
-class ImageSegmentationTTADataset(Dataset):
-    def __init__(self, X, tta_params,
-                 image_transform, image_augment_with_target,
-                 mask_transform, image_augment,
-                 image_source='memory'):
-        super().__init__()
-        self.X = X
-
-        self.image_transform = image_transform
-        self.mask_transform = mask_transform
-        self.image_augment = image_augment if image_augment is not None else ImgAug(iaa.Noop())
-        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else ImgAug(iaa.Noop())
-
-        self.image_source = image_source
+class ImageSegmentationTTADataset(ImageSegmentationDataset):
+    def __init__(self, tta_params, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.tta_params = tta_params
-
-    def __len__(self):
-        if self.image_source == 'memory':
-            return len(self.X[0])
-        elif self.image_source == 'disk':
-            return self.X.shape[0]
 
     def __getitem__(self, index):
         if self.image_source == 'memory':
@@ -136,17 +119,6 @@ class ImageSegmentationTTADataset(Dataset):
             Xi = self.image_transform(Xi)
 
         return Xi
-
-    def load_from_memory(self, data_source, index):
-        return data_source[0][index]
-
-    def load_from_disk(self, data_source, index):
-        img_filepath = data_source[index]
-        return self.load_image(img_filepath)
-
-    def load_image(self, img_filepath):
-        image = Image.open(img_filepath, 'r')
-        return image.convert('RGB')
 
 
 class ImageSegmentationLoaderBasic(BaseTransformer):
@@ -211,19 +183,9 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         joblib.dump(params, filepath)
 
 
-class ImageSegmentationLoaderBasicTTA(BaseTransformer):
+class ImageSegmentationLoaderBasicTTA(ImageSegmentationLoaderBasic):
     def __init__(self, loader_params, dataset_params):
-        super().__init__()
-        self.loader_params = AttrDict(loader_params)
-        self.dataset_params = AttrDict(dataset_params)
-
-        self.mask_transform = None
-        self.image_transform = None
-
-        self.image_augment = None
-        self.image_augment_with_target = None
-
-        self.dataset = None
+        super().__init__(loader_params, dataset_params)
 
     def transform(self, X, tta_params, **kwargs):
         flow, steps = self.get_datagen(X, tta_params, self.loader_params.inference)
@@ -233,10 +195,12 @@ class ImageSegmentationLoaderBasicTTA(BaseTransformer):
                 'validation_datagen': (valid_flow, valid_steps)}
 
     def get_datagen(self, X, tta_params, loader_params):
-        dataset = self.dataset(X,
-                               tta_params=tta_params,
-                               image_augment=self.image_augment,
-                               image_augment_with_target=self.image_augment_with_target,
+        dataset = self.dataset(tta_params=tta_params,
+                               X=X,
+                               y=None,
+                               train_mode=False,
+                               image_augment=self.image_augment_inference,
+                               image_augment_with_target=self.image_augment_with_target_inference,
                                mask_transform=self.mask_transform,
                                image_transform=self.image_transform,
                                image_source=self.dataset_params.image_source)
@@ -244,15 +208,6 @@ class ImageSegmentationLoaderBasicTTA(BaseTransformer):
         datagen = DataLoader(dataset, **loader_params)
         steps = len(datagen)
         return datagen, steps
-
-    def load(self, filepath):
-        params = joblib.load(filepath)
-        self.loader_params = params['loader_params']
-        return self
-
-    def save(self, filepath):
-        params = {'loader_params': self.loader_params}
-        joblib.dump(params, filepath)
 
 
 class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
@@ -286,9 +241,9 @@ class ImageSegmentationLoaderCropPadTTA(ImageSegmentationLoaderBasicTTA):
         self.mask_transform = transforms.Compose([transforms.Lambda(to_array),
                                                   transforms.Lambda(to_tensor),
                                                   ])
-        self.image_augment = ImgAug(
+        self.image_augment_inference = ImgAug(
             pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
-        self.image_augment_with_target = ImgAug(
+        self.image_augment_with_target_inference = ImgAug(
             pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
         self.dataset = ImageSegmentationTTADataset

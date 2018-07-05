@@ -54,10 +54,10 @@ class ImageSegmentationRLEDataset(Dataset):
         else:
             raise NotImplementedError("Possible loading options: 'memory' and 'disk'!")
 
-        Xi = load_func(self.X, index)
+        Xi = load_func(self.X, index, filetype='png')
 
         if self.y is not None:
-            Mi = load_func(self.y, index)
+            Mi = load_func(self.y, index, filetype='json')
 
             Xi, *Mi = from_pil(Xi, *Mi)
             Xi, *Mi = self.image_augment_with_target(Xi, *Mi)
@@ -85,13 +85,23 @@ class ImageSegmentationRLEDataset(Dataset):
     def load_from_memory(self, data_source, index):
         return data_source[0][index]
 
-    def load_from_disk(self, data_source, index):
-        json_filepath = data_source[index]
-        return read_json(json_filepath)
+    def load_from_disk(self, data_source, index, filetype):
+        if filetype == 'png':
+            img_filepath = data_source[index]
+            return self.load_image(img_filepath)
+        elif filetype == 'json':
+            json_filepath = data_source[index]
+            return self.read_json(json_filepath)
 
     def load_image(self, img_filepath):
         image = Image.open(img_filepath, 'r')
         return image.convert('RGB')
+
+    def read_json(self, path):
+        with open(path, 'r') as file:
+            data = json.load(file)
+        masks = [to_pil(binary_from_rle(rle)) for rle in data]
+        return masks
 
 
 class ImageSegmentationDataset(Dataset):
@@ -348,7 +358,7 @@ class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
         self.image_augment_with_target_inference = ImgAug(
             pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
-        self.dataset = ImageSegmentationDataset
+        self.dataset = ImageSegmentationRLEDataset
 
 
 class ImageSegmentationLoaderCropPadTTA(ImageSegmentationLoaderBasicTTA):
@@ -385,7 +395,7 @@ class ImageSegmentationLoaderResize(ImageSegmentationLoaderBasic):
         self.image_augment_train = ImgAug(color_seq)
         self.image_augment_with_target_train = ImgAug(affine_seq)
 
-        self.dataset = ImageSegmentationDataset
+        self.dataset = ImageSegmentationRLEDataset
 
 
 class ImageSegmentationLoaderResizeTTA(ImageSegmentationLoaderBasicTTA):
@@ -576,10 +586,3 @@ def to_tensor(x):
     x_ = np.expand_dims(x, axis=0)
     x_ = torch.from_numpy(x_)
     return x_
-
-
-def read_json(path):
-    with open(path, 'r') as file:
-        data = json.load(file)
-    masks = [to_pil(binary_from_rle(rle)) for rle in data]
-    return masks

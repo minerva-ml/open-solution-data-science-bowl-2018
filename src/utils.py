@@ -183,7 +183,7 @@ def generate_metadata(data_dir,
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
                 file_path_cut_mask = os.path.join(cut_masks_dir, tr_te, image_id + '.png')
-                file_path_mask_with_borders = os.path.join(masks_with_borders_dir, tr_te, image_id + '.png')
+                file_path_mask_with_borders = os.path.join(masks_with_borders_dir, tr_te, image_id + '.json')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
                 is_train = 0

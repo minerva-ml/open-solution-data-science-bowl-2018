@@ -197,7 +197,7 @@ SOLUTION_CONFIG = AttrDict({
                                                         'minimize': params.minimize_validation_metric},
                                   'lr_scheduler': {'gamma': params.gamma,
                                                    'epoch_every': 1},
-                                  'training_monitor': {'batch_every': 0,
+                                  'training_monitor': {'batch_every': 1,
                                                        'epoch_every': 1},
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},

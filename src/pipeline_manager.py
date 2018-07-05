@@ -41,7 +41,7 @@ def prepare_metadata(logger, params):
                              cut_masks_dir=params.cut_masks_dir,
                              masks_with_borders_dir=params.masks_with_borders_dir,
                              )
-    meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
+    meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'), index=None)
 
 
 def prepare_masks(logger, params):
@@ -63,7 +63,7 @@ def train(pipeline_name, validation_size, logger, params):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'))
     meta_train = meta[meta['is_train'] == 1]
     meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
 
@@ -81,7 +81,7 @@ def train(pipeline_name, validation_size, logger, params):
 
 def evaluate(pipeline_name, validation_size, logger, params, ctx):
     logger.info('evaluating')
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'))
     meta_train = meta[meta['is_train'] == 1]
 
     try:

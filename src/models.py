@@ -166,16 +166,17 @@ def mixed_dice_cross_entropy_loss(output, target, dice_weight=0.5, dice_loss=Non
                                   cross_entropy_weight=0.5, cross_entropy_loss=None, smooth=0,
                                   dice_activation='softmax'):
     target = target[:, :output.size(1), :, :].long()
-    cross_entropy_target = torch.zeros_like(target[:, 0, :, :])
+    target_ = torch.zeros_like(target[:, 0, :, :]).long()
+    # print(target.size(), cross_entropy_target.size(), output.size())
     for class_nr in range(target.size(1)):
-        cross_entropy_target = where(target[:, class_nr, :, :], class_nr + 1, cross_entropy_target)
+        target_ = where(target[:, class_nr, :, :], class_nr + 1, target_)
     if cross_entropy_loss is None:
         cross_entropy_loss = torch.nn.CrossEntropyLoss()
     if dice_loss is None:
         dice_loss = multiclass_dice_loss
-    return dice_weight * dice_loss(output, target, smooth,
+    return dice_weight * dice_loss(output, target_, smooth,
                                    dice_activation) + cross_entropy_weight * cross_entropy_loss(output,
-                                                                                                target)
+                                                                                                target_)
 
 
 def multiclass_dice_loss(output, target, smooth=0, activation='softmax', excluded_classes=[]):
@@ -205,11 +206,12 @@ def multiclass_dice_loss(output, target, smooth=0, activation='softmax', exclude
     loss = 0
     dice = DiceLoss(smooth=smooth)
     output = activation_nn(output)
-    target.data = target.data.float()
     for class_nr in range(output.size(1)):
         if class_nr in excluded_classes:
             continue
-        loss += dice(output[:, class_nr, :, :], target[:, class_nr, :, :])
+        class_target = (target == class_nr)
+        class_target.data = class_target.data.float()
+        loss += dice(output[:, class_nr, :, :], class_target)
     return loss
 
 
@@ -225,5 +227,5 @@ def mixed_dice_bce_loss(output, target, dice_weight=0.5, dice_loss=None,
 
 
 def where(cond, x_1, x_2):
-    cond = cond.float()
+    cond = cond.long()
     return (cond * x_1) + ((1-cond) * x_2)

@@ -1,5 +1,6 @@
 import os
 import shutil
+import glob
 
 import pandas as pd
 from deepsense import neptune
@@ -24,14 +25,14 @@ class PipelineManager():
     def prepare_masks(self):
         prepare_masks(self.logger, self.params)
 
-    def train(self, pipeline_name, validation_size):
-        train(pipeline_name, validation_size, self.logger, self.params)
+    def train(self, pipeline_name, validation_size, dev_mode):
+        train(pipeline_name, validation_size, dev_mode, self.logger, self.params)
 
-    def evaluate(self, pipeline_name, validation_size):
-        evaluate(pipeline_name, validation_size, self.logger, self.params, self.ctx)
+    def evaluate(self, pipeline_name, validation_size, dev_mode):
+        evaluate(pipeline_name, validation_size, dev_mode, self.logger, self.params, self.ctx)
 
-    def predict(self, pipeline_name):
-        predict(pipeline_name, self.logger, self.params)
+    def predict(self, pipeline_name, dev_mode):
+        predict(pipeline_name, dev_mode, self.logger, self.params)
 
 
 def prepare_metadata(logger, params):
@@ -41,31 +42,57 @@ def prepare_metadata(logger, params):
                              cut_masks_dir=params.cut_masks_dir,
                              masks_with_borders_dir=params.masks_with_borders_dir,
                              )
-    meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'), index=None)
+    meta['is_external'] = 0
+    for external_data_dir in glob.glob("{}/*".format(params.external_data_dirs)):
+        external_meta = generate_metadata(data_dir=external_data_dir,
+                                          masks_overlayed_dir=os.path.join(params.masks_overlayed_dir,
+                                                                           os.path.basename(external_data_dir)),
+                                          cut_masks_dir=os.path.join(params.cut_masks_dir,
+                                                                     os.path.basename(external_data_dir)),
+                                          masks_with_borders_dir=os.path.join(params.masks_with_borders_dir,
+                                                                              os.path.basename(external_data_dir)),
+                                          generate_test=False)
+        external_meta['is_external'] = 1
+        meta = meta.append(external_meta)
+    meta.to_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'), index=None)
 
 
 def prepare_masks(logger, params):
     logger.info('overlaying masks')
     overlay_masks(images_dir=params.data_dir, subdir_name='stage1_train', target_dir=params.masks_overlayed_dir)
+    for external_data_dir in glob.glob("{}/*".format(params.external_data_dirs)):
+        overlay_masks(images_dir=external_data_dir, subdir_name='stage1_train',
+                      target_dir=os.path.join(params.masks_overlayed_dir, os.path.basename(external_data_dir)))
+
     logger.info('cutting masks')
     overlay_cut_masks(images_dir=params.data_dir, subdir_name='stage1_train',
                       target_dir=params.cut_masks_dir, cut_size=2)
+    for external_data_dir in glob.glob("{}/*".format(params.external_data_dirs)):
+        overlay_cut_masks(images_dir=external_data_dir, subdir_name='stage1_train',
+                          target_dir=os.path.join(params.cut_masks_dir, os.path.basename(external_data_dir)))
     logger.info('masks with borders')
     overlay_masks_with_borders(images_dir=params.data_dir, subdir_name='stage1_train',
                                target_dir=params.masks_with_borders_dir)
-    logger.info('masks with borders')
-    overlay_masks_with_borders_json(images_dir=params.data_dir, subdir_name='stage1_train',
-                                   target_dir=params.masks_with_borders_dir)
+
+    for external_data_dir in glob.glob("{}/*".format(params.external_data_dirs)):
+        overlay_masks_with_borders(images_dir=external_data_dir, subdir_name='stage1_train',
+                                   target_dir=os.path.join(params.masks_with_borders_dir,
+                                                           os.path.basename(external_data_dir)))
 
 
-def train(pipeline_name, validation_size, logger, params):
+def train(pipeline_name, validation_size, dev_mode, logger, params):
     logger.info('training')
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'))
     meta_train = meta[meta['is_train'] == 1]
-    meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
+    meta_train_split, meta_valid_split = train_valid_split(meta_train.query('is_external==0'), validation_size, random_state=SEED)
+    meta_train_split = meta_train_split.append(meta_train.query('is_external==1'))
+
+    if dev_mode:
+        meta_train_split = meta_train_split.sample(params.dev_mode_size, random_state=SEED)
+        meta_valid_split = meta_valid_split.sample(int(params.dev_mode_size/2), random_state=SEED)
 
     data = {'input': {'meta': meta_train_split,
                       'target_sizes': meta_train_split[SIZE_COLUMNS].values},
@@ -79,7 +106,7 @@ def train(pipeline_name, validation_size, logger, params):
     pipeline.clean_cache()
 
 
-def evaluate(pipeline_name, validation_size, logger, params, ctx):
+def evaluate(pipeline_name, validation_size, dev_mode, logger, params, ctx):
     logger.info('evaluating')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'))
     meta_train = meta[meta['is_train'] == 1]
@@ -90,7 +117,7 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
         pass
 
     if isinstance(validation_size, float):
-        meta_train_split, meta_valid_split = train_valid_split(meta_train, validation_size, random_state=SEED)
+        meta_train_split, meta_valid_split = train_valid_split(meta_train.query('is_external==0'), validation_size, random_state=SEED)
         y_true = read_masks(meta_valid_split[Y_COLUMNS_SCORING].values)
     elif validation_size == 'test':
         meta_valid_split = meta[meta['is_train'] == 0]
@@ -99,6 +126,9 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
         y_true = read_masks_from_csv(image_ids, solution_dir)
     else:
         raise NotImplementedError
+
+    if dev_mode:
+        meta_valid_split = meta_valid_split.sample(params.dev_mode_size, random_state=SEED)
 
     data = {'input': {'meta': meta_valid_split,
                       'target_sizes': meta_valid_split[SIZE_COLUMNS].values},
@@ -122,10 +152,13 @@ def evaluate(pipeline_name, validation_size, logger, params, ctx):
     ctx.channel_send('IOUT Score', 0, iout_score)
 
 
-def predict(pipeline_name, logger, params):
+def predict(pipeline_name, dev_mode, logger, params):
     logger.info('predicting')
     meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_test = meta[meta['is_train'] == 0]
+
+    if dev_mode:
+        meta_test = meta_test.sample(params.dev_mode_size, random_state=SEED)
 
     data = {'input': {'meta': meta_test,
                       'meta_valid': None,

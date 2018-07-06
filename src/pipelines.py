@@ -55,15 +55,11 @@ def unet_tta(config):
                 cache_dirpath=config.env.cache_dirpath,
                 save_output=save_output, load_saved_output=load_saved_output)
 
-    tta_aggregator = Step(name='tta_aggregator',
-                          transformer=loaders.TestTimeAugmentationAggregator(**config.tta_aggregator),
-                          input_steps=[unet, tta_generator],
-                          adapter={'images': ([(unet.name, 'mask_prediction')]),
-                                   'tta_params': ([(tta_generator.name, 'tta_params')]),
-                                   'img_ids': ([(tta_generator.name, 'img_ids')]),
-                                   },
-                          cache_dirpath=config.env.cache_dirpath,
-                          save_output=save_output)
+    tta_aggregator = aggregator('tta_aggregator', unet,
+                                tta_generator=tta_generator,
+                                cache_dirpath=config.env.cache_dirpath,
+                                save_output=save_output,
+                                config=config.tta_aggregator)
 
     prediction_renamed = Step(name='prediction_renamed',
                               transformer=Dummy(),
@@ -174,15 +170,11 @@ def double_unet_tta(config):
                       save_output=save_output,
                       load_saved_output=load_saved_output)
 
-    tta_aggregator_masks = Step(name='tta_aggregator_masks',
-                                transformer=loaders.TestTimeAugmentationAggregator(**config.tta_aggregator),
-                                input_steps=[unet_masks, tta_generator],
-                                adapter={'images': ([(unet_masks.name, 'mask_prediction')]),
-                                         'tta_params': ([(tta_generator.name, 'tta_params')]),
-                                         'img_ids': ([(tta_generator.name, 'img_ids')]),
-                                         },
-                                cache_dirpath=config.env.cache_dirpath,
-                                save_output=save_output)
+    tta_aggregator_masks = aggregator('tta_aggregator_masks', unet_masks,
+                                      tta_generator=tta_generator,
+                                      cache_dirpath=config.env.cache_dirpath,
+                                      save_output=save_output,
+                                      config=config.tta_aggregator)
 
     prediction_renamed_masks = Step(name='prediction_renamed_masks',
                                     transformer=Dummy(),
@@ -203,15 +195,11 @@ def double_unet_tta(config):
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output, load_saved_output=load_saved_output)
 
-    tta_aggregator_borders = Step(name='tta_aggregator_borders',
-                                  transformer=loaders.TestTimeAugmentationAggregator(**config.tta_aggregator),
-                                  input_steps=[unet_borders, tta_generator],
-                                  adapter={'images': ([(unet_borders.name, 'mask_prediction')]),
-                                           'tta_params': ([(tta_generator.name, 'tta_params')]),
-                                           'img_ids': ([(tta_generator.name, 'img_ids')]),
-                                           },
-                                  cache_dirpath=config.env.cache_dirpath,
-                                  save_output=save_output)
+    tta_aggregator_borders = aggregator('tta_aggregator_borders', unet_borders,
+                                        tta_generator=tta_generator,
+                                        cache_dirpath=config.env.cache_dirpath,
+                                        save_output=save_output,
+                                        config=config.tta_aggregator)
 
     prediction_renamed_borders = Step(name='prediction_renamed_borders',
                                       transformer=Dummy(),
@@ -241,6 +229,20 @@ def double_unet_tta(config):
                   )
 
     return output
+
+
+def aggregator(name, model, tta_generator, cache_dirpath, save_output, config):
+
+    tta_aggregator = Step(name=name,
+                          transformer=loaders.TestTimeAugmentationAggregator(**config),
+                          input_steps=[model, tta_generator],
+                          adapter={'images': ([(model.name, 'mask_prediction')]),
+                                   'tta_params': ([(tta_generator.name, 'tta_params')]),
+                                   'img_ids': ([(tta_generator.name, 'img_ids')]),
+                                   },
+                          cache_dirpath=cache_dirpath,
+                          save_output=save_output)
+    return tta_aggregator
 
 
 def preprocessing_train(config, model_name='unet'):

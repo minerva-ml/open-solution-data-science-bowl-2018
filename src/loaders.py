@@ -21,32 +21,33 @@ from .utils import from_pil, to_pil, binary_from_rle
 from .pipeline_config import MEAN, STD
 
 
-class ImageReaderRLE(BaseTransformer):
-    def __init__(self, x_columns, y_columns):
+class ImageReader(BaseTransformer):
+    def __init__(self, x_columns, y_columns, target_format='png'):
         self.x_columns = x_columns
         self.y_columns = y_columns
+        self.target_format = target_format
 
     def transform(self, meta, train_mode):
         X_ = meta[self.x_columns].values
 
-        X = self.load_images(X_, filetype='png')
+        X = self.load_images(X_, filetype='png', grayscale=False)
         if train_mode:
             y_ = meta[self.y_columns].values
-            y = self.load_images(y_, filetype='json')
+            y = self.load_images(y_, filetype=self.target_format, grayscale=True)
         else:
             y = None
 
         return {'X': X,
                 'y': y}
 
-    def load_images(self, filepaths, filetype):
+    def load_images(self, filepaths, filetype, grayscale=False):
         X = []
         for i in range(filepaths.shape[1]):
             column = filepaths[:, i]
             X.append([])
             for filepath in tqdm(column):
                 if filetype == 'png':
-                    data = self.load_image(filepath)
+                    data = self.load_image(filepath, grayscale=grayscale)
                 elif filetype == 'json':
                     data = self.read_json(filepath)
                 else:
@@ -54,9 +55,12 @@ class ImageReaderRLE(BaseTransformer):
                 X[i].append(data)
         return X
 
-    def load_image(self, img_filepath):
+    def load_image(self, img_filepath, grayscale):
         image = Image.open(img_filepath, 'r')
-        image = image.convert('RGB')
+        if not grayscale:
+            image = image.convert('RGB')
+        else:
+            image = image.convert('L')
         return image
 
     def load(self, filepath):
@@ -78,7 +82,7 @@ class ImageReaderRLE(BaseTransformer):
         return masks
 
 
-class ImageSegmentationRLEDataset(Dataset):
+class ImageSegmentationBaseDataset(Dataset):
     def __init__(self, X, y, train_mode,
                  image_transform, image_augment_with_target,
                  mask_transform, image_augment,
@@ -112,10 +116,10 @@ class ImageSegmentationRLEDataset(Dataset):
         else:
             raise NotImplementedError("Possible loading options: 'memory' and 'disk'!")
 
-        Xi = load_func(self.X, index, filetype='png')
+        Xi = load_func(self.X, index, filetype='png', grayscale=False)
 
         if self.y is not None:
-            Mi = load_func(self.y, index, filetype='json')
+            Mi = self.load_target(self.y, index, load_func)
 
             Xi, *Mi = from_pil(Xi, *Mi)
             Xi, *Mi = self.image_augment_with_target(Xi, *Mi)
@@ -140,22 +144,26 @@ class ImageSegmentationRLEDataset(Dataset):
                 Xi = self.image_transform(Xi)
             return Xi
 
-    def load_from_memory(self, data_source, index, *args, **kwargs):
+    def load_from_memory(self, data_source, index, **kwargs):
         return data_source[0][index]
 
-    def load_from_disk(self, data_source, index, filetype):
+    def load_from_disk(self, data_source, index, *, filetype, grayscale=False):
         if filetype == 'png':
             img_filepath = data_source[index]
-            return self.load_image(img_filepath)
+            return self.load_image(img_filepath, grayscale=grayscale)
         elif filetype == 'json':
             json_filepath = data_source[index]
             return self.read_json(json_filepath)
         else:
             raise Exception('files must be png or json')
 
-    def load_image(self, img_filepath):
+    def load_image(self, img_filepath, grayscale):
         image = Image.open(img_filepath, 'r')
-        return image.convert('RGB')
+        if not grayscale:
+            image = image.convert('RGB')
+        else:
+            image = image.convert('L')
+        return image
 
     def read_json(self, path):
         with open(path, 'r') as file:
@@ -163,101 +171,29 @@ class ImageSegmentationRLEDataset(Dataset):
         masks = [to_pil(binary_from_rle(rle)) for rle in data]
         return masks
 
-
-class ImageSegmentationDataset(Dataset):
-    def __init__(self, X, y, train_mode,
-                 image_transform, image_augment_with_target,
-                 mask_transform, image_augment,
-                 image_source='memory'):
-        super().__init__()
-        self.X = X
-        if y is not None:
-            self.y = y
-        else:
-            self.y = None
-
-        self.train_mode = train_mode
-        self.image_transform = image_transform
-        self.mask_transform = mask_transform
-        self.image_augment = image_augment if image_augment is not None else ImgAug(iaa.Noop())
-        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else ImgAug(iaa.Noop())
-
-        self.image_source = image_source
-
-    def __len__(self):
-        if self.image_source == 'memory':
-            return len(self.X[0])
-        elif self.image_source == 'disk':
-            return self.X.shape[0]
-
-    def __getitem__(self, index):
-        if self.image_source == 'memory':
-            load_func = self.load_from_memory
-        elif self.image_source == 'disk':
-            load_func = self.load_from_disk
-        else:
-            raise NotImplementedError("Possible loading options: 'memory' and 'disk'!")
-
-        Xi = load_func(self.X, index)
-
-        if self.y is not None:
-            Mi = load_func(self.y, index)
-
-            Xi, Mi = from_pil(Xi, Mi)
-            Xi, Mi = self.image_augment_with_target(Xi, Mi)
-            Xi = self.image_augment(Xi)
-            Xi, Mi = to_pil(Xi, Mi)
-
-            if self.mask_transform is not None:
-                Mi = self.mask_transform(Mi)
-
-            if self.image_transform is not None:
-                Xi = self.image_transform(Xi)
-
-            return Xi, Mi
-        else:
-            Xi = from_pil(Xi)
-            Xi = self.image_augment(Xi)
-            Xi = to_pil(Xi)
-
-            if self.image_transform is not None:
-                Xi = self.image_transform(Xi)
-            return Xi
-
-    def load_from_memory(self, data_source, index):
-        return data_source[0][index]
-
-    def load_from_disk(self, data_source, index):
-        img_filepath = data_source[index]
-        return self.load_image(img_filepath)
-
-    def load_image(self, img_filepath):
-        image = Image.open(img_filepath, 'r')
-        return image.convert('RGB')
+    def load_target(self, data_source, index, load_func):
+        raise NotImplementedError
 
 
-class ImageSegmentationTTADataset(Dataset):
-    def __init__(self, X, tta_params,
-                 image_transform, image_augment_with_target,
-                 mask_transform, image_augment,
-                 image_source='memory'):
-        super().__init__()
-        self.X = X
+class ImageSegmentationJsonDataset(ImageSegmentationBaseDataset):
+    def load_target(self, data_source, index, load_func):
+        Mi = load_func(data_source, index, filetype='json')
+        return Mi
 
-        self.image_transform = image_transform
-        self.mask_transform = mask_transform
-        self.image_augment = image_augment if image_augment is not None else ImgAug(iaa.Noop())
-        self.image_augment_with_target = image_augment_with_target if image_augment_with_target is not None else ImgAug(iaa.Noop())
 
-        self.image_source = image_source
+class ImageSegmentationPngDataset(ImageSegmentationBaseDataset):
+    def load_target(self, data_source, index, load_func):
+        Mi = load_func(data_source, index, filetype='png', grayscale=True)
+        Mi = from_pil(Mi)
+        target = [to_pil(Mi == class_nr) for class_nr in range(1, Mi.max() + 1)]
+        return target
+
+
+class ImageSegmentationTTADataset(ImageSegmentationBaseDataset):
+    def __init__(self, tta_params, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.tta_params = tta_params
 
-    def __len__(self):
-        if self.image_source == 'memory':
-            return len(self.X[0])
-        elif self.image_source == 'disk':
-            return self.X.shape[0]
-
     def __getitem__(self, index):
         if self.image_source == 'memory':
             load_func = self.load_from_memory
@@ -266,7 +202,7 @@ class ImageSegmentationTTADataset(Dataset):
         else:
             raise NotImplementedError("Possible loading options: 'memory' and 'disk'!")
 
-        Xi = load_func(self.X, index)
+        Xi = load_func(self.X, index, filetype='png', grayscale=False)
         Xi = from_pil(Xi)
 
         if self.image_augment is not None:
@@ -281,17 +217,6 @@ class ImageSegmentationTTADataset(Dataset):
             Xi = self.image_transform(Xi)
 
         return Xi
-
-    def load_from_memory(self, data_source, index):
-        return data_source[0][index]
-
-    def load_from_disk(self, data_source, index):
-        img_filepath = data_source[index]
-        return self.load_image(img_filepath)
-
-    def load_image(self, img_filepath):
-        image = Image.open(img_filepath, 'r')
-        return image.convert('RGB')
 
 
 class ImageSegmentationLoaderBasic(BaseTransformer):
@@ -308,7 +233,7 @@ class ImageSegmentationLoaderBasic(BaseTransformer):
         self.image_augment_with_target_train = None
         self.image_augment_with_target_inference = None
 
-        self.dataset = ImageSegmentationDataset
+        self.dataset = None
 
     def transform(self, X, y, X_valid=None, y_valid=None, train_mode=True):
         if train_mode and y is not None:
@@ -368,7 +293,7 @@ class ImageSegmentationLoaderBasicTTA(BaseTransformer):
         self.image_augment = None
         self.image_augment_with_target = None
 
-        self.dataset = ImageSegmentationTTADataset
+        self.dataset = None
 
     def transform(self, X, tta_params, **kwargs):
         flow, steps = self.get_datagen(X, tta_params, self.loader_params.inference)
@@ -418,7 +343,12 @@ class ImageSegmentationLoaderCropPad(ImageSegmentationLoaderBasic):
         self.image_augment_with_target_inference = ImgAug(
             pad_to_fit_net(self.dataset_params.divisor, self.dataset_params.pad_method))
 
-        self.dataset = ImageSegmentationRLEDataset
+        if dataset_params.target_format == 'png':
+            self.dataset = ImageSegmentationPngDataset
+        elif dataset_params.target_format == 'json':
+            self.dataset = ImageSegmentationJsonDataset
+        else:
+            raise Exception('files must be png or json')
 
 
 class ImageSegmentationLoaderCropPadTTA(ImageSegmentationLoaderBasicTTA):
@@ -455,7 +385,12 @@ class ImageSegmentationLoaderResize(ImageSegmentationLoaderBasic):
         self.image_augment_train = ImgAug(color_seq)
         self.image_augment_with_target_train = ImgAug(affine_seq)
 
-        self.dataset = ImageSegmentationRLEDataset
+        if dataset_params.target_format == 'png':
+            self.dataset = ImageSegmentationPngDataset
+        elif dataset_params.target_format == 'json':
+            self.dataset = ImageSegmentationJsonDataset
+        else:
+            raise Exception('files must be png or json')
 
 
 class ImageSegmentationLoaderResizeTTA(ImageSegmentationLoaderBasicTTA):

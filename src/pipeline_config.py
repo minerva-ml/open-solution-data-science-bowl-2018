@@ -53,12 +53,15 @@ SOLUTION_CONFIG = AttrDict({
     'reader': {
         'unet': {'x_columns': X_COLUMNS,
                  'y_columns': Y_COLUMNS,
+                 'target_format': params.target_format
                  },
         'unet_masks': {'x_columns': X_COLUMNS,
                        'y_columns': Y_COLUMNS_MASKS,
+                       'target_format': params.target_format
                        },
         'unet_borders': {'x_columns': X_COLUMNS,
                          'y_columns': Y_COLUMNS_BORDERS,
+                         'target_format': params.target_format
                          },
     },
     'loader': {'dataset_params': {'h': params.image_h,
@@ -66,6 +69,7 @@ SOLUTION_CONFIG = AttrDict({
                                   'pad_method': params.pad_method,
                                   'image_source': params.image_source,
                                   'divisor': 64,
+                                  'target_format': params.target_format
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,

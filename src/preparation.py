@@ -105,7 +105,7 @@ def overlay_masks_with_borders(images_dir, subdir_name, target_dir, borders_size
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, masks_with_borders)
 
-def overlay_masks_with_borders_new(images_dir, subdir_name, target_dir, borders_size=3, dilation_size=5):
+def overlay_masks_with_borders_json(images_dir, subdir_name, target_dir, borders_size=3, dilation_size=5):
     train_dir = os.path.join(images_dir, subdir_name)
     for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
         masks = []

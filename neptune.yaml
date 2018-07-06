@@ -37,7 +37,7 @@ parameters:
   masks_overlayed_dir:             /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/masks_overlayed/
   cut_masks_dir:                   /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/cut_masks/
   masks_with_borders_dir:          /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/masks_with_borders_new/
-  experiment_dir:                  /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/piotr/experiments/borders_new_memory/
+  experiment_dir:                  /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/piotr/experiments/double/
 
   overwrite: 1
   num_workers: 4
@@ -46,6 +46,7 @@ parameters:
   pin_memory: 1
   loader_mode: crop_and_pad
   pad_method: symmetric
+  target_format: 'json'
 
 # General Params
   image_h: 256

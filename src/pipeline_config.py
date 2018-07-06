@@ -20,7 +20,8 @@ Y_COLUMNS_MASKS = ['file_path_mask_with_borders']
 Y_COLUMNS_BORDERS = ['file_path_mask_with_borders']
 
 Y_COLUMNS_SCORING = ['file_path_masks']
-CHANNELS = ['background', 'nuclei', 'borders']
+CHANNELS_SOFTMAX = ['background', 'nuclei', 'borders']
+CHANNELS_SIGMOID = ['nuclei', 'borders']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'num_workers': params.num_workers,
@@ -113,7 +114,7 @@ SOLUTION_CONFIG = AttrDict({
                                                         'minimize': params.minimize_validation_metric},
                                   'lr_scheduler': {'gamma': params.gamma,
                                                    'epoch_every': 1},
-                                  'training_monitor': {'batch_every': 1,
+                                  'training_monitor': {'batch_every': 0,
                                                        'epoch_every': 1},
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},
@@ -157,7 +158,7 @@ SOLUTION_CONFIG = AttrDict({
                                                         'minimize': params.minimize_validation_metric},
                                   'lr_scheduler': {'gamma': params.gamma,
                                                    'epoch_every': 1},
-                                  'training_monitor': {'batch_every': 1,
+                                  'training_monitor': {'batch_every': 0,
                                                        'epoch_every': 1},
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},
@@ -201,7 +202,7 @@ SOLUTION_CONFIG = AttrDict({
                                                         'minimize': params.minimize_validation_metric},
                                   'lr_scheduler': {'gamma': params.gamma,
                                                    'epoch_every': 1},
-                                  'training_monitor': {'batch_every': 1,
+                                  'training_monitor': {'batch_every': 0,
                                                        'epoch_every': 1},
                                   'experiment_timing': {'batch_every': 0,
                                                         'epoch_every': 1},
@@ -232,5 +233,8 @@ SOLUTION_CONFIG = AttrDict({
     'dropper': {'min_mask_size': params.min_mask_size,
                 'min_seed_size': params.min_seed_size
                 },
-    'postprocessor': {'channels': CHANNELS}
+    'postprocessor': {'channels': {'softmax': CHANNELS_SOFTMAX,
+                                   'sigmoid': CHANNELS_SIGMOID
+                                   }
+                      }
 })

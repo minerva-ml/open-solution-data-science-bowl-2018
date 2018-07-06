@@ -70,7 +70,9 @@ def unet_tta(config):
                               cache_dirpath=config.env.cache_dirpath,
                               save_output=save_output)
 
-    mask_postprocessed = mask_postprocessing(prediction_renamed, config, save_output=save_output)
+    mask_postprocessed = mask_postprocessing(prediction_renamed, config,
+                                             model_name=unet.name,
+                                             save_output=save_output)
 
     output = Step(name='output',
                   transformer=Dummy(),
@@ -125,7 +127,9 @@ def double_unet(config):
                       cache_dirpath=config.env.cache_dirpath,
                       save_output=save_output, load_saved_output=load_saved_output)
 
-    masks, seeds = postprocessing_masks(unet_masks, config, save_output=save_output)
+    masks, seeds = postprocessing_masks(unet_masks, config,
+                                        model_name=unet_masks.name,
+                                        save_output=save_output)
 
     unet_borders = Step(name='unet_borders',
                         transformer=PyTorchUNet(**config.model['unet_borders']),
@@ -135,7 +139,9 @@ def double_unet(config):
                         cache_dirpath=config.env.cache_dirpath,
                         save_output=save_output, load_saved_output=load_saved_output)
 
-    borders = postprocessing_borders(unet_borders, config, save_output=save_output)
+    borders = postprocessing_borders(unet_borders, config,
+                                     model_name=unet_borders.name,
+                                     save_output=save_output)
 
     watersheder = Step(name='watershed',
                        transformer=make_apply_transformer(watershed,
@@ -185,7 +191,9 @@ def double_unet_tta(config):
                                     cache_dirpath=config.env.cache_dirpath,
                                     save_output=save_output)
 
-    masks, seeds = postprocessing_masks(prediction_renamed_masks, config, save_output=save_output)
+    masks, seeds = postprocessing_masks(prediction_renamed_masks, config,
+                                        model_name=unet_masks.name,
+                                        save_output=save_output)
 
     unet_borders = Step(name='unet_borders',
                         transformer=PyTorchUNet(**config.model['unet_borders']),
@@ -210,7 +218,9 @@ def double_unet_tta(config):
                                       cache_dirpath=config.env.cache_dirpath,
                                       save_output=save_output)
 
-    borders = postprocessing_borders(prediction_renamed_borders, config, save_output=save_output)
+    borders = postprocessing_borders(prediction_renamed_borders, config,
+                                     model_name=unet_borders.name,
+                                     save_output=save_output)
 
     watersheder = Step(name='watershed',
                        transformer=make_apply_transformer(watershed,
@@ -398,13 +408,15 @@ def preprocessing_inference_tta(config, model_name='unet'):
     return loader, tta_generator
 
 
-def mask_postprocessing(model, config, save_output=False):
+def mask_postprocessing(model, config, model_name='unet', save_output=False):
     if config.execution.loader_mode == 'crop_and_pad':
         size_adjustment_function = crop_image
     elif config.execution.loader_mode == 'resize':
         size_adjustment_function = resize_image
     else:
         raise NotImplementedError
+    activation_func = config.model[model_name]['architecture_config']['model_params']['activation']
+    channels = config.postprocessor.channels[activation_func]
 
     mask_resize = Step(name='mask_resize',
                        transformer=make_apply_transformer(size_adjustment_function,
@@ -452,8 +464,7 @@ def mask_postprocessing(model, config, save_output=False):
 
     nuclei_filter = Step(name='nuclei_filter',
                          transformer=make_apply_transformer(partial(get_channel,
-                                                                    channel=config.postprocessor.channels.index(
-                                                                        'nuclei')),
+                                                                    channel=channels.index('nuclei')),
                                                             output_name='nuclei_images'),
                          input_steps=[labeler],
                          adapter={'images': ([('labeler', 'labeled_images')]),
@@ -464,13 +475,15 @@ def mask_postprocessing(model, config, save_output=False):
     return nuclei_filter
 
 
-def postprocessing_masks(model, config, save_output=False):
+def postprocessing_masks(model, config, model_name='unet', save_output=False):
     if config.execution.loader_mode == 'crop_and_pad':
         size_adjustment_function = crop_image
     elif config.execution.loader_mode == 'resize':
         size_adjustment_function = resize_image
     else:
         raise NotImplementedError
+    activation_func = config.model[model_name]['architecture_config']['model_params']['activation']
+    channels = config.postprocessor.channels[activation_func]
 
     mask_resize = Step(name='mask_resize_masks',
                        transformer=make_apply_transformer(size_adjustment_function,
@@ -500,7 +513,7 @@ def postprocessing_masks(model, config, save_output=False):
 
     masks_filter = Step(name='masks_filter',
                         transformer=make_apply_transformer(partial(get_channel,
-                                                                   channel=config.postprocessor.channels.index('nuclei')),
+                                                                   channel=channels.index('nuclei')),
                                                            output_name='masks'),
                         input_steps=[category_mapper_masks],
                         adapter={'images': ([('category_mapper_masks', 'categorized_images')]),
@@ -533,8 +546,7 @@ def postprocessing_masks(model, config, save_output=False):
 
     seeds_filter = Step(name='seeds_filter',
                         transformer=make_apply_transformer(
-                            partial(get_channel,
-                                    channel=config.postprocessor.channels.index('nuclei')),
+                            partial(get_channel, channel=channels.index('nuclei')),
                             output_name='seeds'),
                         input_steps=[category_mapper_seeds],
                         adapter={'images': ([('category_mapper_seeds', 'categorized_images')]),
@@ -555,13 +567,15 @@ def postprocessing_masks(model, config, save_output=False):
     return dropper_masks, dropper_seeds
 
 
-def postprocessing_borders(model, config, save_output=False):
+def postprocessing_borders(model, config, model_name='unet', save_output=False):
     if config.execution.loader_mode == 'crop_and_pad':
         size_adjustment_function = crop_image
     elif config.execution.loader_mode == 'resize':
         size_adjustment_function = resize_image
     else:
         raise NotImplementedError
+    activation_func = config.model[model_name]['architecture_config']['model_params']['activation']
+    channels = config.postprocessor.channels[activation_func]
 
     mask_resize = Step(name='mask_resize_borders',
                        transformer=make_apply_transformer(size_adjustment_function,
@@ -590,7 +604,7 @@ def postprocessing_borders(model, config, save_output=False):
 
     borders_filter = Step(name='borders_filter_borders',
                           transformer=make_apply_transformer(partial(get_channel,
-                                                             channel=config.postprocessor.channels.index('borders')),
+                                                             channel=channels.index('borders')),
                                                              output_name='borders'),
                           input_steps=[category_mapper],
                           adapter={'images': ([('category_mapper_borders', 'categorized_images')]),

@@ -85,7 +85,7 @@ def train(pipeline_name, validation_size, dev_mode, logger, params):
     if bool(params.overwrite) and os.path.isdir(params.experiment_dir):
         shutil.rmtree(params.experiment_dir)
 
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
     meta_train_split, meta_valid_split = train_valid_split(meta_train.query('is_external==0'), validation_size, random_state=SEED)
     meta_train_split = meta_train_split.append(meta_train.query('is_external==1'))
@@ -108,7 +108,7 @@ def train(pipeline_name, validation_size, dev_mode, logger, params):
 
 def evaluate(pipeline_name, validation_size, dev_mode, logger, params, ctx):
     logger.info('evaluating')
-    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata_json.csv'))
+    meta = pd.read_csv(os.path.join(params.meta_dir, 'stage1_metadata.csv'))
     meta_train = meta[meta['is_train'] == 1]
 
     try:

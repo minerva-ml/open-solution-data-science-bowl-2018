@@ -86,8 +86,7 @@ class PyTorchUNet(Model):
             if self.activation_func == 'softmax':
                 outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
             elif self.activation_func == 'sigmoid':
-                prediction_ = [sigmoid(np.squeeze(mask)) for mask in prediction]
-                outputs[name] = np.array(prediction_)
+                outputs[name] = [sigmoid(np.squeeze(mask)) for mask in prediction]
             else:
                 raise Exception('Only softmax and sigmoid activations are allowed')
         return outputs

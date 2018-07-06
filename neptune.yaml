@@ -1,14 +1,14 @@
-project: piotrtarasiewicz/data-science-bowl-2018
+project: Data-Science-Bowl
 
-name: data-science-bowl-2018
-tags: [solution_2]
+name: dsb_open_solution
+tags: [winning_solution]
 
 metric:
   channel: 'Final Validation Score'
   goal: maximize
 
 #Comment out if not in Cloud Environment
-#pip-requirements-file: requirements.txt
+pip-requirements-file: requirements.txt
 
 exclude:
   - output
@@ -23,23 +23,6 @@ exclude:
 
 parameters:
 # Cloud Environment
-<<<<<<< HEAD
-#  data_dir:                        /public/dsb_2018_data/
-#  meta_dir:                        /public/dsb_2018_data/
-#  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
-#  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
-#  contours_touching_overlayed_dir: /public/dsb_2018_data/contours_touching_overlayed/
-#  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
-#  experiment_dir:                  /output/dsb/experiments/
-
-# Local Environment
-  data_dir:                        /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/data/
-  meta_dir:                        /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/
-  masks_overlayed_dir:             /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/masks_overlayed/
-  cut_masks_dir:                   /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/cut_masks/
-  masks_with_borders_dir:          /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/files/masks_with_borders_new/
-  experiment_dir:                  /mnt/ml-team/minerva/open-solutions/data-science-bowl-2018/piotr/experiments/double/
-=======
   data_dir:                        /public/dsb_2018_data/
   meta_dir:                        /public/dsb_2018_data/
   masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
@@ -56,7 +39,6 @@ parameters:
 #  masks_with_borders_dir:          /path/to/masks_with_borders/
 #  external_data_dirs:              /path/to/external_data/
 #  experiment_dir:                  /path/to/work/dir
->>>>>>> 5d7fd81892074f5613385612ca21dd353c36e9e1
 
   overwrite: 1
   num_workers: 4
@@ -65,11 +47,8 @@ parameters:
   pin_memory: 1
   loader_mode: crop_and_pad
   pad_method: symmetric
-<<<<<<< HEAD
   target_format: 'json'
-=======
   dev_mode_size: 20
->>>>>>> 5d7fd81892074f5613385612ca21dd353c36e9e1
 
 # General Params
   image_h: 256

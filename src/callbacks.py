@@ -13,7 +13,7 @@ from .steppy.pytorch.callbacks import NeptuneMonitor, ValidationMonitor, ModelCh
 
 from . import postprocessing as post
 from .utils import sigmoid, softmax, make_apply_transformer, read_masks, get_list_of_image_predictions
-from .pipeline_config import Y_COLUMNS_SCORING, CHANNELS, SIZE_COLUMNS
+from .pipeline_config import Y_COLUMNS_SCORING, CHANNELS_SIGMOID, CHANNELS_SOFTMAX, SIZE_COLUMNS
 from .metrics import intersection_over_union, intersection_over_union_thresholds
 
 logger = get_logger()
@@ -94,6 +94,7 @@ class ValidationMonitorSegmentation(ValidationMonitor):
         self.validation_loss = None
         self.meta_valid = None
         self.y_true = None
+        self.activation_func = None
 
     def set_params(self, transformer, validation_datagen, meta_valid=None, *args, **kwargs):
         self.model = transformer.model
@@ -104,6 +105,7 @@ class ValidationMonitorSegmentation(ValidationMonitor):
         self.meta_valid = meta_valid
         self.validation_loss = transformer.validation_loss
         self.y_true = read_masks(self.meta_valid[Y_COLUMNS_SCORING].values)
+        self.activation_func = transformer.activation_func
 
     def get_validation_loss(self):
         return self._get_validation_loss()
@@ -163,7 +165,12 @@ class ValidationMonitorSegmentation(ValidationMonitor):
         average_losses = sum(partial_batch_losses) / steps
         outputs = {'{}_prediction'.format(name): get_list_of_image_predictions(outputs_) for name, outputs_ in outputs.items()}
         for name, prediction in outputs.items():
-            outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
+            if self.activation_func == 'softmax':
+                outputs[name] = [softmax(single_prediction, axis=0) for single_prediction in prediction]
+            elif self.activation_func == 'sigmoid':
+                outputs[name] = [sigmoid(np.squeeze(mask)) for mask in prediction]
+            else:
+                raise Exception('Only softmax and sigmoid activations are allowed')
 
         return outputs, average_losses
 
@@ -175,7 +182,7 @@ class ValidationMonitorSegmentation(ValidationMonitor):
                 'unet_output': {**outputs}
                 }
         with TemporaryDirectory() as cache_dirpath:
-            pipeline = self.validation_pipeline(cache_dirpath, self.loader_mode)
+            pipeline = self.validation_pipeline(cache_dirpath, self.loader_mode, self.activation_func)
             output = pipeline.transform(data)
         y_pred = output['y_pred']
 
@@ -235,13 +242,14 @@ class EarlyStoppingSegmentation(EarlyStopping):
         self.epoch_id += 1
 
 
-def postprocessing__pipeline_simplified(cache_dirpath, loader_mode):
+def postprocessing__pipeline_simplified(cache_dirpath, loader_mode, activation_func):
     if loader_mode == 'crop_and_pad':
         size_adjustment_function = post.crop_image
     elif loader_mode == 'resize':
         size_adjustment_function = post.resize_image
     else:
         raise NotImplementedError
+    channels = CHANNELS_SOFTMAX if activation_func == 'softmax' else CHANNELS_SIGMOID
 
     mask_resize = Step(name='mask_resize',
                        transformer=make_apply_transformer(size_adjustment_function,
@@ -254,7 +262,8 @@ def postprocessing__pipeline_simplified(cache_dirpath, loader_mode):
                        cache_dirpath=cache_dirpath)
 
     category_mapper = Step(name='category_mapper',
-                           transformer=make_apply_transformer(post.categorize_image,
+                           transformer=make_apply_transformer(partial(post.categorize_image,
+                                                                      activation=activation_func),
                                                               output_name='categorized_images'),
                            input_steps=[mask_resize],
                            adapter={'images': ([('mask_resize', 'resized_images')]),
@@ -271,7 +280,7 @@ def postprocessing__pipeline_simplified(cache_dirpath, loader_mode):
 
     nuclei_filter = Step(name='nuclei_filter',
                          transformer=make_apply_transformer(partial(post.get_channel,
-                                                                    channel=CHANNELS.index('nuclei')),
+                                                                    channel=channels.index('nuclei')),
                                                             output_name='nuclei_images'),
                          input_steps=[labeler],
                          adapter={'images': ([('labeler', 'labeled_images')]),

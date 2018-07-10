@@ -16,11 +16,12 @@ SEED = 1234
 SIZE_COLUMNS = ['height', 'width']
 X_COLUMNS = ['file_path_image']
 Y_COLUMNS = ['file_path_cut_mask']
-Y_COLUMNS_MASKS = ['file_path_mask']
+Y_COLUMNS_MASKS = ['file_path_mask_with_borders']
 Y_COLUMNS_BORDERS = ['file_path_mask_with_borders']
 
 Y_COLUMNS_SCORING = ['file_path_masks']
-CHANNELS = ['background', 'nuclei', 'borders']
+CHANNELS_SOFTMAX = ['background', 'nuclei', 'borders']
+CHANNELS_SIGMOID = ['nuclei', 'borders']
 
 GLOBAL_CONFIG = {'exp_root': params.experiment_dir,
                  'num_workers': params.num_workers,
@@ -53,12 +54,15 @@ SOLUTION_CONFIG = AttrDict({
     'reader': {
         'unet': {'x_columns': X_COLUMNS,
                  'y_columns': Y_COLUMNS,
+                 'target_format': params.target_format
                  },
         'unet_masks': {'x_columns': X_COLUMNS,
                        'y_columns': Y_COLUMNS_MASKS,
+                       'target_format': params.target_format
                        },
         'unet_borders': {'x_columns': X_COLUMNS,
                          'y_columns': Y_COLUMNS_BORDERS,
+                         'target_format': params.target_format
                          },
     },
     'loader': {'dataset_params': {'h': params.image_h,
@@ -66,6 +70,7 @@ SOLUTION_CONFIG = AttrDict({
                                   'pad_method': params.pad_method,
                                   'image_source': params.image_source,
                                   'divisor': 64,
+                                  'target_format': params.target_format
                                   },
                'loader_params': {'training': {'batch_size': params.batch_size_train,
                                               'shuffle': True,
@@ -91,7 +96,8 @@ SOLUTION_CONFIG = AttrDict({
                                                      'in_channels': params.image_channels,
                                                      'out_channels': params.unet_output_channels,
                                                      'nr_outputs': params.nr_unet_outputs,
-                                                     'encoder': params.encoder
+                                                     'encoder': params.encoder,
+                                                     'activation': params.unet_activation
                                                      },
                                     'optimizer_params': {'lr': params.lr,
                                                          },
@@ -134,7 +140,8 @@ SOLUTION_CONFIG = AttrDict({
                                                      'in_channels': params.image_channels,
                                                      'out_channels': params.unet_masks_output_channels,
                                                      'nr_outputs': params.nr_unet_outputs,
-                                                     'encoder': params.encoder
+                                                     'encoder': params.encoder,
+                                                     'activation': params.unet_masks_activation
                                                      },
                                     'optimizer_params': {'lr': params.lr,
                                                          },
@@ -177,7 +184,8 @@ SOLUTION_CONFIG = AttrDict({
                                                      'in_channels': params.image_channels,
                                                      'out_channels': params.unet_borders_output_channels,
                                                      'nr_outputs': params.nr_unet_outputs,
-                                                     'encoder': params.encoder
+                                                     'encoder': params.encoder,
+                                                     'activation': params.unet_borders_activation
                                                      },
                                     'optimizer_params': {'lr': params.lr,
                                                          },
@@ -225,5 +233,8 @@ SOLUTION_CONFIG = AttrDict({
     'dropper': {'min_mask_size': params.min_mask_size,
                 'min_seed_size': params.min_seed_size
                 },
-    'postprocessor': {'channels': CHANNELS}
+    'postprocessor': {'channels': {'softmax': CHANNELS_SOFTMAX,
+                                   'sigmoid': CHANNELS_SIGMOID
+                                   }
+                      }
 })

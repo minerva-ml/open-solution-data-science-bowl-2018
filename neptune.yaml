@@ -47,6 +47,7 @@ parameters:
   pin_memory: 1
   loader_mode: crop_and_pad
   pad_method: symmetric
+  target_format: 'json'
   dev_mode_size: 20
 
 # General Params
@@ -58,7 +59,10 @@ parameters:
   unet_output_channels: 2
   unet_masks_output_channels: 2
   unet_borders_output_channels: 3
-  encoder: ResNet101
+  unet_activation: 'softmax'
+  unet_masks_activation: 'sigmoid'
+  unet_borders_activation: 'softmax'
+  encoder: ResNet152
 
 # U-Net from scratch parameters
   nr_unet_outputs: 1
@@ -70,7 +74,7 @@ parameters:
 
 # Training schedule
   epochs_nr: 1000
-  batch_size_train: 4
+  batch_size_train: 36
   batch_size_inference: 1
   lr: 0.0001
   momentum: 0.9
@@ -89,7 +93,7 @@ parameters:
 # Postprocessing
   threshold_masks: 0.2
   threshold_seeds: 0.6
-  threshold_borders: 0.7
+  threshold_borders: 0.2
   min_mask_size: 20
   min_seed_size: 15
   tta_aggregation_method: gmean

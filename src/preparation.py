@@ -1,5 +1,6 @@
 import glob
 import os
+import json
 
 import cv2
 import numpy as np
@@ -13,6 +14,8 @@ from sklearn.cluster import KMeans
 from torchvision import models
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+
+from .utils import run_length_encoding, rle_from_binary
 
 
 def train_valid_split(meta, validation_size, random_state=None):
@@ -102,6 +105,36 @@ def overlay_masks_with_borders(images_dir, subdir_name, target_dir, borders_size
         target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.png'
         os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
         imwrite(target_filepath, masks_with_borders)
+
+def overlay_masks_with_borders_json(images_dir, subdir_name, target_dir, borders_size=3, dilation_size=5):
+    train_dir = os.path.join(images_dir, subdir_name)
+    for mask_dirname in tqdm(glob.glob('{}/*/masks'.format(train_dir))):
+        masks = []
+        for ind, image_filepath in enumerate(glob.glob('{}/*'.format(mask_dirname))):
+            image = np.asarray(Image.open(image_filepath))
+            image = np.where(image > 0, ind + 1, 0)
+            masks.append(image)
+        labeled_masks = np.sum(masks, axis=0)
+        overlayed_masks = np.where(labeled_masks, 1, 0)
+
+        selem = rectangle(dilation_size, dilation_size)
+        dilated_mask = dilation(overlayed_masks, selem=selem)
+        watershed_mask = watershed((dilated_mask >= 0).astype(np.bool), labeled_masks, watershed_line=True)
+
+        if watershed_mask.max() == watershed_mask.min():
+            dilated_borders = np.zeros_like(overlayed_masks)
+        else:
+            borders = (watershed_mask == 0) & (dilated_mask > 0)
+            selem = rectangle(borders_size, borders_size)
+            dilated_borders = dilation(borders, selem=selem)
+
+        nuclei = prepare_class_encoding(overlayed_masks)
+        borders = prepare_class_encoding(dilated_borders)
+
+        target_filepath = '/'.join(mask_dirname.replace(images_dir, target_dir).split('/')[:-1]) + '.json'
+        os.makedirs(os.path.dirname(target_filepath), exist_ok=True)
+        save_target_masks(target_filepath, nuclei, borders)
+
 
 
 def overlay_contours(images_dir, subdir_name, target_dir, touching_only=False):
@@ -194,3 +227,14 @@ def cluster_features(features, n_clusters=10):
     kmeans.fit(features)
     labels = kmeans.labels_
     return labels
+
+
+def prepare_class_encoding(binary_mask):
+    segmentation = rle_from_binary(binary_mask.astype(np.uint8))
+    segmentation['counts'] = segmentation['counts'].decode("UTF-8")
+    return segmentation
+
+
+def save_target_masks(target_filepath, *masks):
+    with open(target_filepath, 'w') as file:
+        json.dump(masks, file)

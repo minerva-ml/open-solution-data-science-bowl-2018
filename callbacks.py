@@ -1,7 +1,6 @@
 from PIL import Image
 import numpy as np
 import torch
-from torch.autograd import Variable
 from deepsense import neptune
 
 
@@ -47,29 +46,25 @@ class NeptuneMonitorSegmentation(NeptuneMonitor):
                     break
 
     def get_prediction_masks(self):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         prediction_masks = {}
         batch_gen, steps = self.validation_datagen
         for batch_id, data in enumerate(batch_gen):
             if len(data) != len(self.output_names) + 1:
                 raise ValueError('incorrect targets provided')
-            X = data[0]
+            X = data[0].to(device)
             targets_tensors = data[1:]
-
-            if torch.cuda.is_available():
-                X = Variable(X).cuda()
-            else:
-                X = Variable(X)
 
             outputs_batch = self.model(X)
             if len(outputs_batch) == len(self.output_names):
                 for name, output, target in zip(self.output_names, outputs_batch, targets_tensors):
-                    prediction = sigmoid(np.squeeze(output.data.cpu().numpy(), axis=1))
-                    ground_truth = np.squeeze(target.cpu().numpy(), axis=1)
+                    prediction = sigmoid(np.squeeze(output.detach().cpu().numpy(), axis=1))
+                    ground_truth = np.squeeze(target.detach().cpu().numpy(), axis=1)
                     prediction_masks[name] = np.stack([prediction, ground_truth], axis=1)
             else:
                 for name, target in zip(self.output_names, targets_tensors):
-                    prediction = sigmoid(np.squeeze(outputs_batch.data.cpu().numpy(), axis=1))
-                    ground_truth = np.squeeze(target.cpu().numpy(), axis=1)
+                    prediction = sigmoid(np.squeeze(outputs_batch.detach().cpu().numpy(), axis=1))
+                    ground_truth = np.squeeze(target.detach().cpu().numpy(), axis=1)
                     prediction_masks[name] = np.stack([prediction, ground_truth], axis=1)
             break
         return prediction_masks

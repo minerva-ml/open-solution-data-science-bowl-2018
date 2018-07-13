@@ -23,22 +23,22 @@ exclude:
 
 parameters:
 # Cloud Environment
-  data_dir:                        /public/dsb_2018_data/
-  meta_dir:                        /public/dsb_2018_data/
-  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
-  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
-  contours_touching_overlayed_dir: /public/dsb_2018_data/contours_touching_overlayed/
-  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
-  experiment_dir:                  /output/dsb/experiments/
+#  data_dir:                        /public/dsb_2018_data/
+#  meta_dir:                        /public/dsb_2018_data/
+#  masks_overlayed_dir:             /public/dsb_2018_data/masks_overlayed/
+#  contours_overlayed_dir:          /public/dsb_2018_data/contours_overlayed/
+#  contours_touching_overlayed_dir: /public/dsb_2018_data/contours_touching_overlayed/
+#  centers_overlayed_dir:           /public/dsb_2018_data/centers_overlayed/
+#  experiment_dir:                  /output/dsb/experiments/
 
 # Local Environment
-#  data_dir:                        /path/to/data
-#  meta_dir:                        /path/to/data
-#  masks_overlayed_dir:             /path/to/masks_overlayed
-#  contours_overlayed_dir:          /path/to/contours_overlayed
-#  contours_touching_overlayed_dir: /path/to/contours_touching_overlayed/
-#  centers_overlayed_dir:           /path/to/centers_overlayed
-#  experiment_dir:                  /path/to/work/dir
+  data_dir:                        /mnt/ml-team/dsb_2018/data
+  meta_dir:                        /mnt/ml-team/dsb_2018/files
+  masks_overlayed_dir:             /mnt/ml-team/dsb_2018/files/masks_overlayed
+  contours_overlayed_dir:          /mnt/ml-team/dsb_2018/files/contours_overlayed
+  contours_touching_overlayed_dir: /mnt/ml-team/dsb_2018/files/contours_touching_overlayed/
+  centers_overlayed_dir:           /mnt/ml-team/dsb_2018/files/centers_overlayed
+  experiment_dir:                  /home/patryk/Documents/projects/Minerva/working_dir
 
   valid_category_ids: '[0, 4]'
   overwrite: 1

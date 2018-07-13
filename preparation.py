@@ -105,7 +105,7 @@ def get_vgg_clusters(meta):
         img = img / 255.0
         x = preprocess_image(img)
         feature = extractor(x)
-        feature = np.ndarray.flatten(feature.cpu().data.numpy())
+        feature = np.ndarray.flatten(feature.detach().cpu().numpy())
         features.append(feature)
     features = np.stack(features, axis=0)
 
@@ -115,22 +115,19 @@ def get_vgg_clusters(meta):
 
 
 def vgg_extractor():
-    model = models.vgg16(pretrained=True)
-    if torch.cuda.is_available():
-        model = model.cuda()
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = models.vgg16(pretrained=True).to(device)
     model.eval()
     return torch.nn.Sequential(*list(model.features.children())[:-1])
 
 
 def preprocess_image(img, target_size=(128, 128)):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     img = resize(img, target_size, mode='constant')
     x = np.expand_dims(img, axis=0)
     x = x.transpose(0, 3, 1, 2)
-    x = torch.FloatTensor(x)
-    if torch.cuda.is_available():
-        x = torch.autograd.Variable(x, volatile=True).cuda()
-    else:
-        x = torch.autograd.Variable(x, volatile=True)
+    with torch.no_grad():
+        x = torch.FloatTensor(x).to(device)
     return x
 
 

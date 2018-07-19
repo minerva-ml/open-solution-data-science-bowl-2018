@@ -1,11 +1,14 @@
 import glob
 import logging
 import os
+import random
 import sys
 from itertools import product
+import math
 
 import numpy as np
 import pandas as pd
+import torch
 import yaml
 from PIL import Image
 from attrdict import AttrDict
@@ -18,7 +21,7 @@ def read_yaml(filepath):
     return AttrDict(config)
 
 
-def get_logger():
+def init_logger():
     logger = logging.getLogger('dsb-2018')
     logger.setLevel(logging.INFO)
     message_format = logging.Formatter(fmt='%(asctime)s %(name)s >>> %(message)s',
@@ -36,6 +39,10 @@ def get_logger():
     return logger
 
 
+def get_logger():
+    return logging.getLogger('dsb-2018')
+
+
 def decompose(labeled):
     nr_true = labeled.max()
     masks = []
@@ -51,7 +58,7 @@ def decompose(labeled):
         return masks
 
 
-def create_submission(experiments_dir, meta, predictions, logger):
+def create_submission(meta, predictions, logger):
     image_ids, encodings = [], []
     output = []
     for image_id, prediction in zip(meta['ImageId'].values, predictions):
@@ -67,10 +74,7 @@ def create_submission(experiments_dir, meta, predictions, logger):
 
     submission = pd.DataFrame(output, columns=['ImageId', 'EncodedPixels']).astype(str)
     submission = submission[submission['EncodedPixels'] != 'nan']
-    submission_filepath = os.path.join(experiments_dir, 'submission.csv')
-    submission.to_csv(submission_filepath, index=None, encoding='utf-8')
-    logger.info('submission saved to {}'.format(submission_filepath))
-    logger.info('submission head \n\n{}'.format(submission.head()))
+    return submission
 
 
 def read_masks(masks_filepaths):
@@ -117,15 +121,17 @@ def read_params(ctx):
 def generate_metadata(data_dir,
                       masks_overlayed_dir,
                       contours_overlayed_dir,
-                      contours_touching_overlayed_dir,
-                      centers_overlayed_dir):
-    def stage1_generate_metadata(train):
+                      centers_overlayed_dir,
+                      competition_stage=1,
+                      process_train_data=True,
+                      process_test_data=True):
+    def _generate_metadata(train):
         df_metadata = pd.DataFrame(columns=['ImageId', 'file_path_image', 'file_path_masks', 'file_path_mask',
                                             'is_train', 'width', 'height', 'n_nuclei'])
         if train:
-            tr_te = 'stage1_train'
+            tr_te = 'stage{}_train'.format(competition_stage)
         else:
-            tr_te = 'stage1_test'
+            tr_te = 'stage{}_test'.format(competition_stage)
 
         for image_id in sorted(os.listdir(os.path.join(data_dir, tr_te))):
             p = os.path.join(data_dir, tr_te, image_id, 'images')
@@ -140,7 +146,6 @@ def generate_metadata(data_dir,
                 file_path_masks = os.path.join(data_dir, tr_te, image_id, 'masks')
                 file_path_mask = os.path.join(masks_overlayed_dir, tr_te, image_id + '.png')
                 file_path_contours = os.path.join(contours_overlayed_dir, tr_te, image_id + '.png')
-                file_path_contours_touching = os.path.join(contours_touching_overlayed_dir, tr_te, image_id + '.png')
                 file_path_centers = os.path.join(centers_overlayed_dir, tr_te, image_id + '.png')
                 n_nuclei = len(os.listdir(file_path_masks))
             else:
@@ -163,7 +168,6 @@ def generate_metadata(data_dir,
                                               'file_path_masks': file_path_masks,
                                               'file_path_mask': file_path_mask,
                                               'file_path_contours': file_path_contours,
-                                              'file_path_contours_touching': file_path_contours_touching,
                                               'file_path_centers': file_path_centers,
                                               'is_train': is_train,
                                               'width': width,
@@ -171,9 +175,17 @@ def generate_metadata(data_dir,
                                               'n_nuclei': n_nuclei}, ignore_index=True)
         return df_metadata
 
-    train_metadata = stage1_generate_metadata(train=True)
-    test_metadata = stage1_generate_metadata(train=False)
-    metadata = train_metadata.append(test_metadata, ignore_index=True)
+    if process_train_data and process_test_data:
+        train_metadata = _generate_metadata(train=True)
+        test_metadata = _generate_metadata(train=False)
+        metadata = train_metadata.append(test_metadata, ignore_index=True)
+    elif process_train_data and not process_test_data:
+        metadata = _generate_metadata(train=True)
+    elif not process_train_data and process_test_data:
+        metadata = _generate_metadata(train=False)
+    else:
+        raise ValueError('both train_data and test_data cannot be set to False')
+
     return metadata
 
 
@@ -216,8 +228,37 @@ def relabel_random_colors(img, max_colours=1000):
 
 
 def from_pil(*images):
-    return [np.array(image) for image in images]
+    images = [np.array(image) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
 
 
 def to_pil(*images):
-    return [Image.fromarray((image).astype(np.uint8)) for image in images]
+    images = [Image.fromarray((image).astype(np.uint8)) for image in images]
+    if len(images) == 1:
+        return images[0]
+    else:
+        return images
+
+
+def clip(lo, x, hi):
+    return lo if x <= lo else hi if x >= hi else x
+
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def generate_data_frame_chunks(meta, chunk_size):
+    n_rows = meta.shape[0]
+    chunk_nr = math.ceil(n_rows / chunk_size)
+    meta_chunks = []
+    for i in tqdm(range(chunk_nr)):
+        meta_chunk = meta.iloc[i * chunk_size:(i + 1) * chunk_size]
+        yield meta_chunk

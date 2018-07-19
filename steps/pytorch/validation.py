@@ -1,14 +1,13 @@
-from sklearn.metrics import accuracy_score
 import torch
-from torch.autograd import Variable
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
+from sklearn.metrics import accuracy_score
+from torch.autograd import Variable
 
 
 class DiceLoss(nn.Module):
     def __init__(self):
         super(DiceLoss, self).__init__()
-
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, output, target):
@@ -16,10 +15,10 @@ class DiceLoss(nn.Module):
         return 1 - 2 * torch.sum(prediction * target) / (torch.sum(prediction) + torch.sum(target) + 1e-7)
 
 
-def segmentation_loss(output, target):
+def segmentation_loss(output, target, weight_bce=1.0, weight_dice=1.0):
     bce = nn.BCEWithLogitsLoss()
     dice = DiceLoss()
-    return bce(output, target) + dice(output, target)
+    return weight_bce*bce(output, target) + weight_dice*dice(output, target)
 
 
 def cross_entropy(output, target, squeeze=False):
@@ -74,7 +73,6 @@ def score_model(model, loss_function, datagen):
         partial_batch_losses.setdefault('sum', []).append(loss_sum)
         if batch_id == steps:
             break
-
     average_losses = {name: sum(losses) / steps for name, losses in partial_batch_losses.items()}
     return average_losses
 
@@ -83,7 +81,6 @@ def torch_acc_score(output, target):
     output = output.data.cpu().numpy()
     y_true = target.numpy()
     y_pred = output.argmax(axis=1)
-
     return accuracy_score(y_true, y_pred)
 
 

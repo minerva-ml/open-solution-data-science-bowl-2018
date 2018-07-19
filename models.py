@@ -1,13 +1,15 @@
-import numpy as np
-import torch.optim as optim
+from functools import partial
 
+import numpy as np
+from torch import optim
+
+from callbacks import NeptuneMonitorSegmentation
 from steps.pytorch.architectures.unet import UNet, UNetMultitask
 from steps.pytorch.callbacks import CallbackList, TrainingMonitor, ValidationMonitor, ModelCheckpoint, \
     ExperimentTiming, ExponentialLRScheduler, EarlyStopping
 from steps.pytorch.models import Model
 from steps.pytorch.validation import segmentation_loss
 from utils import sigmoid
-from callbacks import NeptuneMonitorSegmentation
 
 
 class PyTorchUNet(Model):
@@ -33,12 +35,23 @@ class PyTorchUNetMultitask(Model):
         super().__init__(architecture_config, training_config, callbacks_config)
         self.model = UNetMultitask(**architecture_config['model_params'])
         self.weight_regularization = weight_regularization_unet
-        self.optimizer = optim.Adam(self.weight_regularization(self.model, **architecture_config['regularizer_params']),
+        self.optimizer = optim.Adam(self.weight_regularization(self.model,
+                                                               **architecture_config['regularizer_params']),
                                     **architecture_config['optimizer_params'])
-        self.loss_function = [('mask', segmentation_loss, 0.45),
-                              ('contour', segmentation_loss, 0.45),
-                              ('contour_touching', segmentation_loss, 0.0),
-                              ('center', segmentation_loss, 0.1)]
+
+        mask_loss = partial(segmentation_loss,
+                            weight_bce=architecture_config['loss_weights']['bce_mask'],
+                            weight_dice=architecture_config['loss_weights']['dice_mask'])
+        contour_loss = partial(segmentation_loss,
+                               weight_bce=architecture_config['loss_weights']['bce_contour'],
+                               weight_dice=architecture_config['loss_weights']['dice_contour'])
+        center_loss = partial(segmentation_loss,
+                              weight_bce=architecture_config['loss_weights']['bce_center'],
+                              weight_dice=architecture_config['loss_weights']['dice_center'])
+
+        self.loss_function = [('mask', mask_loss, architecture_config['loss_weights']['mask']),
+                              ('contour', contour_loss, architecture_config['loss_weights']['contour']),
+                              ('center', center_loss, architecture_config['loss_weights']['center'])]
         self.callbacks = callbacks_unet(self.callbacks_config)
 
     def transform(self, datagen, validation_datagen=None):

@@ -2,8 +2,8 @@ import numpy as np
 import skimage.morphology as morph
 from scipy import ndimage as ndi
 from scipy.stats import itemfreq
-from skimage.transform import resize
 from skimage.filters import threshold_otsu
+from skimage.transform import resize
 from sklearn.externals import joblib
 from tqdm import tqdm
 
@@ -19,12 +19,6 @@ class Resizer(BaseTransformer):
             resized_images.append(resized_image)
         return {'resized_images': resized_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class Thresholder(BaseTransformer):
     def __init__(self, threshold):
@@ -37,12 +31,6 @@ class Thresholder(BaseTransformer):
             binarized_images.append(binarized_image)
         return {'binarized_images': binarized_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class WatershedCenter(BaseTransformer):
     def transform(self, images, centers):
@@ -51,12 +39,6 @@ class WatershedCenter(BaseTransformer):
             detached_image = watershed_center(image, center)
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 class WatershedContour(BaseTransformer):
@@ -67,12 +49,6 @@ class WatershedContour(BaseTransformer):
             detached_images.append(detached_image)
         return {'detached_images': detached_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class BinaryFillHoles(BaseTransformer):
     def transform(self, images):
@@ -81,12 +57,6 @@ class BinaryFillHoles(BaseTransformer):
             filled_image = fill_holes_per_blob(image)
             filled_images.append(filled_image)
         return {'filled_images': filled_images}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 class Dropper(BaseTransformer):
@@ -101,12 +71,6 @@ class Dropper(BaseTransformer):
 
         return {'labels': labeled_images}
 
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
-
 
 class NucleiLabeler(BaseTransformer):
     def transform(self, images):
@@ -116,12 +80,6 @@ class NucleiLabeler(BaseTransformer):
             labeled_images.append(labeled_image)
 
         return {'labeled_images': labeled_images}
-
-    def load(self, filepath):
-        return self
-
-    def save(self, filepath):
-        joblib.dump({}, filepath)
 
 
 class Postprocessor(BaseTransformer):
@@ -135,11 +93,17 @@ class Postprocessor(BaseTransformer):
             labeled_images.append(labeled_image)
         return {'labeled_images': labeled_images}
 
-    def load(self, filepath):
-        return self
 
-    def save(self, filepath):
-        joblib.dump({}, filepath)
+class CellSizer(BaseTransformer):
+    def __init__(self, **kwargs):
+        pass
+
+    def transform(self, labeled_images):
+        mean_sizes = []
+        for image in tqdm(labeled_images):
+            mean_size = mean_cell_size(image)
+            mean_sizes.append(mean_size)
+        return {'sizes': mean_sizes}
 
 
 def watershed_center(image, center):
@@ -167,7 +131,7 @@ def watershed_contour(image, contour):
 
 
 def postprocess(image, contour):
-    cleaned_mask = clean_mask(image, contour)
+    cleaned_mask = get_clean_mask(image, contour)
     good_markers = get_markers(cleaned_mask, contour)
     good_distance = get_distance(cleaned_mask)
 
@@ -175,14 +139,15 @@ def postprocess(image, contour):
 
     labels = add_dropped_water_blobs(labels, cleaned_mask)
 
-    m_thresh = threshold_otsu(image)
-    initial_mask_binary = (image > m_thresh).astype(np.uint8)
-    labels = drop_artifacts_per_label(labels, initial_mask_binary)
+    min_joinable_size = min_blob_size(image > 0.5, percentile=50, fraction_of_percentile=0.2)
+    labels = connect_small(labels, min_cell_size=min_joinable_size)
 
-    labels = drop_small(labels, min_size=20)
-    labels = fill_holes_per_blob(labels)
+    min_acceptable_size = min_blob_size(image > 0.5, percentile=50, fraction_of_percentile=0.1)
+    labels = drop_small(labels, min_size=min_acceptable_size)
 
-    return labels
+    labels = drop_big_artifacts(labels, scale=0.01)
+
+    return relabel(labels)
 
 
 def drop_artifacts_per_label(labels, initial_mask):
@@ -195,59 +160,64 @@ def drop_artifacts_per_label(labels, initial_mask):
     return labels_cleaned
 
 
-def clean_mask(m, c):
-    # threshold
-    m_thresh = threshold_otsu(m)
-    c_thresh = threshold_otsu(c)
-    m_b = m > m_thresh
-    c_b = c > c_thresh
-
-    # combine contours and masks and fill the cells
+def get_clean_mask(m, c):
+    m_b = m > 0.5
+    c_b = c > 0.5
     m_ = np.where(m_b | c_b, 1, 0)
-    m_ = ndi.binary_fill_holes(m_)
 
-    # close what wasn't closed before
-    area, radius = mean_blob_size(m_b)
-    struct_size = int(1.25 * radius)
-    struct_el = morph.disk(struct_size)
-    m_padded = pad_mask(m_, pad=struct_size)
-    m_padded = morph.binary_closing(m_padded, selem=struct_el)
-    m_ = crop_mask(m_padded, crop=struct_size)
+    clean_mask = np.zeros_like(m)
+    labels, label_nr = ndi.label(m_)
+    for label in range(1, label_nr + 1):
+        mask_component = np.where(labels == label, m_b, 0)
+        contour_component = np.where(labels == label, c_b, 0)
 
-    # open to cut the real cells from the artifacts
-    area, radius = mean_blob_size(m_b)
-    struct_size = int(0.75 * radius)
-    struct_el = morph.disk(struct_size)
-    m_ = np.where(c_b & (~m_b), 0, m_)
-    m_padded = pad_mask(m_, pad=struct_size)
-    m_padded = morph.binary_opening(m_padded, selem=struct_el)
-    m_ = crop_mask(m_padded, crop=struct_size)
+        component_radius = np.sqrt(mask_component.sum())
+        struct_size = int(max(0.05 * component_radius, 5))
+        struct_el = morph.disk(struct_size)
+        m_padded = pad_mask(mask_component, pad=struct_size)
+        m_padded = morph.binary_closing(m_padded, selem=struct_el)
+        m_padded = morph.binary_opening(m_padded, selem=struct_el)
+        mask_component_ = crop_mask(m_padded, crop=struct_size)
+        mask_component_ = ndi.binary_fill_holes(mask_component_)
 
-    # join the connected cells with what we had at the beginning
-    m_ = np.where(m_b | m_, 1, 0)
-    m_ = ndi.binary_fill_holes(m_)
+        mask_component_ = np.where(mask_component_ | mask_component | contour_component, 1, 0)
+        clean_mask += mask_component_
 
-    # drop all the cells that weren't present at least in 25% of area in the initial mask
-    m_ = drop_artifacts(m_, m_b, min_coverage=0.25)
-
-    return m_
+    clean_mask = np.where(clean_mask, 1, 0)
+    return clean_mask
 
 
 def get_markers(m_b, c):
-    # threshold
-    c_thresh = threshold_otsu(c)
-    c_b = c > c_thresh
+    c_b = c > 0.75
+    marker_component = np.where(m_b & ~c_b, 1, 0)
+    min_size = min_blob_size(m_b, percentile=50, fraction_of_percentile=0.2)
+    labels, label_nr = ndi.label(marker_component)
+    markers = np.zeros_like(marker_component)
+    for label in range(1, label_nr + 1):
+        mask_component = np.where(labels == label, 1, 0)
 
-    mk_ = np.where(c_b, 0, m_b)
+        if mask_component.sum() < min_size:
+            continue
 
-    area, radius = mean_blob_size(m_b)
-    struct_size = int(0.25 * radius)
-    struct_el = morph.disk(struct_size)
-    m_padded = pad_mask(mk_, pad=struct_size)
-    m_padded = morph.erosion(m_padded, selem=struct_el)
-    mk_ = crop_mask(m_padded, crop=struct_size)
-    mk_, _ = ndi.label(mk_)
-    return mk_
+        mask_component = ndi.binary_fill_holes(mask_component)
+
+        if mask_component.sum() < min_size * 3:
+            markers += np.where(mask_component, 1, 0)
+            continue
+
+        component_radius = np.sqrt(mask_component.sum())
+        struct_size = int(component_radius * 0.15)
+        struct_el = morph.disk(struct_size)
+        m_padded = pad_mask(mask_component, pad=struct_size)
+        m_padded = morph.binary_erosion(m_padded, selem=struct_el)
+        mask_component = crop_mask(m_padded, crop=struct_size)
+
+        mask_component_labels, _ = ndi.label(mask_component)
+        mask_component = drop_small(mask_component_labels, min_size)
+        markers += np.where(mask_component, 1, 0)
+
+    markers, _ = ndi.label(markers)
+    return markers
 
 
 def get_distance(m_b):
@@ -295,8 +265,10 @@ def mean_blob_size(mask):
         mean_area = 1
         mean_radius = 1
     else:
-        mean_area = int(itemfreq(labels)[1:, 1].mean())
-        mean_radius = int(np.round(np.sqrt(mean_area / np.pi)))
+        blob_sizes = itemfreq(labels)
+        blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, :]
+        mean_area = int(blob_sizes.mean())
+        mean_radius = int(np.round(np.sqrt(mean_area) / np.pi))
     return mean_area, mean_radius
 
 
@@ -308,9 +280,9 @@ def pad_mask(mask, pad):
     w_pad = w + 2 * pad
     mask_padded = np.zeros((h_pad, w_pad))
     mask_padded[pad:pad + h, pad:pad + w] = mask
-    mask_padded[pad - 1, :] = 1
+    mask_padded[pad, :] = 1
     mask_padded[pad + h + 1, :] = 1
-    mask_padded[:, pad - 1] = 1
+    mask_padded[:, pad] = 1
     mask_padded[:, pad + w + 1] = 1
 
     return mask_padded
@@ -332,3 +304,98 @@ def drop_small(img, min_size):
 def label(mask):
     labeled, nr_true = ndi.label(mask)
     return labeled
+
+
+def min_blob_size(mask, percentile=25, fraction_of_percentile=0.1):
+    labels, labels_nr = ndi.label(mask)
+    if labels_nr < 2:
+        return 0
+    else:
+        blob_sizes = itemfreq(labels)
+        blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
+        return fraction_of_percentile * np.percentile(blob_sizes, percentile)
+
+
+def mean_cell_size(labeled_image):
+    blob_sizes = itemfreq(labeled_image)
+    if blob_sizes.shape[0] == 1:
+        return 0
+    else:
+        blob_sizes = blob_sizes[blob_sizes[:, 0].argsort()][1:, 1]
+        return np.mean(blob_sizes)
+
+
+def find_touching_labels(labels, label_id):
+    mask = np.where(labels == label_id, 0, 1)
+    dist = ndi.distance_transform_edt(mask)
+    neighbour_labels = np.unique(np.where(dist == 1.0, labels, 0)).tolist()
+    neighbour_labels.remove(0)
+
+    neighbour_labels_with_sizes = [(neighbor_label, np.where(labels == neighbor_label, 1, 0).sum())
+                                   for neighbor_label in neighbour_labels]
+    neighbour_labels_with_sizes = sorted(neighbour_labels_with_sizes,
+                                         key=lambda x: x[1],
+                                         reverse=False)
+    neighbour_labels_sorted = [neighbor_label for neighbor_label, _ in neighbour_labels_with_sizes]
+    neighbour_labels_sorted
+    return neighbour_labels_sorted
+
+
+def connect_small(labels, min_cell_size=None):
+    labels_with_sizes = [(label_id, np.where(labels == label_id, 1, 0).sum())
+                         for label_id in range(1, labels.max() + 1)]
+    label_ids_sorted_by_size = [lws[0] for lws in sorted(labels_with_sizes,
+                                                         key=lambda x: x[1],
+                                                         reverse=False)]
+    touching_cell_was_connected = False
+    for label_id in label_ids_sorted_by_size:
+        cell_size = np.sum(labels == label_id)
+        touching_labels = find_touching_labels(labels, label_id)
+        for touching_label in touching_labels:
+            touching_cell_mask = np.where(labels == touching_label, 1, 0)
+            touching_cell_size = np.sum(touching_cell_mask)
+            if touching_cell_size < min_cell_size:
+                labels = np.where(labels == touching_label, label_id, labels)
+                touching_cell_was_connected = True
+    labels = relabel(labels)
+    if touching_cell_was_connected:
+        labels = connect_small(labels, min_cell_size)
+    return relabel(labels)
+
+
+def is_slim(im, object_ar, area_ar):
+    ind = np.where(im == 1)
+    ydiff = np.max(ind[0]) - np.min(ind[0])
+    xdiff = np.max(ind[1]) - np.min(ind[1])
+    rec_area = xdiff * ydiff
+    area = np.sum(im == 1)
+    if xdiff / ydiff < object_ar and xdiff / ydiff > 1.0 / object_ar and area / rec_area > area_ar:
+        return False
+    return True
+
+
+def touching_edges(im, margin):
+    indices = np.where(im == 1)
+    edges = []
+    edges.append(np.sum(indices[0] <= margin))
+    edges.append(np.sum(indices[1] <= margin))
+    edges.append(np.sum(indices[0] >= im.shape[0] - 1 - margin))
+    edges.append(np.sum(indices[1] >= im.shape[1] - 1 - margin))
+    return np.sum(np.array(edges) > 0)
+
+
+def drop_big_artifacts(im, scale):
+    im_cleaned = np.copy(im)
+    im_size = im.shape[0] * im.shape[1]
+    for label in np.unique(im):
+        if label == 0:
+            continue
+        size = np.sum(im == label)
+        if size < scale * im_size:
+            continue
+        if not is_slim(im == label, 2, 0.5):
+            continue
+        if touching_edges(im=im == label, margin=2) < 2:
+            continue
+        im_cleaned[im_cleaned == label] = 0
+    return im_cleaned

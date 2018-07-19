@@ -19,6 +19,9 @@ In this open source solution you will find references to the neptune.ml. It is f
 * Borders are produced using dilated watershed lines
 * Normalization as on ImageNet
 
+Differences with topcoders solution:
+* Borders width doesn't depend on nuclei size
+
 ## Augmentations
 * Flips u/d and l/r
 * Rotations with symmetric padding
@@ -33,6 +36,9 @@ In this open source solution you will find references to the neptune.ml. It is f
 * Gaussian, average and median blurring
 * sharpen, emboss
 
+Differences with topcoders solution:
+* No color to gray and gray to color
+* We didn't know how often and how hard were these augmentations, if they were OneOf or SomeOf etc.
 
 ## Network
 * Unet with pretrained Resnet101 or Resnet152 encoders
@@ -46,6 +52,10 @@ In this open source solution you will find references to the neptune.ml. It is f
 * Training on random crops of size 256x256
 * Inference on full images padded to minimal size fitting to network (i.e. dimensions must be divisible by 64)
 * TTA (flips, rotations)
+
+Differences with topcoders solution:
+* No info about inference in the write up, maybe it was done using sliding window not on full images.
+* Larger batchsize.
 
 ## Loss function
 * 1st network: Cross Entropy with Dice (not on background)
@@ -65,6 +75,11 @@ We included data from:
 * https://zenodo.org/record/1175282#.W0So1RgwhhG
 * custom made images without nuclei on them
 But, up to now, including external data did not improve our score
+
+## Not implemented from topcoders solution
+* 2nd level model
+* model ensembling
+
 
 
 # Installation

@@ -1,7 +1,7 @@
 from functools import partial
 
 import loaders
-from models import PyTorchUNet, PyTorchUNetMultitask
+from models import PyTorchUNet, PyTorchUNetMultitask, PyTorchDCAN
 from postprocessing import Resizer, Thresholder, NucleiLabeler, Postprocessor, CellSizer
 from preprocessing import ImageReaderRescaler, ImageReader, StainDeconvolution
 from steps.base import Step, Dummy, to_dict_inputs
@@ -455,6 +455,183 @@ def postprocessing(model_mask, model_contour, config, suffix='', save_output=Fal
     return morphological_postprocessing
 
 
+def dcan(config, train_mode):
+    if train_mode:
+        save_output = True
+        load_saved_output = False
+        preprocessing = preprocessing_dcan_train(config)
+    else:
+        save_output = True
+        load_saved_output = False
+        preprocessing = preprocessing_dcan_inference(config)
+
+    dcan = Step(name='dcan',
+                transformer=PyTorchDCAN(**config.dcan),
+                input_steps=[preprocessing],
+                cache_dirpath=config.env.cache_dirpath,
+                save_output=save_output, load_saved_output=load_saved_output,
+                force_fitting=False)
+
+    mask_resize = Step(name='mask_resize',
+                       transformer=Resizer(),
+                       input_data=['input'],
+                       input_steps=[dcan],
+                       adapter={'images': ([(dcan.name, 'mask_prediction')]),
+                                'target_sizes': ([('input', 'target_sizes')]),
+                                },
+                       cache_dirpath=config.env.cache_dirpath,
+                       save_output=save_output)
+
+    contour_resize = Step(name='contour_resize',
+                          transformer=Resizer(),
+                          input_data=['input'],
+                          input_steps=[dcan],
+                          adapter={'images': ([(dcan.name, 'contour_prediction')]),
+                                   'target_sizes': ([('input', 'target_sizes')]),
+                                   },
+                          cache_dirpath=config.env.cache_dirpath,
+                          save_output=save_output)
+
+    detached = Step(name='detached',
+                    transformer=Postprocessor(),
+                    input_steps=[mask_resize, contour_resize],
+                    adapter={'images': ([(mask_resize.name, 'resized_images')]),
+                             'contours': ([(contour_resize.name, 'resized_images')]),
+                             },
+                    cache_dirpath=config.env.cache_dirpath,
+                    save_output=save_output)
+
+    output = Step(name='output',
+                  transformer=Dummy(),
+                  input_steps=[detached],
+                  adapter={'y_pred': ([(detached.name, 'labeled_images')]),
+                           },
+                  cache_dirpath=config.env.cache_dirpath)
+    return output
+
+def preprocessing_dcan_train(config):
+    reader_config = config.reader_dcan
+    splitter_config = config.xy_splitter_dcan
+
+    if config.execution.load_in_memory:
+        reader_train = Step(name='reader_train',
+                            transformer=ImageReader(**reader_config),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')]),
+                                     },
+                            cache_dirpath=config.env.cache_dirpath,
+                            save_output=True, load_saved_output=False)
+
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**reader_config),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta_valid')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath,
+                                save_output=True, load_saved_output=False)
+
+        stain_deconvolved_train = add_stain_deconvolution(reader_train, config, cache_output=True, suffix="_train")
+        stain_deconvolved_valid = add_stain_deconvolution(reader_inference, config, cache_output=True, suffix="_valid")
+
+        loader = Step(name='loader',
+                      transformer=loaders.ImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[stain_deconvolved_train, stain_deconvolved_valid],
+                      adapter={'X': ([('reader_with_deconv_train', 'X')]),
+                               'y': ([('reader_with_deconv_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('reader_with_deconv_valid', 'X')]),
+                               'y_valid': ([('reader_with_deconv_valid', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_train = Step(name='xy_train',
+                        transformer=XYSplit(**splitter_config),
+                        input_data=['input'],
+                        adapter={'meta': ([('input', 'meta')]),
+                                 'train_mode': ([('input', 'train_mode')])
+                                 },
+                        cache_dirpath=config.env.cache_dirpath)
+
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**config.splitter_config),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta_valid')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=loaders.MetadataImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_train, xy_inference],
+                      adapter={'X': ([('xy_train', 'X')], squeeze_inputs),
+                               'y': ([('xy_train', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               'X_valid': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y_valid': ([('xy_inference', 'y')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+
+    return loader
+
+
+def preprocessing_dcan_inference(config):
+    reader_config = config.reader_dcan
+    splitter_config = config.xy_splitter_dcan
+
+    if config.execution.load_in_memory:
+        reader_inference = Step(name='reader_inference',
+                                transformer=ImageReader(**reader_config),
+                                input_data=['input'],
+                                adapter={'meta': ([('input', 'meta')]),
+                                         'train_mode': ([('input', 'train_mode')]),
+                                         },
+                                cache_dirpath=config.env.cache_dirpath)
+
+        stain_deconvolved_valid = add_stain_deconvolution(reader_inference, config, cache_output=True, suffix="_valid")
+
+        loader = Step(name='loader',
+                      transformer=loaders.ImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[stain_deconvolved_valid],
+                      adapter={'X': ([('reader_with_deconv_valid', 'X')]),
+                               'y': ([('reader_with_deconv_valid', 'y')]),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    else:
+        xy_inference = Step(name='xy_inference',
+                            transformer=XYSplit(**splitter_config),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')])
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
+        loader = Step(name='loader',
+                      transformer=loaders.MetadataImageSegmentationMultitaskLoader(**config.loader),
+                      input_data=['input'],
+                      input_steps=[xy_inference, xy_inference],
+                      adapter={'X': ([('xy_inference', 'X')], squeeze_inputs),
+                               'y': ([('xy_inference', 'y')], squeeze_inputs),
+                               'train_mode': ([('input', 'train_mode')]),
+                               },
+                      cache_dirpath=config.env.cache_dirpath)
+    return loader
+
+def preprocessing_train(config):
+    if config.execution.load_in_memory:
+        reader_train = Step(name='reader_train',
+                            transformer=ImageReader(**config.reader_single),
+                            input_data=['input'],
+                            adapter={'meta': ([('input', 'meta')]),
+                                     'train_mode': ([('input', 'train_mode')]),
+                                     },
+                            cache_dirpath=config.env.cache_dirpath)
+
 def nuclei_labeler(postprocessed_mask, config, save_output=True):
     labeler = Step(name='labeler',
                    transformer=NucleiLabeler(),
@@ -692,7 +869,9 @@ PIPELINES = {'unet': {'train': partial(unet, train_mode=True),
              'unet_multitask': {'train': partial(unet_multitask, train_mode=True),
                                 'inference': partial(unet_multitask, train_mode=False),
                                 },
-
+             'dcan': {'train': partial(dcan, train_mode=True),
+                      'inference': partial(dcan, train_mode=False),
+                      },
              'patched_unet_training': {'train': patched_unet_training},
              'postpro_dev':{'inference': postpro_dev},
              'scale_adjusted_patched_unet_training': {'train': scale_adjusted_patched_unet_training},

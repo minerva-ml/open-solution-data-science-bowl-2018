@@ -21,6 +21,13 @@ def segmentation_loss(output, target, weight_bce=1.0, weight_dice=1.0):
     return weight_bce*bce(output, target) + weight_dice*dice(output, target)
 
 
+def list_segmentation_loss(outputs, target):
+    loss = 0
+    for output in outputs:
+        loss += segmentation_loss(output, target)
+    return loss/len(outputs)
+
+
 def cross_entropy(output, target, squeeze=False):
     if squeeze:
         target = target.squeeze(1)

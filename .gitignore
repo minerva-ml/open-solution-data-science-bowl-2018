@@ -19,7 +19,6 @@ offline_job.log
 target/
 devbook.ipynb
 devbook_local.ipynb
-neptune_local.yaml
 
 # Distribution / packaging
 .Python

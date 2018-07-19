@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5, unet-multitask, patching]
+tags: [solution_5]
 
 metric:
   channel: 'Final Validation Score'

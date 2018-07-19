@@ -1,7 +1,7 @@
 project-key: DSB
 
 name: dsb_open_solution
-tags: [solution_5, unet-multitask, patching]
+tags: [solution_5]
 
 metric:
   channel: 'Final Validation Score'
@@ -41,7 +41,7 @@ parameters:
 
 # General parameters
   valid_category_ids: '[0, 1]'
-  overwrite: 1
+  overwrite: 0
   num_workers: 4
   load_in_memory: 1
   pin_memory: 1

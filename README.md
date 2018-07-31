@@ -6,9 +6,8 @@ This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/
 In this open source solution you will find references to the [neptune.ml](https://neptune.ml). It is free platform for community Users, which we use daily to keep track of our experiments. Please note that using neptune.ml is not necessary to proceed with this solution. You may run it as plain Python script :wink:.
 
 ## Installation
-Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for instructions.
+Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for detailed instructions.
 
-### Fast track:
 1. get repository, install [PyTorch](http://pytorch.org/) then remaining requirements
 2. register to [Neptune](https://neptune.ml/ 'machine learning lab')
 3. run experiment:

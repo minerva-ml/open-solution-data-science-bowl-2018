@@ -1,14 +1,14 @@
 # Data Science Bowl 2018: open solution
 
-This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018) based on [winning solution](https://www.kaggle.com/c/data-science-bowl-2018/discussion/54741) from topcoders.
+This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018) based on the [topcoders winning solution](https://www.kaggle.com/c/data-science-bowl-2018/discussion/54741) from [ods.ai](http://ods.ai).
 
 ## Goal
-Implement winning solution described by topcoders and reproduce their results.
+Implement winning solution described by topcoders and reproduce their results using our Tech stack, mainly [steppy](https://github.com/neptune-ml/steppy) and [steppy-toolkit](https://github.com/neptune-ml/steppy-toolkit).
 
 ## Disclaimer
-In this open source solution you will find references to the neptune.ml. It is free platform for community Users, which we use daily to keep track of our experiments. Please note that using neptune.ml is not necessary to proceed with this solution. You may run it as plain Python script :wink:.
+In this open source solution you will find references to the [neptune.ml](https://neptune.ml). It is free platform for community Users, which we use daily to keep track of our experiments. Please note that using neptune.ml is not necessary to proceed with this solution. You may run it as plain Python script :wink:.
 
-## Results
+## Results (so far)
 `0.577` **Local CV**
 
 `0.457` **Stage 1 LB**
@@ -19,7 +19,7 @@ In this open source solution you will find references to the neptune.ml. It is f
 * Borders are produced using dilated watershed lines
 * Normalization as on ImageNet
 
-Differences with topcoders solution:
+**Differences with topcoders solution:**
 * Borders width doesn't depend on nuclei size
 
 ## Augmentations
@@ -36,7 +36,7 @@ Differences with topcoders solution:
 * Gaussian, average and median blurring
 * sharpen, emboss
 
-Differences with topcoders solution:
+**Differences with topcoders solution:**
 * No color to gray and gray to color
 * We didn't know how often and how hard were these augmentations, if they were OneOf or SomeOf etc.
 
@@ -53,7 +53,7 @@ Differences with topcoders solution:
 * Inference on full images padded to minimal size fitting to network (i.e. dimensions must be divisible by 64)
 * TTA (flips, rotations)
 
-Differences with topcoders solution:
+**Differences with topcoders solution:**
 * No info about inference in the write up, maybe it was done using sliding window not on full images.
 * Larger batchsize.
 
@@ -79,8 +79,6 @@ But, up to now, including external data did not improve our score
 ## Not implemented from topcoders solution
 * 2nd level model
 * model ensembling
-
-
 
 # Installation
 Check [Installation page](https://github.com/neptune-ml/data-science-bowl-2018/wiki/Installation) on our Wiki, for instructions.

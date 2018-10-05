@@ -2,6 +2,9 @@
 
 This is an open solution to the [Data Science Bowl 2018](https://www.kaggle.com/c/data-science-bowl-2018) based on the [topcoders winning solution](https://www.kaggle.com/c/data-science-bowl-2018/discussion/54741) from [ods.ai](http://ods.ai).
 
+## More competitions :sparkler:
+Check collection of [public projects :gift:](https://app.neptune.ml/-/explore), where you can find multiple Kaggle competitions with code, experiments and outputs.
+
 ## Disclaimer
 In this open source solution you will find references to the [neptune.ml](https://neptune.ml). It is free platform for community Users, which we use daily to keep track of our experiments. Please note that using neptune.ml is not necessary to proceed with this solution. You may run it as plain Python script :wink:.
 

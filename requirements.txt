@@ -83,7 +83,7 @@ torchvision==0.2.0
 tornado==4.2
 tqdm==4.11.2
 traitlets==4.3.2
-urllib3==1.16
+urllib3>=1.23
 voluptuous==0.9.3
 wcwidth==0.1.7
 webencodings==0.5.1

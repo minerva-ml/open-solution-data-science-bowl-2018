@@ -1,6 +1,6 @@
 neptune-cli
 attrdict==2.0.0
-bleach==2.1.2
+bleach>=2.1.4
 certifi==2016.2.28
 click==6.7
 contextlib2==0.5.5
@@ -63,7 +63,7 @@ pyparsing==2.2.0
 python-dateutil==2.4.2
 pytz==2017.3
 PyWavelets==0.5.2
-PyYAML==3.11
+pyyaml>=4.2b1
 pyzmq==16.0.3
 qtconsole==4.3.1
 raven==6.1.0

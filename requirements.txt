@@ -45,7 +45,6 @@ oauthlib==2.0.6
 opencv-python==3.4.0.12
 pandas==0.22.0
 pandocfilters==1.4.2
-parso==0.1.1
 pathlib2==2.3.0
 pbr==3.1.1
 pexpect==4.3.1

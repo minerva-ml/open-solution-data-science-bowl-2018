@@ -39,7 +39,7 @@ names==0.3.0
 nbconvert==5.3.1
 nbformat==4.4.0
 networkx==2.0
-notebook==5.7.8
+notebook==6.1.5
 numpy==1.14.0
 oauthlib==2.0.6
 opencv-python==3.4.0.12

@@ -42,7 +42,7 @@ networkx==2.0
 notebook==6.1.5
 numpy==1.14.0
 oauthlib==2.0.6
-opencv-python==3.4.0.12
+opencv-python==4.2.0.32
 pandas==0.22.0
 pandocfilters==1.4.2
 pathlib2==2.3.0
